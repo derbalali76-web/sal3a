@@ -741,6 +741,10 @@
         <label><i class="fas fa-crown" style="color:var(--g400)"></i> سعر الذهب (دج/غ)</label>
         <input type="number" id="settingGoldPrice" step="any" min="1">
     </div>
+    <button id="pwaInstallSettingsBtn" onclick="window._installPWA()"
+        style="width:100%;padding:.65rem;margin:.4rem 0;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0a0800;font-weight:900;font-family:Tajawal,sans-serif;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem">
+        📲 تثبيت التطبيق على الهاتف
+    </button>
     <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
         <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">🛍️ أسماء السلع (تظهر كاختيار في الشراء والبيع)</p>
         <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
@@ -897,13 +901,29 @@ window.addEventListener('beforeinstallprompt', e => {
   const btn = document.getElementById('pwaInstallBtn');
   if(btn) btn.style.display = 'flex';
 });
+if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches){
+  document.addEventListener('DOMContentLoaded',()=>{
+    const b=document.getElementById('pwaInstallSettingsBtn'); if(b)b.style.display='none';
+  });
+}
 window.addEventListener('appinstalled', () => {
+  const sb=document.getElementById('pwaInstallSettingsBtn'); if(sb)sb.style.display='none';
   const btn = document.getElementById('pwaInstallBtn');
   if(btn) btn.style.display = 'none';
   _pwaPrompt = null;
 });
 window._installPWA = async () => {
-  if(!_pwaPrompt) return;
+  if(!_pwaPrompt){
+    /* لا يوجد حدث تثبيت: إما مثبَّت مسبقاً أو المتصفح لا يدعم الطلب المباشر */
+    if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches){
+      alert('✅ التطبيق مثبَّت بالفعل — افتحه من الشاشة الرئيسية');
+    }else if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){
+      alert('📲 للتثبيت على آيفون:\n1) اضغط زر المشاركة ⬆️ في سفاري\n2) اختر «إضافة إلى الشاشة الرئيسية»');
+    }else{
+      alert('📲 للتثبيت:\nافتح قائمة المتصفح ⋮ ثم اختر «إضافة إلى الشاشة الرئيسية» أو «تثبيت التطبيق»');
+    }
+    return;
+  }
   _pwaPrompt.prompt();
   const { outcome } = await _pwaPrompt.userChoice;
   if(outcome === 'accepted') {

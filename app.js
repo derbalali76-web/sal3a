@@ -548,7 +548,7 @@ window._addLiqGoodsRow=(vals)=>{
         <select class="lg-n" style="flex:1.4;margin:0;min-width:0">${typeof _goodsOptions==='function'?_goodsOptions(vals&&vals.n?String(vals.n):''):'<option value="">🛍️ السلعة…</option>'}</select>
         <input type="text" inputmode="decimal" class="lg-w" placeholder="⚖️ الميزان" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
         <input type="text" inputmode="decimal" class="lg-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">`;
-    div.querySelector('select.lg-n').addEventListener('change',_liqGoodsChanged);
+    div.querySelector('select.lg-n').addEventListener('change',function(){_handleGoodsSelect(this);_liqGoodsChanged();});
     div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{liveNum(inp);_liqGoodsChanged();}));
     box.appendChild(div);
 };
@@ -878,7 +878,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v71';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v72';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -980,8 +980,23 @@ window.renderGoodsNamesList=()=>{
 function _goodsOptions(sel){
     let opts=`<option value="">🛍️ السلعة…</option>`+window._goodsNames.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
     if(sel&&!window._goodsNames.includes(sel))opts+=`<option value="${sel}" selected>${sel}</option>`;
+    opts+=`<option value="__new__">＋ اسم جديد…</option>`;
     return opts;
 }
+/* اختيار "＋ اسم جديد…" من أي قائمة: إدخال فوري يُضاف للقائمة ويُختار */
+window._handleGoodsSelect=(el)=>{
+    if(el.value!=='__new__')return true;
+    const v=(prompt('اسم السلعة الجديد:')||'').trim();
+    if(v){
+        if(!window._goodsNames.includes(v))window._goodsNames.push(v);
+        _persistGoodsNames();
+        el.innerHTML=_goodsOptions(v);
+        el.value=v;
+        return true;
+    }
+    el.value='';
+    return false;
+};
 window._refreshGoodsSelects=()=>{
     document.querySelectorAll('#goodsRows select.g-n').forEach(el=>{ const v=el.value; el.innerHTML=_goodsOptions(v); });
 };
@@ -1013,7 +1028,7 @@ function _addGoodsRow(vals){
         <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
         <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">
         <input type="text" inputmode="decimal" class="g-p" placeholder="💰 الأجرة/غ" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
-    div.querySelector('select.g-n').addEventListener('change',_gRowsChanged);
+    div.querySelector('select.g-n').addEventListener('change',function(){_handleGoodsSelect(this);_gRowsChanged();});
     div.querySelectorAll('input').forEach(inp=>{
         inp.addEventListener('input',()=>{ liveNum(inp);_gRowsChanged(); });
     });
@@ -1033,12 +1048,14 @@ function _gRowsChanged(){
     if(last&&(_rowVal(last,'.g-n')||_rowVal(last,'.g-w')||_rowVal(last,'.g-k')||_rowVal(last,'.g-p')))_addGoodsRow();
     _updGoodsTotal();
 }
-function _readGoodsRows(){
+function _readGoodsRows(loose){
     const items=[];
+    let rowIdx=0;
     document.querySelectorAll('#goodsRows .g-row').forEach(row=>{
+        rowIdx++;
         const n=_rowVal(row,'.g-n'), w=_rowNum(row,'.g-w'), k=_rowNum(row,'.g-k'), p=_rowNum(row,'.g-p');
         /* p = سعر الأجرة للغرام الواحد (دج/غ) · fv = الأجرة الكلية للسطر = الوزن × السعر */
-        if(n&&w>0&&k>0)items.push({n,w,k,p:p>0?p:0,fv:Math.round(w*(p>0?p:0)),eq:Math.round(w*k/705*1000)/1000});
+        if(w>0&&k>0&&(n||loose))items.push({n:n||'',_row:rowIdx,w,k,p:p>0?p:0,fv:Math.round(w*(p>0?p:0)),eq:Math.round(w*k/705*1000)/1000});
     });
     return items;
 }
@@ -1051,7 +1068,7 @@ function _readRotor(){
 /* الوزن المتاح في المخزون لاسم سلعة معيّن */
 function _stockAvail(name){ return goodsStock.filter(g=>g.n===name).reduce((s,g)=>s+(g.w||0),0); }
 function _updGoodsTotal(){
-    const items=_readGoodsRows();
+    const items=_readGoodsRows(true); /* المجاميع تحسب كل سطر رقمي حتى قبل اختيار الاسم */
     const rot=_readRotor();
     const w=items.reduce((s,it)=>s+it.w,0);
     const eq=items.reduce((s,it)=>s+it.eq,0);
@@ -1067,7 +1084,10 @@ function _updGoodsTotal(){
 }
 window.saveDollar=()=>{
     const cust=document.getElementById('goodsCustomer').value.trim();
-    const items=_readGoodsRows();
+    const loose=_readGoodsRows(true);
+    const noName=loose.find(it=>!it.n);
+    if(noName)return toast(`⚠️ اختر اسم السلعة في السطر ${noName._row} — أضف الأسماء من ⚙ الإعدادات أو اختر «＋ اسم جديد…» من القائمة`,'error');
+    const items=loose;
     if(!cust)return toast('أدخل اسم الزبون','error');
     const isBuy=document.getElementById('dollarTitle').textContent.includes('شراء');
     const rot=_readRotor();
