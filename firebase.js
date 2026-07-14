@@ -422,9 +422,9 @@ function _applyEvt(st,evt){
                         st.B.دينار-=Number(d.cash);
                         stUpdDebt(d.c,'دينار',Number(d.cash));
                     }
-                    /* 💵 دفع كاصي بالدينار عند الشراء: المبلغ يدخل السيولة، والوزن المكافئ يزيد دين الزبون · عكس تتبّع اللاكاص المطلوب */
+                    /* 💵 دفع كاصي بالدينار عند الشراء: نقد خارج → ينقص السيولة، والوزن المكافئ يزيد دين الزبون · عكس تتبّع اللاكاص المطلوب */
                     if(d.cashiCash&&Number(d.cashiCash.amt)>0){
-                        st.B.دينار+=Number(d.cashiCash.amt);
+                        st.B.دينار-=Number(d.cashiCash.amt);
                         stUpdDebt(d.c,'دولار',Number(d.cashiCash.eq)||0);
                         st.cashiBuyW-=Number(d.cashiCash.eq)||0;
                         st.cashiBuyDin-=Number(d.cashiCash.amt)||0;
@@ -488,9 +488,9 @@ function _applyEvt(st,evt){
                         st.B.دينار+=Number(d.cash);
                         stUpdDebt(d.c,'دينار',-Number(d.cash));
                     }
-                    /* 💵 قبض كاصي بالدينار عند البيع: المبلغ يخرج من السيولة، والوزن المكافئ ينقص من دين الزبون · ويُسجَّل كلاكاص يجب شراؤه */
+                    /* 💵 قبض كاصي بالدينار عند البيع: نقد داخل → يزيد السيولة، والوزن المكافئ ينقص من دين الزبون · ويُسجَّل كلاكاص يجب شراؤه */
                     if(d.cashiCash&&Number(d.cashiCash.amt)>0){
-                        st.B.دينار-=Number(d.cashiCash.amt);
+                        st.B.دينار+=Number(d.cashiCash.amt);
                         stUpdDebt(d.c,'دولار',-(Number(d.cashiCash.eq)||0));
                         st.cashiBuyW+=Number(d.cashiCash.eq)||0;
                         st.cashiBuyDin+=Number(d.cashiCash.amt)||0;
@@ -587,6 +587,20 @@ function _applyEvt(st,evt){
             const remB=d.tp-d.akhd;
             if(remB>0.001)stUpdDebt(d.c,'دينار',-remB);
             else if(remB<-0.001)stUpdDebt(d.c,'دينار',Math.abs(remB));
+            /* 🛒 شراء سبائك 705 يُنقص «كاصي تشتريه» (اشتريت اللاكاص فعلاً) */
+            if(Array.isArray(d.barsAdd)&&d.barsAdd.length){
+                let boughtEq705=0, boughtDin=0;
+                d.barsAdd.forEach(bar=>{
+                    if(bar.pool==='24')return; /* سبائك 705 فقط */
+                    boughtEq705+=(Number(bar.w)||0)*((Number(bar.k)||730)/705);
+                });
+                if(boughtEq705>0){
+                    /* الدينار المنسوب لشراء 705 = حصته من إجمالي الفاتورة */
+                    boughtDin=d.tp||0;
+                    st.cashiBuyW-=boughtEq705;
+                    st.cashiBuyDin-=boughtDin;
+                }
+            }
             if(disp.invoice)st.invoices.unshift(disp.invoice);
             break;
         }
