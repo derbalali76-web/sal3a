@@ -402,6 +402,15 @@ function _applyEvt(st,evt){
                         stUpdDebt(d.c,'دولار',Number(rot.eq)||0);
                         if(Number(rot.fv))stUpdDebt(d.c,'دينار',Number(rot.fv));
                     }
+                    /* 💵 أخذ دينار عند الشراء: يخرج من السيولة وينقص دين الزبون بالدينار */
+                    if(Number(d.cash)>0){
+                        st.B.دينار-=Number(d.cash);
+                        stUpdDebt(d.c,'دينار',Number(d.cash));
+                    }
+                    /* ⚱️ دفع لاكاص عند الشراء: ينقص دين الزبون في السلعة بالمكافئ 705 */
+                    if(d.kass&&Number(d.kass.eq)>0){
+                        stUpdDebt(d.c,'دولار',Number(d.kass.eq));
+                    }
                 }else{
                     /* 🚫 لا تُخصم سلعة من سلعة أخرى: الخصم من مخزون نفس الاسم فقط */
                     let takenEq=0;
@@ -419,6 +428,15 @@ function _applyEvt(st,evt){
                         st.B.دولار+=Number(rot.eq)||0;
                         stUpdDebt(d.c,'دولار',-(Number(rot.eq)||0));
                         if(Number(rot.fv))stUpdDebt(d.c,'دينار',-(Number(rot.fv)));
+                    }
+                    /* 💵 دفع دينار عند البيع: يدخل السيولة وينقص دين الزبون بالدينار */
+                    if(Number(d.cash)>0){
+                        st.B.دينار+=Number(d.cash);
+                        stUpdDebt(d.c,'دينار',-Number(d.cash));
+                    }
+                    /* ⚱️ لاكاص من الزبون عند البيع: ينقص دينه في السلعة بالمكافئ 705 */
+                    if(d.kass&&Number(d.kass.eq)>0){
+                        stUpdDebt(d.c,'دولار',-Number(d.kass.eq));
                     }
                 }
                 if(disp.dollInvoice)st.dollInvoices.unshift(disp.dollInvoice);

@@ -391,7 +391,7 @@
             </div>
             <div class="tbl"><div class="tbl-scroll">
                 <table><thead><tr>
-                    <th>الزبون</th><th>💵 دينار</th><th>🛍️ سلعة</th><th>👑 730</th><th>💎 24</th><th>إجراء</th>
+                    <th>الزبون</th><th>💵 دينار</th><th>🛍️ سلعة</th><th>💎 24</th><th>إجراء</th>
                 </tr></thead><tbody id="debtsBody"></tbody></table>
             </div></div>
         </div>
@@ -541,7 +541,7 @@
     <div class="modal-handle"></div>
     <h3 id="dollarTitle">🛍️ سلعة</h3>
     <input type="text" id="goodsCustomer" placeholder="👤 اسم الزبون">
-    <div id="goodsRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:38vh;overflow-y:auto;padding:.1rem 0"></div>
+    <div id="goodsRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:30vh;overflow-y:auto;padding:.1rem 0"></div>
     <!-- ♻️ روتور — سطر ثابت دائم -->
     <div style="display:flex;gap:.35rem;align-items:center;margin-top:.4rem;padding:.4rem;border:1.5px dashed var(--g500);border-radius:9px;background:rgba(212,175,55,.05)">
         <span style="flex:1.4;min-width:0;font-weight:900;font-size:.82rem;color:var(--g500)">♻️ روتور</span>
@@ -551,6 +551,18 @@
             oninput="liveNum(this);_updGoodsTotal()">
         <input type="text" inputmode="decimal" id="rotP" placeholder="💰 الأجرة/غ" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right"
             oninput="liveNum(this);_updGoodsTotal()">
+    </div>
+    <!-- 💵 دينار: أخذ عند الشراء / دفع عند البيع — يدخل الديون ويؤثر في السيولة -->
+    <div style="display:flex;gap:.35rem;align-items:center;margin-top:.35rem">
+        <span id="goodsCashLbl" style="flex:1.4;min-width:0;font-weight:900;font-size:.82rem;color:#0369a1">💵 أخذ دينار</span>
+        <input type="text" inputmode="decimal" id="goodsCash" placeholder="💵 المبلغ (دج)" dir="ltr"
+            style="flex:2.95;margin:0;min-width:0;text-align:right"
+            oninput="liveNum(this);_updGoodsTotal()">
+    </div>
+    <!-- ⚱️ لاكاص: وزن + عيار، إضافة تلقائية، يُحسب بالمكافئ 705 ويدخل الديون -->
+    <div style="margin-top:.35rem;padding:.4rem;border:1.5px dashed #0d9488;border-radius:9px;background:rgba(13,148,136,.05)">
+        <span id="kassLbl" style="display:block;font-weight:900;font-size:.8rem;color:#0d9488;margin-bottom:.3rem">⚱️ دفع لاكاص</span>
+        <div id="kassRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:18vh;overflow-y:auto"></div>
     </div>
     <div class="infobox" id="goodsTotal" style="font-weight:900">⚖️ 0 غ · مكافئ 705: 0 غ · 💰 الأجرة: 0 دج</div>
     <div class="mactions">
