@@ -879,7 +879,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v76';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v77';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1298,6 +1298,12 @@ window.saveDollar=()=>{
         const _rAvail=_stockAvail('روتور');
         if(rot.w>_rAvail+0.0005)
             return toast(`⚠️ مخزون «روتور» غير كافٍ لإرجاعه — متاح ${fmt(_rAvail,2)} غ والمطلوب ${fmt(rot.w,2)} غ`,'error');
+    }
+    /* الشراء مع لاكاص: السبيكة تخرج من مخزون 705 — يجب أن يكفي المخزون بالمكافئ */
+    if(isBuy&&kass.eq>0){
+        const avail705=(g730||[]).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
+        if(kass.eq>avail705+0.001)
+            return toast(`⚠️ مخزون 705 غير كافٍ للاكاص — متاح ${fmt(avail705,2)} غ (705) والمطلوب ${fmt(kass.eq,2)} غ`,'error');
     }
     const equiv=Math.round(items.reduce((s,it)=>s+it.eq,0)*1000)/1000;
     const fee=items.reduce((s,it)=>s+it.fv,0);
@@ -2020,14 +2026,6 @@ function opDetailLines(o){
             lines.push(`⚖️ ${inv.rot?'صافي المكافئ':'المكافئ'} (705): ${f(_nEq,2)} غ${(_nFee||inv.fee)?` · 💰 ${inv.rot?'صافي الأجرة':'مجموع الأجرة'}: ${f(_nFee,0)} دج`:''}`);
             lines.push(t==='شراء سلعة'?'🔴 دَين بالأحمر (بعد خصم الروتور إن وُجد)':'🟢 بالأخضر (بعد خصم الروتور إن وُجد)');
         }
-    } else if(t==='بيع دولار'||t==='شراء دولار'){
-        if(o.dr) lines.push(`💱 سعر الصرف: ${f(o.dr,0)} دج/$`);
-        lines.push(`💵 بالدينار: ${f((o.a||0)*(o.dr||0)/100,0)} دج`);
-        lines.push(o.paid===false?'⏳ غير خالص — مُضاف للديون':'✅ خالص — تمت المقاصة مباشرة');
-        if(o.party) lines.push(`👤 ${t==='شراء دولار'?'من أخذه':'المسلم'}: ${o.party}`);
-    } else if(t==='دولار وارد'||t==='دولار صادر'){
-        if(o.dollFrom) lines.push(`👤 ${t==='دولار وارد'?'من':'إلى'}: ${o.dollFrom}`);
-        if(o.dr&&t==='دولار وارد') lines.push(`💱 سعر الصرف: ${f(o.dr,0)} دج/$`);
     } else if((t==='شراء'||t==='بيع')&&o.iid){
         const inv=(typeof invoices!=='undefined'?invoices:[]).find(i=>i.id===o.iid);
         if(inv&&inv.items){
@@ -2044,10 +2042,6 @@ function opDetailLines(o){
         if(o.sentW) lines.push(`⚖️ المرسل: ${f(o.sentW,2)} غ 730`);
         if(o.rec24!=null) lines.push(`✨ المستلم: ${f(o.rec24,2)} غ 24 خالص`);
         if(o.fee) lines.push(`💸 الأجرة: ${f(o.fee,0)} دج`);
-    } else if(t==='بيع دبي'){
-        if(o.sentW) lines.push(`⚖️ الوزن: ${f(o.sentW,2)} غ 24`);
-        if(o.sp)    lines.push(`📺 سعر الشاشة: ${f(o.sp,2)} $/أوقية`);
-        if(o.disc)  lines.push(`🏷️ الخصم: ${f(o.disc,2)} $/أوقية`);
     }
     if(o.paper) lines.push('📒 قيد دفتري (بدون مخزون)');
     if(o.bars730&&o.bars730.length){
@@ -3082,7 +3076,7 @@ let _archiveFilter='all';
 window.setArchiveFilter=(f)=>{ _archiveFilter=f; renderArchive(); };
 function _renderArchiveChips(){
     const bar=document.getElementById('archFilterBar'); if(!bar)return;
-    const chips=[['all','📋 الكل'],['buy','🟢 شراء'],['sell','🔴 بيع'],['raf','🔥 رافيناج'],['doll','💲 دولار'],['dubai','🏙️ دبي']];
+    const chips=[['all','📋 الكل'],['doll','🛍️ سلعة'],['buy','🟢 شراء'],['sell','🔴 بيع'],['raf','🔥 رافيناج']];
     bar.innerHTML=chips.map(([k,l])=>{
         const on=_archiveFilter===k;
         return `<button onclick="setArchiveFilter('${k}')" style="white-space:nowrap;padding:.35rem .75rem;border-radius:999px;border:1.5px solid var(--g600);font-size:.76rem;font-weight:800;cursor:pointer;font-family:inherit;${on?'background:var(--g600);color:#fff':'background:transparent;color:var(--g600)'}">${l}</button>`;
@@ -3096,7 +3090,6 @@ function renderArchive(){
     _sec('archSec-gold', f==='all'||f==='buy'||f==='sell');
     _sec('archSec-raf',  f==='all'||f==='raf');
     _sec('archSec-doll', f==='all'||f==='doll');
-    _sec('archSec-dubai',f==='all'||f==='dubai');
     /* فواتير الشراء/البيع */
     const goldList=f==='buy'?invoices.filter(i=>i.t==='buy'):f==='sell'?invoices.filter(i=>i.t==='sell'):invoices;
     document.getElementById('archiveCount').textContent=goldList.length;

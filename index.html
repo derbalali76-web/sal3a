@@ -33,7 +33,7 @@
     <div class="hdr">
         <div class="brand" style="min-width:0"></div>
         <div class="hdr-center-wrap" id="hdrCenterWrap">
-            <div class="price-ball" id="priceBall" onclick="if(!window._badgeDragMoved)window._togglePricePop()" title="اضغط لعرض السعر اللحظي وسعر بيع دبي — اسحب لتحريكها">💰</div>
+            <div class="price-ball" id="priceBall" onclick="if(!window._badgeDragMoved)window._togglePricePop()" title="اضغط لعرض السعر اللحظي — اسحب لتحريكها">💰</div>
             <div class="price-pop" id="pricePop">
                 <div class="spot-badge spot-loading" id="spotBadge" title="سعر الذهب العالمي اللحظي — يتحدث كل 5 دقائق">
                     <div class="spot-dot"></div>
@@ -343,8 +343,15 @@
             <input id="archSearch" placeholder="🔍 بحث باسم الزبون…" autocomplete="off"
                 style="width:100%;margin:0 0 .6rem;border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem;font-family:inherit;font-size:.88rem;background:var(--card2);color:var(--t)"
                 oninput="window._archQ=this.value;_applyArchSearch()">
-            <div class="arch-sec" id="archSec-gold">
+            <div class="arch-sec" id="archSec-doll">
                 <div class="stitle">
+                    <span>🛍️ أرشيف السلعة</span>
+                    <span id="dollArchiveCount" style="font-size:.58rem;background:#0369a1;color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
+                </div>
+                <div id="dollArchiveList"></div>
+            </div>
+            <div class="arch-sec" id="archSec-gold">
+                <div class="stitle" style="margin-top:.5rem">
                     <span><i class="fas fa-folder-open"></i> أرشيف الفواتير</span>
                     <span id="archiveCount" style="font-size:.58rem;background:var(--g700);color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
                 </div>
@@ -356,13 +363,6 @@
                     <span id="rafArchiveCount" style="font-size:.58rem;background:#c2410c;color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
                 </div>
                 <div id="rafArchiveList"></div>
-            </div>
-            <div class="arch-sec" id="archSec-doll">
-                <div class="stitle" style="margin-top:.5rem">
-                    <span>🛍️ أرشيف السلعة</span>
-                    <span id="dollArchiveCount" style="font-size:.58rem;background:#0369a1;color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
-                </div>
-                <div id="dollArchiveList"></div>
             </div>
 
         </div>

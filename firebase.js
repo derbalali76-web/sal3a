@@ -422,8 +422,25 @@ function _applyEvt(st,evt){
                         st.B.دينار-=Number(d.cash);
                         stUpdDebt(d.c,'دينار',Number(d.cash));
                     }
-                    /* ⚱️ دفع لاكاص عند الشراء: ينقص دين الزبون في السلعة بالمكافئ 705 */
-                    if(d.kass&&Number(d.kass.eq)>0){
+                    /* ⚱️ دفع لاكاص عند الشراء: سبيكة بعيارها تخرج من مخزون 705 (بالتجزئة حسب المكافئ)، وينقص دينه بالمكافئ */
+                    if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){
+                        d.kass.items.forEach(it=>{
+                            /* نخرج ما يعادل وزن×عيار من قطع 705 (الأقدم أولاً)، بالمكافئ 730 الداخلي */
+                            let needEq730=(Number(it.w)||0)*((Number(it.k)||705)/730);
+                            for(let bi=0;bi<st.g730.length&&needEq730>0.0000005;bi++){
+                                const bar=st.g730[bi];
+                                const barEq730=(Number(bar.w)||0)*((Number(bar.k)||730)/730);
+                                if(barEq730<=needEq730+0.0000005){
+                                    needEq730=Math.round((needEq730-barEq730)*1e6)/1e6;
+                                    st.g730.splice(bi,1); bi--;
+                                }else{
+                                    /* خصم جزئي: نقلّل وزن القطعة بما يعادل needEq730 بعيار القطعة */
+                                    const takeW=needEq730*730/(Number(bar.k)||730);
+                                    bar.w=Math.round((bar.w-takeW)*1e6)/1e6;
+                                    needEq730=0;
+                                }
+                            }
+                        });
                         stUpdDebt(d.c,'دولار',Number(d.kass.eq));
                     }
                 }else{
@@ -449,8 +466,16 @@ function _applyEvt(st,evt){
                         st.B.دينار+=Number(d.cash);
                         stUpdDebt(d.c,'دينار',-Number(d.cash));
                     }
-                    /* ⚱️ لاكاص من الزبون عند البيع: ينقص دينه في السلعة بالمكافئ 705 */
-                    if(d.kass&&Number(d.kass.eq)>0){
+                    /* ⚱️ لاكاص من الزبون عند البيع: سبيكة بعيارها تدخل مخزون 705، وينقص دينه بالمكافئ */
+                    if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){
+                        d.kass.items.forEach((it,i)=>{
+                            st.g730.push({
+                                id:(evt.id||'')+'_ks'+i,
+                                w:Number(it.w)||0, k:Number(it.k)||705,
+                                desc:'لاكاص', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
+                                src:d.c||'', _ts:evt.ts||0
+                            });
+                        });
                         stUpdDebt(d.c,'دولار',-Number(d.kass.eq));
                     }
                 }
