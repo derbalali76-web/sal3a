@@ -879,7 +879,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v75';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v76';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1025,34 +1025,37 @@ window._publishPortal=()=>{
 window._publishPortalDebounced=(function(){let t=null;return function(){clearTimeout(t);t=setTimeout(()=>{try{window._publishPortal();}catch(e){}},2500);};})();
 
 /* ── جهة الزبون ── */
-window.openCustPortalLogin=()=>{ const p=document.getElementById('custPortalLoginPanel'); if(p)p.style.display='flex'; };
-window.closeCustPortalLogin=()=>{ const p=document.getElementById('custPortalLoginPanel'); if(p)p.style.display='none'; };
 window.closeCustPortal=()=>{
     const sc=document.getElementById('custPortalScreen'); if(sc)sc.style.display='none';
     if(window._portalRef){try{window._portalRef.off();}catch(e){} window._portalRef=null;}
+    window._portalMode=false;
+    const ov=document.getElementById('loginOverlay');
+    if(ov){ov.style.display='';ov.classList.remove('fade-out');}
+    const pu=document.getElementById('loginUser'),pp=document.getElementById('loginPw');
+    if(pu)pu.value='';if(pp)pp.value='';
 };
-window.custPortalLogin=async()=>{
-    const ph=window._normPhone(document.getElementById('custPortalPhone')?.value);
-    const pin=(document.getElementById('custPortalPin')?.value||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
-    const err=document.getElementById('custPortalErr');
-    const showErr=(m)=>{if(err){err.textContent=m;err.style.display='block';}};
-    if(!ph||ph.length<8)return showErr('أدخل رقم هاتف صحيح');
-    if(!pin)return showErr('أدخل كلمة السر');
-    if(err)err.style.display='none';
+/* 👤 محاولة دخول الزبون من نافذة الدخول الموحّدة — تُرجع true عند النجاح */
+window._tryCustomerPortal=async(phoneDigits,pin)=>{
+    const ph=window._normPhone(phoneDigits);
+    const cleanPin=(pin||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
+    if(!ph||ph.length<8||!cleanPin)return false;
     try{
         window._portalMode=true;
         if(!firebase.auth().currentUser)await firebase.auth().signInAnonymously();
-        const ref=firebase.database().ref('goldpro/portal/'+ph+'/'+pin);
+        const ref=firebase.database().ref('goldpro/portal/'+ph+'/'+cleanPin);
         const snap=await ref.once('value');
         const d=snap.val();
-        if(!d||!d.name)return showErr('الرقم أو كلمة السر غير صحيحة — راجع المحل');
+        if(!d||!d.name){ window._portalMode=false; return false; }
         window._portalRef=ref;
         ref.on('value',s2=>{const v=s2.val();if(v)window._renderCustPortal(v);});
         window._renderCustPortal(d);
-        closeCustPortalLogin();
+        const ov=document.getElementById('loginOverlay');
+        if(ov)ov.style.display='none';
         document.getElementById('custPortalScreen').style.display='block';
+        return true;
     }catch(e){
-        showErr('تعذّر الاتصال — تأكد من الإنترنت'+(e&&e.code?` (${e.code})`:''));
+        window._portalMode=false;
+        return false;
     }
 };
 window._portalInvCache={};

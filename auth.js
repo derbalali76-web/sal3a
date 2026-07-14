@@ -81,11 +81,20 @@ function _showLoginErr(msg){
 }
 
 async function doLogin(){
-    const uname=(document.getElementById('loginUser').value||'').trim().toLowerCase();
+    const rawUser=(document.getElementById('loginUser').value||'').trim();
+    const uname=rawUser.toLowerCase();
     const pw=document.getElementById('loginPw').value;
     document.getElementById('loginErr').style.display='none';
-    if(!uname)return _showLoginErr('أدخل اسم المستخدم');
+    if(!rawUser)return _showLoginErr('أدخل اسم المستخدم');
     if(!pw)return _showLoginErr('أدخل كلمة المرور');
+
+    /* 👤 توجيه الزبون: إذا كان الحقل رقم هاتف (أرقام فقط، 8+ خانات) جرّب بوابة كشف الحساب أولاً */
+    const _digits=rawUser.replace(/[^0-9]/g,'');
+    if(_digits.length>=8 && /^[0-9+\s]+$/.test(rawUser)){
+        const _ok=await (window._tryCustomerPortal?window._tryCustomerPortal(_digits,pw):Promise.resolve(false));
+        if(_ok)return; /* دخل الزبون بنجاح */
+        /* إن فشل، نكمل كمحاولة مستخدم عادي (قد يكون اسم مستخدم رقمي) */
+    }
 
     /* مؤشر التحميل أثناء التحقق */
     const btn=document.querySelector('#loginMainPanel .login-btn');

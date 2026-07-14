@@ -862,27 +862,33 @@
         radial-gradient(ellipse 70% 55% at 50% 42%, rgba(212,175,55,.16) 0%, rgba(212,175,55,0) 62%),
         radial-gradient(ellipse at center, #1c2438 0%, #131a2c 45%, #0a0f1e 100%)!important;
 }
-#loginOverlay .login-box, #custPortalLoginPanel .login-box{
+#loginOverlay .login-box{
     background:linear-gradient(160deg, rgba(30,39,62,.92), rgba(15,21,38,.94))!important;
     border:1.5px solid transparent!important;
     background-clip:padding-box;
     box-shadow:0 0 0 1.5px rgba(212,175,55,.55), 0 0 42px rgba(212,175,55,.14), 0 24px 60px rgba(0,0,0,.6)!important;
     border-radius:26px!important;
 }
-#custPortalLoginPanel{
-    background:
-        radial-gradient(ellipse 70% 55% at 50% 42%, rgba(212,175,55,.14) 0%, rgba(212,175,55,0) 62%),
-        radial-gradient(ellipse at center, #1c2438 0%, #131a2c 45%, #0a0f1e 100%)!important;
-}
 </style>
 <div id="loginOverlay">
     <!-- لوحة الدخول الرئيسية -->
     <div class="login-box" id="loginMainPanel">
         <div class="login-logo" style="margin-bottom:.7rem">
-            <img src="icons/icon-192.png" alt="" style="width:96px;height:96px;border-radius:24px;box-shadow:0 0 34px rgba(212,175,55,.55),0 0 80px rgba(212,175,55,.2);display:block;margin:0 auto">
+            <svg viewBox="0 0 100 100" width="96" height="96" style="display:block;margin:0 auto;border-radius:24px;box-shadow:0 0 34px rgba(212,175,55,.55),0 0 80px rgba(212,175,55,.2)">
+  <defs>
+    <linearGradient id="lgBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a3350"/><stop offset="1" stop-color="#0f1526"/></linearGradient>
+    <linearGradient id="lgGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e27a"/><stop offset="0.5" stop-color="#d4af37"/><stop offset="1" stop-color="#a87b1f"/></linearGradient>
+  </defs>
+  <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#lgBg)" stroke="url(#lgGold)" stroke-width="3"/>
+  <path d="M22 62 C22 50 34 44 50 44 C66 44 78 50 78 62 C78 74 66 80 50 80 C34 80 22 74 22 62 Z" fill="none" stroke="url(#lgGold)" stroke-width="5"/>
+  <path d="M30 66 L70 40 L64 38 M70 40 L68 46" fill="none" stroke="url(#lgGold)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M42 40 L50 24 L58 40 Z" fill="#eaf4ff" stroke="url(#lgGold)" stroke-width="1.5"/>
+  <path d="M42 40 L50 32 L58 40 M50 24 L50 40" fill="none" stroke="#9fb8d6" stroke-width="1"/>
+</svg>
         </div>
         <h2 class="login-title" style="background:linear-gradient(135deg,#f6e27a,#d4af37 45%,#a87b1f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.03em">GoldPro</h2>
         <p class="login-sub">نظام إدارة الذهب — سجّل دخولك</p>
+        <p style="font-size:.66rem;color:#9ca3af;margin:.15rem 0 .5rem">أنت زبون؟ أدخل رقم هاتفك في «اسم المستخدم» وكلمة سرك</p>
         <input type="text" id="loginUser" placeholder="👤 اسم المستخدم"
             autocomplete="username" dir="ltr"
             style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1rem;font-family:Tajawal,sans-serif;text-align:center;outline:none;transition:border-color .2s;margin-bottom:.5rem"
@@ -891,10 +897,6 @@
             autocomplete="current-password"
             onkeydown="if(event.key==='Enter'){event.stopPropagation();doLogin()}">
         <button class="login-btn" onclick="doLogin()">دخول →</button>
-        <button onclick="openCustPortalLogin()"
-            style="width:100%;margin-top:.6rem;padding:.7rem;border:1.5px solid rgba(212,175,55,.45);border-radius:12px;background:transparent;color:var(--g400,#d4af37);font-weight:900;font-family:Tajawal,sans-serif;font-size:.9rem;cursor:pointer">
-            👤 دخول الزبائن — كشف الحساب برقم الهاتف
-        </button>
         <p id="loginErr" style="display:none">❌ خطأ</p>
         <p style="margin-top:.8rem;font-size:.72rem;color:rgba(255,255,255,.35);text-align:center">
             <span onclick="window._changeSN()" style="cursor:pointer;text-decoration:underline;color:rgba(212,175,55,.5)">🔁 تغيير رمز التفعيل</span>
@@ -966,24 +968,6 @@ window._installPWA = async () => {
 </script>
 
 <!-- ═══ بوابة الزبون: كشف الحساب ═══ -->
-<div id="custPortalLoginPanel" style="display:none;position:fixed;inset:0;z-index:10001;background:radial-gradient(ellipse at center,#1a1206 0%,#0a0700 100%);align-items:center;justify-content:center">
-    <div class="login-box" style="max-width:360px">
-        <div class="login-logo" style="margin-bottom:.7rem">
-            <img src="icons/icon-192.png" alt="" style="width:80px;height:80px;border-radius:20px;box-shadow:0 0 28px rgba(212,175,55,.5);display:block;margin:0 auto">
-        </div>
-        <h2 class="login-title" style="font-size:1.25rem">كشف حساب الزبون</h2>
-        <p class="login-sub" style="font-size:.78rem">أدخل رقم هاتفك وكلمة السر التي أعطاك إياها المحل</p>
-        <input type="tel" id="custPortalPhone" placeholder="📱 06XXXXXXXX" dir="ltr" maxlength="15"
-            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.1rem;text-align:center;letter-spacing:.12em;outline:none;margin-bottom:.55rem">
-        <input type="password" id="custPortalPin" placeholder="🔑 كلمة السر" dir="ltr" maxlength="20"
-            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.1rem;text-align:center;letter-spacing:.14em;outline:none;margin-bottom:.55rem"
-            onkeydown="if(event.key==='Enter'){event.stopPropagation();custPortalLogin()}">
-        <button class="login-btn" onclick="custPortalLogin()">عرض حسابي →</button>
-        <p id="custPortalErr" style="display:none;color:#ff6b6b;font-size:.76rem;text-align:center;margin-top:.5rem"></p>
-        <button onclick="closeCustPortalLogin()" style="width:100%;margin-top:.6rem;padding:.55rem;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#ccc;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">← رجوع</button>
-    </div>
-</div>
-
 <div id="custPortalScreen" style="display:none;position:fixed;inset:0;z-index:10002;background:var(--bg,#0d1120);overflow-y:auto;direction:rtl;font-family:Tajawal,sans-serif">
     <div style="position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#1a1206,#0d1120);border-bottom:1px solid rgba(212,175,55,.25);padding:.8rem 1rem;display:flex;align-items:center;gap:.6rem">
         <button onclick="closeCustPortal()" style="width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:1rem;cursor:pointer">✕</button>
