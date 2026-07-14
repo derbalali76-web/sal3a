@@ -935,7 +935,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v83';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v84';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -2534,33 +2534,61 @@ window.delOp=(id)=>{
 };
 
 /* ═══════════ DEBTS ═══════════ */
+window._debtFilter=window._debtFilter||'all';
+window.setDebtFilter=(f)=>{
+    window._debtFilter=f;
+    document.querySelectorAll('.debtFilterBtn').forEach(b=>{
+        const on=b.getAttribute('data-f')===f;
+        const c=b.getAttribute('data-f')==='market'?'#0369a1':b.getAttribute('data-f')==='workshop'?'#c2410c':'var(--g600)';
+        b.style.background=on?c:'transparent';
+        b.style.color=on?'#fff':c;
+    });
+    renderDebts();
+};
 function renderDebts(){
     const tb=document.getElementById('debtsBody');
-    if(!debts.length){tb.innerHTML='<tr><td colspan="5" style="padding:2rem;color:var(--t3)"><i class="fas fa-check-circle" style="color:var(--gr)"></i> لا توجد ديون</td></tr>';return}
+    const tf=document.getElementById('debtsFoot');
+    if(!debts.length){tb.innerHTML='<tr><td colspan="5" style="padding:2rem;color:var(--t3)"><i class="fas fa-check-circle" style="color:var(--gr)"></i> لا توجد ديون</td></tr>';if(tf)tf.innerHTML='';return}
     const cd={};
     debts.forEach(d=>{
         if(!cd[d.c])cd[d.c]={di:0,do:0,g7:0,g2:0};
         cd[d.c][d.type==='دينار'?'di':d.type==='دولار'?'do':d.type==='ذهب 730'?'g7':'g2']+=(d.a||0);
     });
-    /* وقت آخر معاملة لكل زبون (من سجلّ العمليات) للترتيب */
+    const kind=window._custKind||{};
+    const filter=window._debtFilter||'all';
+    /* تصفية حسب التصنيف: السوق (أبيع له) / الورشات (أشتري منه) */
+    const entries=Object.entries(cd).filter(([n])=>{
+        if(filter==='all')return true;
+        return (kind[n]||'market')===filter; /* غير المصنّف يُعامل كسوق افتراضياً */
+    });
     const lastTx={};
     ops.forEach(o=>{ if(o&&o.c){ const t=o._ts||0; if(t>(lastTx[o.c]||0)) lastTx[o.c]=t; } });
     const fD=(v,d=0,unit='')=>{
         if(!v||Math.abs(v)<0.001)return'—';
         return`<span class="${v>0?'debt-pos':'debt-neg'}">${fmt(v,d)}</span>${unit?`<small style="font-size:.65rem;color:var(--t3);margin-right:.15rem"> ${unit}</small>`:''}`;
     };
-    tb.innerHTML=Object.entries(cd)
+    if(!entries.length){tb.innerHTML='<tr><td colspan="5" style="padding:2rem;color:var(--t3)">لا توجد ديون في هذا القسم</td></tr>';if(tf)tf.innerHTML='';return;}
+    tb.innerHTML=entries
         .sort((a,b)=>{
             const ta=lastTx[a[0]]||0, tb2=lastTx[b[0]]||0;
-            if(tb2!==ta) return tb2-ta;                          /* الأحدث معاملةً أولاً */
-            return Math.abs(b[1].di)-Math.abs(a[1].di);          /* عند التساوي: حسب الدين */
+            if(tb2!==ta) return tb2-ta;
+            return Math.abs(b[1].di)-Math.abs(a[1].di);
         })
-        .map(([n,v])=>`<tr>
-            <td><strong>${n}</strong></td>
+        .map(([n,v])=>{
+            const tag=(kind[n]||'market')==='workshop'?'<span style="font-size:.55rem;background:rgba(194,65,12,.15);color:#c2410c;padding:.05rem .3rem;border-radius:.5rem;margin-right:.2rem">ورشة</span>':'<span style="font-size:.55rem;background:rgba(3,105,161,.15);color:#0369a1;padding:.05rem .3rem;border-radius:.5rem;margin-right:.2rem">سوق</span>';
+            return`<tr>
+            <td><strong>${n}</strong> ${filter==='all'?tag:''}</td>
             <td>${fD(v.di,0,'Da')}</td><td>${fD(v.do,2,'غ')}</td>
             <td>${fD(v.g2,2,'غ (24)')}</td>
             <td><button class="btn-settle" onclick="openSettle('${n.replace(/'/g,"\\'")}')">✅ تصفية</button></td>
-        </tr>`).join('');
+        </tr>`;}).join('');
+    /* الإجمالي */
+    const tot=entries.reduce((s,[,v])=>({di:s.di+v.di,do:s.do+v.do,g2:s.g2+v.g2}),{di:0,do:0,g2:0});
+    if(tf)tf.innerHTML=`<tr style="border-top:2px solid var(--g600);font-weight:900;background:var(--card2)">
+        <td style="font-weight:900">الإجمالي (${entries.length})</td>
+        <td>${fD(tot.di,0,'Da')}</td><td>${fD(tot.do,2,'غ')}</td>
+        <td>${fD(tot.g2,2,'غ (24)')}</td><td></td>
+    </tr>`;
 }
 window.exportDebtsPdf=function(){
     if(!debts.length){toast('لا توجد ديون للتصدير','info');return;}

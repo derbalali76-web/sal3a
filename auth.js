@@ -238,6 +238,8 @@ async function _checkAuth(){
         if(_encKey) await _fbSignInEmail(savedUser,_encKey).catch(()=>{});
         _fbInitialLoad();_afterLogin();return;
     }
+    /* لا جلسة محفوظة → أظهر شاشة الدخول (كانت مخفية لمنع الوميض) */
+    const _ov=document.getElementById('loginOverlay'); if(_ov)_ov.classList.add('show');
     let users;
     try{users=await _loadUsers();}catch(e){users={};}
     if(Object.keys(users).length===0){

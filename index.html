@@ -345,10 +345,17 @@
                 <span><i class="fas fa-book"></i> الديون</span>
                 <button onclick="exportDebtsPdf()" style="background:var(--rd);color:#fff;border:none;border-radius:8px;padding:.35rem .75rem;font-size:.78rem;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.3rem"><i class="fas fa-file-pdf"></i> تصدير PDF</button>
             </div>
+            <!-- فلترة: الكل / السوق / الورشات -->
+            <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+                <button class="debtFilterBtn" data-f="all" onclick="setDebtFilter('all')" style="flex:1;padding:.45rem;border-radius:9px;border:1.5px solid var(--g600);background:var(--g600);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.78rem;cursor:pointer">📋 الكل</button>
+                <button class="debtFilterBtn" data-f="market" onclick="setDebtFilter('market')" style="flex:1;padding:.45rem;border-radius:9px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;font-family:Tajawal,sans-serif;font-weight:900;font-size:.78rem;cursor:pointer">🏪 ديون السوق</button>
+                <button class="debtFilterBtn" data-f="workshop" onclick="setDebtFilter('workshop')" style="flex:1;padding:.45rem;border-radius:9px;border:1.5px solid #c2410c;background:transparent;color:#c2410c;font-family:Tajawal,sans-serif;font-weight:900;font-size:.78rem;cursor:pointer">🔧 ديون الورشات</button>
+            </div>
             <div class="tbl"><div class="tbl-scroll">
                 <table><thead><tr>
                     <th>الزبون</th><th>💵 دينار</th><th>🛍️ سلعة</th><th>💎 24</th><th>إجراء</th>
-                </tr></thead><tbody id="debtsBody"></tbody></table>
+                </tr></thead><tbody id="debtsBody"></tbody>
+                <tfoot id="debtsFoot"></tfoot></table>
             </div></div>
         </div>
     </div>
@@ -864,7 +871,29 @@
     box-shadow:0 0 0 1.5px rgba(212,175,55,.55), 0 0 42px rgba(212,175,55,.14), 0 24px 60px rgba(0,0,0,.6)!important;
     border-radius:26px!important;
 }
+#loginOverlay{display:none}
+#loginOverlay.show{display:flex}
 </style>
+<script>
+/* قرار متزامن قبل الرسم: إن كانت هناك جلسة محفوظة لا تُظهر شاشة الدخول إطلاقاً (لا وميض) */
+(function(){
+    try{
+        var hasSession=(localStorage.getItem('gp12_auth')==='1'||sessionStorage.getItem('gp12_auth')==='1')
+            &&(localStorage.getItem('gp12_user')||sessionStorage.getItem('gp12_user'));
+        window.__hasSession=!!hasSession;
+        if(!hasSession){
+            /* لا جلسة → أظهرها فور توفّر العنصر */
+            document.addEventListener('DOMContentLoaded',function(){
+                var o=document.getElementById('loginOverlay'); if(o)o.classList.add('show');
+            });
+        }
+    }catch(e){
+        document.addEventListener('DOMContentLoaded',function(){
+            var o=document.getElementById('loginOverlay'); if(o)o.classList.add('show');
+        });
+    }
+})();
+</script>
 <div id="loginOverlay">
     <!-- لوحة الدخول الرئيسية -->
     <div class="login-box" id="loginMainPanel">

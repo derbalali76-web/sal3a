@@ -309,6 +309,7 @@ function _applyEvt(st,evt){
         }
     }
 
+    function _tagCust(c,kind){ if(c)st.custKind[c]=kind; }
     function stUpdDebt(c,m,a){
         const x=st.debts.find(dd=>dd.c===c&&dd.type===m);
         if(x){
@@ -399,6 +400,7 @@ function _applyEvt(st,evt){
                     return taken;
                 };
                 if(d.isBuy){
+                    _tagCust(d.c,'workshop'); /* اشتريت منه → ورشة */
                     /* السلعة المشتراة: تدخل المخزون، دين أحمر (سلعة + أجرة) */
                     st.B.دولار+=eq;
                     stUpdDebt(d.c,'دولار',-eq);
@@ -466,6 +468,7 @@ function _applyEvt(st,evt){
                         stUpdDebt(d.c,'دولار',Number(d.kass.eq));
                     }
                 }else{
+                    _tagCust(d.c,'market'); /* بعت له → سوق */
                     /* 🚫 لا تُخصم سلعة من سلعة أخرى: الخصم من مخزون نفس الاسم فقط */
                     let takenEq=0;
                     (d.items||[]).forEach(it=>{ takenEq+=_deduct(it.n,it.w); });
@@ -582,6 +585,7 @@ function _applyEvt(st,evt){
         }
 
         case 'INVOICE_BUY':{
+            _tagCust(d.c,'workshop'); /* فاتورة شراء → ورشة */
             applyBars();
             st.B.دينار-=d.akhd;
             const remB=d.tp-d.akhd;
@@ -606,6 +610,7 @@ function _applyEvt(st,evt){
         }
 
         case 'INVOICE_SELL':{
+            _tagCust(d.c,'market'); /* فاتورة بيع → سوق */
             applyBars();
             st.B.دينار+=d.akhd;
             const remS=d.tp-d.akhd;
@@ -784,6 +789,7 @@ function _reproject(){
     const st={
         B:{دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0,vg730:0,vg24:0},
         g730:[],g24:[],debts:[],loans:[],goodsStock:[],
+        custKind:{},  /* {اسم الزبون: 'market'|'workshop'} — market=أبيع له · workshop=أشتري منه */
         cashiBuyW:0,cashiBuyDin:0,   /* كاصي بالدينار مقبوض: لاكاص يجب شراؤه + الدينار المقبوض */
         cashiSoldW:0,cashiSoldDin:0, /* أجرة بالكاصي: لاكاص اشتُري فعلاً (يُنقص) + قيمته */
         ops:[],invoices:[],dollInvoices:[],rafInvoices:[],dubaiInvoices:[]
@@ -798,6 +804,7 @@ function _reproject(){
     dollInvoices=st.dollInvoices;
     goodsStock=st.goodsStock;
     window._cashiTracker={buyW:st.cashiBuyW||0,buyDin:st.cashiBuyDin||0,soldW:st.cashiSoldW||0,soldDin:st.cashiSoldDin||0};
+    window._custKind=st.custKind||{};
     if(typeof renderGoodsStock==='function')try{renderGoodsStock();}catch(e){}
     /* 📱 نشر كشوف زبائن البوابة (من جهاز المحل فقط، وليس من جهاز الزبون) */
     if(!window._portalMode&&window._publishPortalDebounced)try{window._publishPortalDebounced();}catch(e){}
