@@ -713,23 +713,46 @@ function syncBal(){
 }
 function _netBuckets(){
     const d_din =debts.reduce((s,d)=>d.type==='دينار'  ?s+(d.a||0):s,0);
-    const d_dol =debts.reduce((s,d)=>d.type==='دولار'  ?s+(d.a||0):s,0);
-    const d_730 =debts.reduce((s,d)=>d.type==='ذهب 730'?s+(d.a||0):s,0);
-    /* ذهب 24 = مخزون + ما نسالو (موجب) − ما يسالوني (سالب) */
-    const d_24  =debts.reduce((s,d)=>d.type==='ذهب 24' ?s+(d.a||0):s,0);
+    const d_dol =debts.reduce((s,d)=>d.type==='دولار'  ?s+(d.a||0):s,0);  /* ديون السلعة (غ 705) */
+    const d_730 =debts.reduce((s,d)=>d.type==='ذهب 730'?s+(d.a||0):s,0);  /* بمكافئ 730 */
+    const d_24  =debts.reduce((s,d)=>d.type==='ذهب 24' ?s+(d.a||0):s,0);  /* بالغرام الخام 24 */
+
+    /* ═══ كل الذهب موحَّد بمكافئ 705 ثم × سعر الذهب ═══
+       المكوّنات (كلها بمكافئ 705):
+       • السلعة (B.دولار مخزَّنة بالفعل بمكافئ 705)
+       • مخزون 705 (B['ذهب 730'] مخزَّن بمكافئ 730 → ×730/705)
+       • مخزون 24 (خام 24 → ×1000/705)
+       • صافي ديون السلعة (d_dol بمكافئ 705)
+       • صافي ديون 24 (خام 24 → ×1000/705)
+    */
+    const inv705    = B.دولار;                                   /* السلعة */
+    const stock705  = (B['ذهب 730']+(B.vg730||0)) * (730/705);   /* مخزون 705 */
+    const stock24_705 = (B['ذهب 24']+(B.vg24||0)) * (1000/705);  /* مخزون 24 كمكافئ 705 */
+    const debtGoods705 = d_dol;                                  /* صافي ديون السلعة */
+    const debt24_705   = d_24 * (1000/705);                      /* صافي ديون 24 كمكافئ 705 */
+    /* ديون 705/730 القديمة (إن وُجدت) بمكافئ 705 */
+    const debt730_705  = d_730 * (730/705);
+
+    const gold705Total = inv705 + stock705 + stock24_705 + debtGoods705 + debt24_705 + debt730_705;
+    const goldValue    = gold705Total * goldPrice;               /* × سعر الذهب */
+
+    /* السيولة + صافي ديون الدينار */
+    const cashValue    = B.دينار + d_din;
+
+    /* توافق مع العرض القديم للتفاصيل */
     const raw_din  = B.دينار      + d_din;
-    const raw_dol  = B.دولار      + d_dol;
-    const raw_730  = B['ذهب 730'] + (B.vg730||0) + d_730;
-    const raw_24   = B['ذهب 24']  + (B.vg24||0)  + d_24;
-    const din  = raw_din;
-    const dol  = raw_dol  * dollarRate / 100;
-    const g730 = raw_730  * goldPrice;
-    const g24  = raw_24   * (1000/730) * goldPrice;            /* يُضاف مثل ذهب 730 */
-    return{din,dol,g730,g24, raw_din,raw_dol,raw_730,raw_24};
+    const raw_dol  = inv705       + debtGoods705;
+    const raw_730  = (B['ذهب 730']+(B.vg730||0)) + d_730;
+    const raw_24   = (B['ذهب 24'] +(B.vg24||0))  + d_24;
+    return{
+        din:cashValue, dol:raw_dol*goldPrice*(1), g730:stock705*goldPrice, g24:stock24_705*goldPrice,
+        raw_din, raw_dol, raw_730, raw_24,
+        goldValue, cashValue, gold705Total
+    };
 }
 function net(){
-    const{din,dol,g730,g24}=_netBuckets();
-    return din+dol+g730+g24;
+    const b=_netBuckets();
+    return b.goldValue + b.cashValue;
 }
 function getCustBal(c,metal){return debts.filter(d=>d.c===c&&d.type===metal).reduce((s,d)=>s+(d.a||0),0)}
 
@@ -777,11 +800,9 @@ function upd(){
     _nwEl.style.color=_nv<0?'var(--rd)':'var(--g400)';
     /* تفاصيل كل وعاء بالدينار */
     const _parts=[];
-    if(Math.abs(_bk.din )>0.001) _parts.push(`💵 ${fmt(_bk.din,0)} دج`);
-    if(Math.abs(_bk.dol )>0.001) _parts.push(`💲 ${fmt(_bk.dol,0)} دج (${fmt(_bk.raw_dol,2)}$)`);
-    if(Math.abs(_bk.g730)>0.001) _parts.push(`🏅 ${fmt(_bk.g730,0)} دج (${fmt(_bk.raw_730,3)}غ)`);
-    if(Math.abs(_bk.g24 )>0.001) _parts.push(`💎 ${fmt(_bk.g24,0)} دج (${fmt(_bk.raw_24,3)}غ24)`);
-    document.getElementById('netWorthDetails').textContent=_parts.length?_parts.join(' | '):'—';
+    _parts.push(`🥇 الذهب (705): ${fmt(_bk.gold705Total,2)} غ = ${fmt(_bk.goldValue,0)} دج`);
+    _parts.push(`💵 السيولة+الديون: ${fmt(_bk.cashValue,0)} دج`);
+    document.getElementById('netWorthDetails').textContent=_parts.join(' | ');
     document.getElementById('goldPriceDisplay').textContent=fmt(goldPrice,0);
 }
 function addOp(c,t,m,a,ex={}){
@@ -903,7 +924,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v79';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v80';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1181,6 +1202,22 @@ let _dollPaid=true; /* دائماً خالص في نظام السلعة */
 window.setDollPaid=(v)=>{ _dollPaid=true; }; /* مُحيَّدة — أزرار خالص/غير خالص أُزيلت */
 function _updDollarEq(){} /* مُحيَّدة — لا سعر صرف في نظام السلعة */
 window.showDollarBalance=()=>{}; /* مُحيَّدة */
+/* ── تبويبات نافذة السلعة: إظهار/إخفاء الأقسام ── */
+const _GTAB_COLORS={secRotor:'#d4af37',secCash:'#0369a1',secKass:'#0d9488',secCashi:'#b45309',secCashiFee:'#7c3aed'};
+window._toggleGoodsSec=(secId,btn)=>{
+    const sec=document.getElementById(secId); if(!sec)return;
+    const open=sec.style.display==='none';
+    sec.style.display=open?'':'none';
+    if(btn){
+        const c=_GTAB_COLORS[secId]||'#d4af37';
+        btn.style.background=open?c:'transparent';
+        btn.style.color=open?'#fff':c;
+    }
+};
+window._resetGoodsSecs=()=>{
+    ['secRotor','secCash','secKass','secCashi','secCashiFee'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+    document.querySelectorAll('.gtab').forEach(b=>{const sec=b.getAttribute('data-sec');const c=_GTAB_COLORS[sec]||'#d4af37';b.style.background='transparent';b.style.color=c;});
+};
 window.openDollar=(t)=>{
     document.getElementById('dollarTitle').textContent=t==='buy'?'🛍️ شراء سلعة':'🛍️ بيع سلعة';
     document.getElementById('goodsCustomer').value='';
@@ -1202,6 +1239,7 @@ window.openDollar=(t)=>{
     const _cfb=document.getElementById('cashiFeeRows');
     if(_cfb){_cfb.innerHTML='';window._addCashiFeeRow();}
     const _ce=document.getElementById('cashiEq'); if(_ce)_ce.textContent='';
+    if(window._resetGoodsSecs)window._resetGoodsSecs();
     _updGoodsTotal();
     _dollPaid=true;
     document.getElementById('dollarModal').classList.add('active');
@@ -1473,6 +1511,13 @@ window.editDoll=(id)=>{
         const cb=document.getElementById('cashiFeeRows');
         if(cb){cb.innerHTML='';d.cashiFee.items.forEach(it=>window._addCashiFeeRow({w:it.w,k:it.k,p:it.p}));window._addCashiFeeRow();_cashiFeeChanged();}
     }
+    /* افتح الأقسام التي تحتوي بيانات */
+    const _openIf=(cond,sec)=>{if(cond){const e=document.getElementById(sec);if(e&&e.style.display==='none'){const btn=document.querySelector(`.gtab[data-sec="${sec}"]`);_toggleGoodsSec(sec,btn);}}};
+    _openIf(_rot,'secRotor');
+    _openIf(d.cash,'secCash');
+    _openIf(d.kass&&d.kass.items&&d.kass.items.length,'secKass');
+    _openIf(d.cashiCash,'secCashi');
+    _openIf(d.cashiFee&&d.cashiFee.items&&d.cashiFee.items.length,'secCashiFee');
     _updGoodsTotal();
     _addGoodsRow(); /* سطر فارغ للإضافة */
     _updGoodsTotal();
