@@ -879,7 +879,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v77';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v78';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1170,6 +1170,14 @@ window.openDollar=(t)=>{
     if(_kl)_kl.textContent=t==='buy'?'⚱️ دفع لاكاص (تدفعه للزبون)':'⚱️ لاكاص (يدفعه لك الزبون)';
     const _kb=document.getElementById('kassRows');
     if(_kb){_kb.innerHTML='';window._addKassRow();}
+    ['cashiAmt','cashiRate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const _ccl=document.getElementById('cashiLbl');
+    if(_ccl)_ccl.textContent=t==='buy'?'💵 دفع كاصي بالدينار (منه)':'💵 قبض كاصي بالدينار (له)';
+    const _cfl=document.getElementById('cashiFeeLbl');
+    if(_cfl)_cfl.textContent=t==='buy'?'⚱️ دفع أجرة بالكاصي (منه)':'⚱️ أجرة بالكاصي (له)';
+    const _cfb=document.getElementById('cashiFeeRows');
+    if(_cfb){_cfb.innerHTML='';window._addCashiFeeRow();}
+    const _ce=document.getElementById('cashiEq'); if(_ce)_ce.textContent='';
     _updGoodsTotal();
     _dollPaid=true;
     document.getElementById('dollarModal').classList.add('active');
@@ -1217,6 +1225,46 @@ function _readGoodsRows(loose){
         if(w>0&&k>0&&(n||loose))items.push({n:n||'',_row:rowIdx,w,k,p:p>0?p:0,fv:Math.round(w*(p>0?p:0)),eq:Math.round(w*k/705*1000)/1000});
     });
     return items;
+}
+/* 💵 دفع كاصي بالدينار: المبلغ ÷ السعر = وزن مكافئ (705) · المبلغ يدخل السيولة */
+function _readCashiCash(){
+    const amt=readNum('cashiAmt'),rate=readNum('cashiRate');
+    if(!(amt>0&&rate>0))return null;
+    return {amt,rate,eq:Math.round(amt/rate*1000)/1000};
+}
+/* ⚱️ دفع أجرة بالكاصي: (وزن×عيار÷705)×سعر = دينار · السبيكة تدخل مخزون 705 */
+window._addCashiFeeRow=(vals)=>{
+    const box=document.getElementById('cashiFeeRows');
+    if(!box||box.children.length>=20)return;
+    const div=document.createElement('div');
+    div.className='cf-row';
+    div.style.cssText='display:flex;gap:.35rem;align-items:center';
+    div.innerHTML=`
+        <input type="text" inputmode="decimal" class="cf-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
+        <input type="text" inputmode="decimal" class="cf-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.9;margin:0;min-width:0;text-align:right">
+        <input type="text" inputmode="decimal" class="cf-p" placeholder="💰 السعر/غ" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
+        <span class="cf-eq" style="flex:1;min-width:0;font-size:.68rem;font-weight:800;color:#7c3aed;align-self:center;text-align:left" dir="ltr"></span>`;
+    div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{liveNum(inp);_cashiFeeChanged();}));
+    if(vals){div.querySelector('.cf-w').value=vals.w||'';div.querySelector('.cf-k').value=vals.k||'';div.querySelector('.cf-p').value=vals.p||'';}
+    box.appendChild(div);
+};
+function _cashiFeeChanged(){
+    const box=document.getElementById('cashiFeeRows'); if(!box)return;
+    box.querySelectorAll('.cf-row').forEach(row=>{
+        const w=_rowNum(row,'.cf-w'),k=_rowNum(row,'.cf-k'),p=_rowNum(row,'.cf-p');
+        row.querySelector('.cf-eq').textContent=(w>0&&k>0&&p>0)?('= '+fmt(Math.round(w*k/705*p),0)+' دج'):'';
+    });
+    const last=box.lastElementChild;
+    if(last&&(_rowVal(last,'.cf-w')||_rowVal(last,'.cf-k')||_rowVal(last,'.cf-p')))window._addCashiFeeRow();
+    _updGoodsTotal();
+}
+function _readCashiFee(){
+    const items=[];
+    document.querySelectorAll('#cashiFeeRows .cf-row').forEach(row=>{
+        const w=_rowNum(row,'.cf-w'),k=_rowNum(row,'.cf-k'),p=_rowNum(row,'.cf-p');
+        if(w>0&&k>0&&p>0)items.push({w,k,p,eq:Math.round(w*k/705*1000)/1000,din:Math.round(w*k/705*p)});
+    });
+    return {items,din:items.reduce((s,it)=>s+it.din,0),eq:Math.round(items.reduce((s,it)=>s+it.eq,0)*1000)/1000};
 }
 /* ⚱️ لاكاص: أسطر وزن + عيار بإضافة تلقائية — مكافئ 705 يدخل الديون */
 window._addKassRow=(vals)=>{
@@ -1270,6 +1318,10 @@ function _updGoodsTotal(){
     if(!el)return;
     const cash=readNum('goodsCash');
     const kass=_readKass();
+    const cashiCash=_readCashiCash();
+    const cashiFee=_readCashiFee();
+    const _ce=document.getElementById('cashiEq');
+    if(_ce)_ce.textContent=cashiCash?('= '+fmt(cashiCash.eq,2)+' غ (705)'):'';
     let txt=`🛍️ ${fmt(w,2)} غ · مكافئ 705: ${fmt(eq,2)} غ · أجرة ${fmt(fee,0)} دج`;
     if(rot)txt+=` − ♻️ روتور ${fmt(rot.eq,2)} غ (705) · ${fmt(rot.fv,0)} دج`;
     if(kass.eq>0)txt+=` − ⚱️ لاكاص ${fmt(kass.eq,2)} غ (705)`;
@@ -1290,9 +1342,17 @@ window.saveDollar=()=>{
     const rot=_readRotor();
     const cash=readNum('goodsCash')>0?readNum('goodsCash'):0;
     const kass=_readKass();
-    if(!items.length&&!rot&&!cash&&!kass.eq)return toast('أدخل سطراً مكتملاً واحداً على الأقل (السلعة + الوزن + العيار)','error');
+    const cashiCash=_readCashiCash();
+    const cashiFee=_readCashiFee();
+    if(!items.length&&!rot&&!cash&&!kass.eq&&!cashiCash&&!cashiFee.eq)return toast('أدخل سطراً مكتملاً واحداً على الأقل','error');
     /* الشراء: أخذ الدينار يخرج من السيولة — تحقق من الكفاية */
     if(isBuy&&cash>0&&B.دينار<cash-0.001)return toast('⚠️ السيولة (الدينار) غير كافية لهذا الأخذ','error');
+    /* دفع أجرة بالكاصي عند الشراء: السبيكة تخرج من مخزون 705 — تحقق من الكفاية */
+    if(isBuy&&cashiFee.eq>0){
+        const avail705=(g730||[]).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
+        if(cashiFee.eq>avail705+0.001)
+            return toast(`⚠️ مخزون 705 غير كافٍ لأجرة الكاصي — متاح ${fmt(avail705,2)} غ (705) والمطلوب ${fmt(cashiFee.eq,2)} غ`,'error');
+    }
     /* الشراء مع روتور: أنت تُرجع الروتور للزبون — يجب أن يكفي مخزون «روتور» */
     if(isBuy&&rot){
         const _rAvail=_stockAvail('روتور');
@@ -1321,9 +1381,9 @@ window.saveDollar=()=>{
     const dt=new Date().toLocaleDateString('fr-FR');
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     /* gv:2 — دائماً غير خالص: الشراء يُسجّل ديناً بالأحمر (سلعة مكافئ 705 + الأجرة بالدينار)، والبيع بالعكس */
-    const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined};
+    const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined,cashiCash:cashiCash||undefined,cashiFee:cashiFee.eq>0?cashiFee:undefined};
     emitEvent('DOLLAR',
-        {gv:2,c:cust,isBuy,items,equiv,fee,a:equiv,r:0,rot:rot||null,cash:cash||0,kass:kass.eq>0?kass:null},
+        {gv:2,c:cust,isBuy,items,equiv,fee,a:equiv,r:0,rot:rot||null,cash:cash||0,kass:kass.eq>0?kass:null,cashiCash:cashiCash||null,cashiFee:cashiFee.eq>0?cashiFee:null},
         {dollInvoice:_di,op:{c:cust,t:isBuy?'شراء سلعة':'بيع سلعة',m:'دولار',a:Math.round((equiv-(rot?rot.eq:0))*1000)/1000,fee,_ts:Date.now(),dt:nowStr,did,gItems:items.length,rotW:rot?rot.w:0}}
     );
     window._editRestore=null;
@@ -1384,6 +1444,12 @@ window.editDoll=(id)=>{
         const kb=document.getElementById('kassRows');
         if(kb){kb.innerHTML='';d.kass.items.forEach(it=>window._addKassRow({w:it.w,k:it.k}));window._addKassRow();_kassChanged();}
     }
+    if(d.cashiCash){const a=document.getElementById('cashiAmt'),r=document.getElementById('cashiRate');if(a)a.value=d.cashiCash.amt;if(r)r.value=d.cashiCash.rate;}
+    if(d.cashiFee&&Array.isArray(d.cashiFee.items)){
+        const cb=document.getElementById('cashiFeeRows');
+        if(cb){cb.innerHTML='';d.cashiFee.items.forEach(it=>window._addCashiFeeRow({w:it.w,k:it.k,p:it.p}));window._addCashiFeeRow();_cashiFeeChanged();}
+    }
+    _updGoodsTotal();
     _addGoodsRow(); /* سطر فارغ للإضافة */
     _updGoodsTotal();
     window._editRestore={modalId:'dollarModal',snap};
@@ -2022,6 +2088,8 @@ function opDetailLines(o){
             if(inv.rot)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
             if(inv.kass&&inv.kass.eq)lines.push(`⚱️ لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
             if(inv.cash)lines.push(`💵 ${t==='شراء سلعة'?'أخذ':'دفع'} دينار: ${f(inv.cash,0)} دج (${t==='شراء سلعة'?'خرج من':'دخل إلى'} السيولة)`);
+            if(inv.cashiCash)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705) · ${t==='شراء سلعة'?'دخل السيولة':'خرج من السيولة'}`);
+            if(inv.cashiFee&&inv.cashiFee.items)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج · سبيكة ${t==='شراء سلعة'?'خرجت من':'دخلت'} مخزون 705`);
             const _nEq=(inv.a||0)-(inv.rot?inv.rot.eq||0:0)-(inv.kass?inv.kass.eq||0:0), _nFee=(inv.fee||0)-(inv.rot?inv.rot.fv||0:0)-(inv.cash||0);
             lines.push(`⚖️ ${inv.rot?'صافي المكافئ':'المكافئ'} (705): ${f(_nEq,2)} غ${(_nFee||inv.fee)?` · 💰 ${inv.rot?'صافي الأجرة':'مجموع الأجرة'}: ${f(_nFee,0)} دج`:''}`);
             lines.push(t==='شراء سلعة'?'🔴 دَين بالأحمر (بعد خصم الروتور إن وُجد)':'🟢 بالأخضر (بعد خصم الروتور إن وُجد)');
@@ -3140,6 +3208,8 @@ function renderArchive(){
                 ${d.rot?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">♻️ روتور (مرتجع): ⚖️ ${fmt(d.rot.w,2)} غ · 🏷️ ${fmt(d.rot.k,0)}${d.rot.p?' · 💰 '+fmt(d.rot.p,0)+' دج/غ = '+fmt(d.rot.fv||0,0)+' دج':''}</small>`:''}
                 ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'أخذ':'دفع'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
                 ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
+                ${d.cashiCash?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالدينار: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
+                ${d.cashiFee&&d.cashiFee.items?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
                 ${(d.rot||d.cash||(d.kass&&d.kass.eq))?`<small style="color:var(--g600);display:block;font-size:.62rem;font-weight:900">= الصافي: ${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0),2)} غ (705) · ${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0),0)} دج</small>`:''}
                 <small style="color:var(--t3);display:block;font-size:.58rem">${d.dt}</small>
             </div>

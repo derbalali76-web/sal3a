@@ -422,6 +422,24 @@ function _applyEvt(st,evt){
                         st.B.دينار-=Number(d.cash);
                         stUpdDebt(d.c,'دينار',Number(d.cash));
                     }
+                    /* 💵 دفع كاصي بالدينار عند الشراء: المبلغ يدخل السيولة، والوزن المكافئ يزيد دين الزبون (كأنه دفع لك هذا الميزان) */
+                    if(d.cashiCash&&Number(d.cashiCash.amt)>0){
+                        st.B.دينار+=Number(d.cashiCash.amt);
+                        stUpdDebt(d.c,'دولار',Number(d.cashiCash.eq)||0);
+                    }
+                    /* ⚱️ دفع أجرة بالكاصي عند الشراء: المبلغ يُضاف لرصيد الزبون بالدينار، والسبيكة تخرج من مخزون 705 */
+                    if(d.cashiFee&&Array.isArray(d.cashiFee.items)&&d.cashiFee.items.length){
+                        stUpdDebt(d.c,'دينار',Number(d.cashiFee.din)||0);
+                        d.cashiFee.items.forEach(it=>{
+                            let needEq730=(Number(it.w)||0)*((Number(it.k)||705)/730);
+                            for(let bi=0;bi<st.g730.length&&needEq730>0.0000005;bi++){
+                                const bar=st.g730[bi];
+                                const barEq730=(Number(bar.w)||0)*((Number(bar.k)||730)/730);
+                                if(barEq730<=needEq730+0.0000005){needEq730=Math.round((needEq730-barEq730)*1e6)/1e6;st.g730.splice(bi,1);bi--;}
+                                else{const takeW=needEq730*730/(Number(bar.k)||730);bar.w=Math.round((bar.w-takeW)*1e6)/1e6;needEq730=0;}
+                            }
+                        });
+                    }
                     /* ⚱️ دفع لاكاص عند الشراء: سبيكة بعيارها تخرج من مخزون 705 (بالتجزئة حسب المكافئ)، وينقص دينه بالمكافئ */
                     if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){
                         d.kass.items.forEach(it=>{
@@ -465,6 +483,23 @@ function _applyEvt(st,evt){
                     if(Number(d.cash)>0){
                         st.B.دينار+=Number(d.cash);
                         stUpdDebt(d.c,'دينار',-Number(d.cash));
+                    }
+                    /* 💵 قبض كاصي بالدينار عند البيع: المبلغ يخرج من السيولة، والوزن المكافئ ينقص من دين الزبون */
+                    if(d.cashiCash&&Number(d.cashiCash.amt)>0){
+                        st.B.دينار-=Number(d.cashiCash.amt);
+                        stUpdDebt(d.c,'دولار',-(Number(d.cashiCash.eq)||0));
+                    }
+                    /* ⚱️ أجرة بالكاصي عند البيع: المبلغ ينقص من رصيد الزبون بالدينار، والسبيكة تدخل مخزون 705 */
+                    if(d.cashiFee&&Array.isArray(d.cashiFee.items)&&d.cashiFee.items.length){
+                        stUpdDebt(d.c,'دينار',-(Number(d.cashiFee.din)||0));
+                        d.cashiFee.items.forEach((it,i)=>{
+                            st.g730.push({
+                                id:(evt.id||'')+'_cf'+i,
+                                w:Number(it.w)||0, k:Number(it.k)||705,
+                                desc:'أجرة كاصي', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
+                                src:d.c||'', _ts:evt.ts||0
+                            });
+                        });
                     }
                     /* ⚱️ لاكاص من الزبون عند البيع: سبيكة بعيارها تدخل مخزون 705، وينقص دينه بالمكافئ */
                     if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){

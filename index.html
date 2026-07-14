@@ -33,7 +33,7 @@
     <div class="hdr">
         <div class="brand" style="min-width:0"></div>
         <div class="hdr-center-wrap" id="hdrCenterWrap">
-            <div class="price-ball" id="priceBall" onclick="if(!window._badgeDragMoved)window._togglePricePop()" title="اضغط لعرض السعر اللحظي — اسحب لتحريكها">💰</div>
+            <div class="price-ball" id="priceBall" style="display:none" onclick="if(!window._badgeDragMoved)window._togglePricePop()" title="اضغط لعرض السعر اللحظي — اسحب لتحريكها">💰</div>
             <div class="price-pop" id="pricePop">
                 <div class="spot-badge spot-loading" id="spotBadge" title="سعر الذهب العالمي اللحظي — يتحدث كل 5 دقائق">
                     <div class="spot-dot"></div>
@@ -547,6 +547,20 @@
     <div style="margin-top:.35rem;padding:.4rem;border:1.5px dashed #0d9488;border-radius:9px;background:rgba(13,148,136,.05)">
         <span id="kassLbl" style="display:block;font-weight:900;font-size:.8rem;color:#0d9488;margin-bottom:.3rem">⚱️ دفع لاكاص</span>
         <div id="kassRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:18vh;overflow-y:auto"></div>
+    </div>
+    <!-- 💵 دفع كاصي بالدينار: مبلغ ÷ سعر = وزن يُضاف لدين الزبون · المبلغ يدخل السيولة -->
+    <div style="margin-top:.35rem;padding:.4rem;border:1.5px dashed #b45309;border-radius:9px;background:rgba(180,83,9,.05)">
+        <span id="cashiLbl" style="display:block;font-weight:900;font-size:.8rem;color:#b45309;margin-bottom:.3rem">💵 دفع كاصي بالدينار</span>
+        <div style="display:flex;gap:.35rem;align-items:center">
+            <input type="text" inputmode="decimal" id="cashiAmt" placeholder="💵 المبلغ (دج)" dir="ltr" style="flex:1.2;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+            <input type="text" inputmode="decimal" id="cashiRate" placeholder="🏷️ السعر (دج/غ)" dir="ltr" style="flex:1.2;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+            <span id="cashiEq" style="flex:1;min-width:0;font-size:.72rem;font-weight:800;color:#b45309;align-self:center;text-align:left" dir="ltr"></span>
+        </div>
+    </div>
+    <!-- ⚱️ دفع أجرة بالكاصي: (وزن×عيار÷705)×سعر = دينار يُضاف لرصيده · السبيكة تدخل مخزون 705 -->
+    <div style="margin-top:.35rem;padding:.4rem;border:1.5px dashed #7c3aed;border-radius:9px;background:rgba(124,58,237,.05)">
+        <span id="cashiFeeLbl" style="display:block;font-weight:900;font-size:.8rem;color:#7c3aed;margin-bottom:.3rem">⚱️ دفع أجرة بالكاصي</span>
+        <div id="cashiFeeRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:16vh;overflow-y:auto"></div>
     </div>
     <div class="infobox" id="goodsTotal" style="font-weight:900">⚖️ 0 غ · مكافئ 705: 0 غ · 💰 الأجرة: 0 دج</div>
     <div class="mactions">
