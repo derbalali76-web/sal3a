@@ -1,4 +1,6 @@
 /* ═══════════ STATE ═══════════ */
+window._tDisp=(t)=>t==='دولار'?'سلعة':t;
+
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
 let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
 let goldPrice=12500,dollarRate=24800,dollarSellRate=0,dollarBuyRate=0,liveSpotPrice=0;
@@ -523,6 +525,7 @@ function openSettings(){
     if(ap)ap.style.display=isAdmin?'block':'none';
     if(isAdmin)renderUsersList();
     try{ const vi=document.getElementById('visionKeyInput'); if(vi)vi.value=_getVisionKey(); }catch(e){}
+    renderGoodsNamesList();
     document.getElementById('settingsModal').classList.add('active');
     setTimeout(()=>document.getElementById('settingGoldPrice').focus(),320);
 }
@@ -591,10 +594,8 @@ window._addLiqDebtRow=()=>{
         <td style="padding:.25rem .3rem">
             <select id="liqDT_${i}"
                 style="width:100%;padding:.3rem .2rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700">
-                <option value="دينار">دينار</option>
-                <option value="دولار">دولار</option>
-                <option value="ذهب 730">ذهب 730</option>
-                <option value="ذهب 24">ذهب 24</option>
+                <option value="دينار">دينار (دج)</option>
+                <option value="دولار">سلعة (غ 705)</option>
             </select>
         </td>
         <td style="padding:.25rem .3rem">
@@ -635,8 +636,6 @@ window.confirmLiqEdit=()=>{
     });
     const g730raw = bars730.reduce((s,b)=>s+b.w,0);
     const g730v   = bars730.reduce((s,b)=>s+b.w*(b.k/730),0);
-    if(dinar<0||dollar<0)
-        return toast('القيم يجب أن تكون موجبة أو صفراً','error');
 
     const debtRows=[];
     document.querySelectorAll('#liqDebtRows tr[id^="liqRow_"]').forEach(tr=>{
@@ -650,8 +649,8 @@ window.confirmLiqEdit=()=>{
     });
 
     const sumLines=[];
-    if(dinar >0) sumLines.push(`💵 دينار: ${fmt(dinar,0)} دج`);
-    if(dollar>0) sumLines.push(`💲 دولار: ${fmt(dollar,2)} $`);
+    if(dinar !==0&&!isNaN(dinar)&&dinar) sumLines.push(`💵 دينار: ${fmt(dinar,0)} دج`);
+    if(dollar!==0&&!isNaN(dollar)&&dollar) sumLines.push(`🛍️ سلعة: ${fmt(dollar,2)} غ (705)`);
     if(g730v >0) sumLines.push(`👑 ذهب 730: ${bars730.length} سبيكة — ${fmt(g730raw,2)} غ`);
     if(debtRows.length){
         sumLines.push('');sumLines.push('ديون الزبائن:');
@@ -721,7 +720,7 @@ function upd(){
     document.getElementById('dinarBal').innerHTML=fmt(B.دينار,0)+'<small> DZD</small>';
     document.getElementById('g730Bal').innerHTML=fmt(B['ذهب 730']+(B.vg730||0),2)+'<small> g</small>';
     document.getElementById('g24Bal').innerHTML=fmt(B['ذهب 24']+(B.vg24||0),2)+'<small> g</small>';
-    document.getElementById('usdBal').innerHTML=fmt(B.دولار,0)+'<small> دج</small>';
+    document.getElementById('usdBal').innerHTML=fmt(B.دولار,2)+'<small> غ</small>';
     const _bk=_netBuckets();
     /* ذهب البيع: مجموع 730 + 24 محوّل لعيار 730 */
     const _gst=document.getElementById('goldSaleTotal');
@@ -855,13 +854,13 @@ window.showGTBalance=()=>{
     const m=document.getElementById('gtMetal').value;
     const box=document.getElementById('gtBalBox');
     if(!c){box.style.display='none';return}
-    const b=getCustBal(c,m),unit=m==='دينار'?'دج':m==='دولار'?'USD':'غ';
+    const b=getCustBal(c,m),unit=m==='دينار'?'دج':'غ';
     box.innerHTML=`👤 رصيد ${m}: <strong style="color:${b>=0?'var(--gr)':'var(--rd)'}">${fmt(b,2)} ${unit}</strong>`;
     box.style.display='block';
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v67';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v68';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -935,6 +934,39 @@ window.saveGT=()=>{
 };
 
 /* ═══════════ سلعة (كانت DOLLAR — نحافظ على نوع الحدث للتوافق) ═══════════ */
+/* ── أسماء السلع (قائمة اختيار مُدارة من الإعدادات، تُزامَن عبر Firebase) ── */
+window._goodsNames=window._goodsNames||[];
+(function(){ try{ const v=JSON.parse(localStorage.getItem('gp12_goodsNames')||'[]'); if(Array.isArray(v))window._goodsNames=v; }catch(e){} })();
+function _persistGoodsNames(){
+    try{localStorage.setItem('gp12_goodsNames',JSON.stringify(window._goodsNames));}catch(e){}
+    if(window._saveGoodsNamesFb)try{window._saveGoodsNamesFb(window._goodsNames);}catch(e){}
+    renderGoodsNamesList(); _refreshGoodsSelects();
+}
+window.addGoodsName=()=>{
+    const inp=document.getElementById('newGoodsName'); if(!inp)return;
+    const v=(inp.value||'').trim(); if(!v)return toast('اكتب اسم السلعة أولاً','error');
+    if(window._goodsNames.includes(v))return toast('الاسم موجود مسبقاً','error');
+    window._goodsNames.push(v); inp.value=''; _persistGoodsNames(); toast('✅ أُضيفت: '+v);
+};
+window.delGoodsName=(i)=>{
+    const n=window._goodsNames[i];
+    if(!confirm(`حذف "${n}" من قائمة السلع؟`))return;
+    window._goodsNames.splice(i,1); _persistGoodsNames();
+};
+window.renderGoodsNamesList=()=>{
+    const el=document.getElementById('goodsNamesList'); if(!el)return;
+    el.innerHTML=window._goodsNames.length
+        ?window._goodsNames.map((n,i)=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:2rem;padding:.2rem .6rem;font-size:.72rem;font-weight:800">${n} <b onclick="delGoodsName(${i})" style="cursor:pointer;color:var(--rd)">✕</b></span>`).join('')
+        :'<small style="color:var(--t3)">لا توجد أسماء بعد — أضف أول سلعة</small>';
+};
+function _goodsOptions(sel){
+    let opts=`<option value="">🛍️ السلعة…</option>`+window._goodsNames.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
+    if(sel&&!window._goodsNames.includes(sel))opts+=`<option value="${sel}" selected>${sel}</option>`;
+    return opts;
+}
+window._refreshGoodsSelects=()=>{
+    document.querySelectorAll('#goodsRows select.g-n').forEach(el=>{ const v=el.value; el.innerHTML=_goodsOptions(v); });
+};
 let _dollPaid=true; /* دائماً خالص في نظام السلعة */
 window.setDollPaid=(v)=>{ _dollPaid=true; }; /* مُحيَّدة — أزرار خالص/غير خالص أُزيلت */
 function _updDollarEq(){} /* مُحيَّدة — لا سعر صرف في نظام السلعة */
@@ -958,15 +990,15 @@ function _addGoodsRow(vals){
     div.className='g-row';
     div.style.cssText='display:flex;gap:.35rem';
     div.innerHTML=`
-        <input type="text" class="g-n" placeholder="🛍️ السلعة" style="flex:1.5;margin:0;min-width:0">
+        <select class="g-n" style="flex:1.4;margin:0;min-width:0">${_goodsOptions(vals&&vals.n?String(vals.n):'')}</select>
         <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
         <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">
-        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 السعر" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
+        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 الأجرة" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
+    div.querySelector('select.g-n').addEventListener('change',_gRowsChanged);
     div.querySelectorAll('input').forEach(inp=>{
-        inp.addEventListener('input',()=>{ if(inp.classList.contains('g-n'))_gRowsChanged(); else{liveNum(inp);_gRowsChanged();} });
+        inp.addEventListener('input',()=>{ liveNum(inp);_gRowsChanged(); });
     });
     if(vals){
-        div.querySelector('.g-n').value=vals.n||'';
         div.querySelector('.g-w').value=vals.w||'';
         div.querySelector('.g-k').value=vals.k||'';
         div.querySelector('.g-p').value=vals.p||'';
@@ -986,34 +1018,38 @@ function _readGoodsRows(){
     const items=[];
     document.querySelectorAll('#goodsRows .g-row').forEach(row=>{
         const n=_rowVal(row,'.g-n'), w=_rowNum(row,'.g-w'), k=_rowNum(row,'.g-k'), p=_rowNum(row,'.g-p');
-        if(n&&p>0)items.push({n,w,k,p});
+        if(n&&w>0&&k>0)items.push({n,w,k,p:p>0?p:0,eq:Math.round(w*k/705*1000)/1000});
     });
     return items;
 }
 function _updGoodsTotal(){
-    const tot=_readGoodsRows().reduce((s,it)=>s+it.p,0);
+    const items=_readGoodsRows();
+    const w=items.reduce((s,it)=>s+it.w,0);
+    const eq=items.reduce((s,it)=>s+it.eq,0);
+    const fee=items.reduce((s,it)=>s+it.p,0);
     const el=document.getElementById('goodsTotal');
-    if(el)el.textContent='المجموع: '+fmt(tot,0)+' دج';
+    if(el)el.textContent=`⚖️ ${fmt(w,2)} غ · مكافئ 705: ${fmt(eq,2)} غ · 💰 الأجرة: ${fmt(fee,0)} دج`;
 }
 window.saveDollar=()=>{
     const cust=document.getElementById('goodsCustomer').value.trim();
     const items=_readGoodsRows();
-    if(!items.length)return toast('أدخل سطراً واحداً على الأقل (اسم السلعة + السعر)','error');
+    if(!cust)return toast('أدخل اسم الزبون','error');
+    if(!items.length)return toast('أدخل سطراً مكتملاً واحداً على الأقل (السلعة + الوزن + العيار)','error');
     const isBuy=document.getElementById('dollarTitle').textContent.includes('شراء');
-    const total=items.reduce((s,it)=>s+it.p,0);
-    if(isBuy&&B.دينار<total-0.001)return toast('⚠️ رصيد الدينار غير كافٍ','error');
+    const equiv=Math.round(items.reduce((s,it)=>s+it.eq,0)*1000)/1000;
+    const fee=items.reduce((s,it)=>s+it.p,0);
     const did='DOLL-'+uid();
     const dt=new Date().toLocaleDateString('fr-FR');
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    /* التوافق: a=المجموع (بطاقة السلعة B.دولار) · dinarVal=المجموع (حركة الدينار) · r=0 */
-    const _di={id:did,c:cust||'—',party:'',isBuy,paid:true,a:total,r:0,dinar:total,dt,items};
+    /* gv:2 — دائماً غير خالص: الشراء يُسجّل ديناً بالأحمر (سلعة مكافئ 705 + الأجرة بالدينار)، والبيع بالعكس */
+    const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2};
     emitEvent('DOLLAR',
-        {c:cust||'—',isBuy,paid:true,a:total,r:0,dinarVal:total,party:'',items},
-        {dollInvoice:_di,op:{c:cust||'سلعة',t:isBuy?'شراء سلعة':'بيع سلعة',m:'دولار',a:total,_ts:Date.now(),dt:nowStr,did,gItems:items.length}}
+        {gv:2,c:cust,isBuy,items,equiv,fee,a:equiv,r:0},
+        {dollInvoice:_di,op:{c:cust,t:isBuy?'شراء سلعة':'بيع سلعة',m:'دولار',a:equiv,fee,_ts:Date.now(),dt:nowStr,did,gItems:items.length}}
     );
     window._editRestore=null;
     closeModal('dollarModal');
-    toast(isBuy?`✅ تم شراء ${items.length} سلعة — دخلت المخزون`:`✅ تم بيع ${items.length} سلعة`);
+    toast(isBuy?`✅ شراء ${items.length} سلعة — ${fmt(equiv,2)} غ (705) + أجرة ${fmt(fee,0)} دج دَيناً بالأحمر`:`✅ بيع ${items.length} سلعة — ${fmt(equiv,2)} غ (705) + أجرة ${fmt(fee,0)} دج بالأخضر`);
 };
 /* ── مخزون السلعة ── */
 window.openGoodsStock=()=>{
@@ -1029,9 +1065,9 @@ window.renderGoodsStock=()=>{
         <div class="saved-card">
             <div>
                 <strong>🛍️ ${g.n}</strong>
-                ${g.w?`<span style="color:var(--g600);font-weight:800;margin-right:.3rem">⚖️ ${fmt(g.w,2)} غ</span>`:''}
+                <span style="color:var(--g600);font-weight:900;margin-right:.3rem">⚖️ ${fmt(g.w,2)} غ</span>
                 ${g.k?`<span style="color:var(--pu);font-weight:800;margin-right:.3rem">🏷️ عيار ${fmt(g.k,0)}</span>`:''}
-                <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · ثمن الشراء: ${fmt(g.p||0,0)} دج${g.dt?' · '+g.dt:''}</small>
+                <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · الأجرة: ${fmt(g.p||0,0)} دج${g.dt?' · '+g.dt:''}</small>
             </div>
         </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:1.2rem">لا توجد سلع في المخزون</div>';
 };
@@ -1210,27 +1246,14 @@ tr:last-child td{border-bottom:none}
 }
 
 /* ═══════════ EXPENSE ═══════════ */
-window.toggleExpCur=()=>{
-    const isDzd=document.querySelector('input[name="expCur"]:checked').value==='دينار';
-    document.getElementById('expLblDzd').style.background=isDzd?'var(--gold)':'var(--card2)';
-    document.getElementById('expLblDzd').style.color=isDzd?'#fff':'var(--t)';
-    document.getElementById('expLblUsd').style.background=isDzd?'var(--card2)':'var(--gold)';
-    document.getElementById('expLblUsd').style.color=isDzd?'var(--t)':'#fff';
-    document.getElementById('expCustomerWrap').style.display=isDzd?'none':'block';
-    document.getElementById('expAmount').placeholder=isDzd?'💰 القيمة (دج)':'💰 القيمة ($)';
-    if(!isDzd)setTimeout(()=>document.getElementById('expCustomer').focus(),100);
-};
+window.toggleExpCur=()=>{};
 window.openExpense=()=>{
     document.getElementById('expAmount').value='';
     document.getElementById('expNote').value='';
     document.getElementById('expCustomer').value='';
-    /* إعادة ضبط على دينار */
-    document.querySelector('input[name="expCur"][value="دينار"]').checked=true;
-    document.getElementById('expLblDzd').style.background='var(--gold)';
-    document.getElementById('expLblDzd').style.color='#fff';
-    document.getElementById('expLblUsd').style.background='var(--card2)';
-    document.getElementById('expLblUsd').style.color='var(--t)';
-    document.getElementById('expCustomerWrap').style.display='none';
+    /* المصاريف بالدينار فقط (خيار الدولار محذوف) */
+    const _ec=document.querySelector('input[name="expCur"][value="دينار"]'); if(_ec)_ec.checked=true;
+    const _ecw=document.getElementById('expCustomerWrap'); if(_ecw)_ecw.style.display='none';
     document.getElementById('expAmount').placeholder='💰 القيمة (دج)';
     document.getElementById('expModal').classList.add('active');
     setTimeout(()=>document.getElementById('expAmount').focus(),350);
@@ -1728,12 +1751,12 @@ function opDetailLines(o){
     }
     if(o.realW&&o.realK) lines.push(`⚖️ الحقيقي: ${f(o.realW,2)} غ عيار ${o.realK}`);
     if(o.xferTo){
-        const _xa=(amt,ty)=>ty==='دينار'?`${f(amt,0)} دج`:ty==='دولار'?`${f(amt,2)} $`:`${f(amt,3)} غ ${ty}`;
+        const _xa=(amt,ty)=>ty==='دينار'?`${f(amt,0)} دج`:ty==='دولار'?`${f(amt,2)} غ سلعة`:`${f(amt,3)} غ ${ty}`;
         lines.push(`🔁 تحويل إلى: ${o.xferTo}`);
         lines.push(`📦 المبلغ: ${_xa(o.a,o.m)}`+((o.xferDstType&&o.xferDstType!==o.m)?` ← ${_xa(o.xferWDst||0,o.xferDstType)}`:''));
     }
     if(o.xferFrom){
-        const _xa=(amt,ty)=>ty==='دينار'?`${f(amt,0)} دج`:ty==='دولار'?`${f(amt,2)} $`:`${f(amt,3)} غ ${ty}`;
+        const _xa=(amt,ty)=>ty==='دينار'?`${f(amt,0)} دج`:ty==='دولار'?`${f(amt,2)} غ سلعة`:`${f(amt,3)} غ ${ty}`;
         lines.push(`🔁 تحويل وارد من: ${o.xferFrom}`);
         lines.push(`📥 المبلغ: ${_xa(o.a,o.m)}`);
     }
@@ -1794,7 +1817,7 @@ function renderLog(){
     list.innerHTML=fl.map(o=>{
         const out=outTypes.has(o.t);
         const bg=colors[o.t]||(out?'var(--rd)':'var(--gr)');
-        const unit=o.m==='دينار'?'DZD':o.m==='دولار'?'USD':'g';
+        const unit=o.m==='دينار'?'DZD':'g';
         const dlines=opDetailLines(o);
         const detailHtml=dlines.length
             ?dlines.map(l=>`<br><span style="color:var(--t2);font-size:.6rem;line-height:1.6">${l}</span>`).join('')
@@ -1859,7 +1882,7 @@ window.sendCustomerLog=()=>{
 
     const rows=custOps.map((o,i)=>{
         const out=outTypes.has(o.t);
-        const unit=o.m==='دينار'?'DZD':o.m==='دولار'?'$':'g';
+        const unit=o.m==='دينار'?'DZD':'g';
         const clr=typeColors[o.t]||(out?'#ef4444':'#22c55e');
         const dlines=opDetailLines(o);
         const detailCell=dlines.length
@@ -1877,7 +1900,7 @@ window.sendCustomerLog=()=>{
 
     /* الرصيد الصافي الحقيقي من جدول الديون */
     const _metals=['دينار','دولار','ذهب 730','ذهب 24'];
-    const _units={دينار:'DZD',دولار:'$','ذهب 730':'g','ذهب 24':'g'};
+    const _units={دينار:'DZD',دولار:'غ','ذهب 730':'g','ذهب 24':'g'};
     const _custDebts=_metals.map(m=>({m,v:getCustBal(c,m)})).filter(x=>Math.abs(x.v)>0.001);
     const netBalHtml=_custDebts.length?`
 <h2 style="border-color:#b8860b;color:#b8860b">💰 الرصيد الصافي الحالي</h2>
@@ -1890,7 +1913,7 @@ ${_custDebts.map(({m,v})=>{
     const bg=owed?'#f0fdf4':'#fef2f2';
     const border=owed?'#86efac':'#fca5a5';
     return`<div style="flex:1;min-width:140px;background:${bg};border:2px solid ${border};border-radius:8px;padding:.6rem .8rem;text-align:center">
-        <div style="font-size:.72rem;color:#666;margin-bottom:.2rem">${m}</div>
+        <div style="font-size:.72rem;color:#666;margin-bottom:.2rem">${_tDisp(m)}</div>
         <div style="font-size:1.25rem;font-weight:900;color:${clr}">${Math.abs(v).toLocaleString('fr-FR',{maximumFractionDigits:2})} ${unit}</div>
         <div style="font-size:.7rem;font-weight:700;color:${clr};margin-top:.15rem">${lbl}</div>
     </div>`;
@@ -1944,7 +1967,7 @@ function buildCustomerLogHtml(c,custOps){
 
     /* أرصدة الزبون */
     const _modes=['دينار','دولار','ذهب 730','ذهب 24'];
-    const _units={دينار:'DZD',دولار:'$','ذهب 730':'g','ذهب 24':'g'};
+    const _units={دينار:'DZD',دولار:'غ','ذهب 730':'g','ذهب 24':'g'};
     const balances=_modes.map(m=>({m,v:getCustBal(c,m)})).filter(x=>Math.abs(x.v)>0.001);
 
     const balHtml=balances.length
@@ -1966,7 +1989,7 @@ function buildCustomerLogHtml(c,custOps){
     /* صفوف الجدول */
     const rows=custOps.map((o,i)=>{
         const out=outTypes.has(o.t);
-        const unit=o.m==='دينار'?'DZD':o.m==='دولار'?'$':'g';
+        const unit=o.m==='دينار'?'DZD':'g';
         const amtColor=out?'#dc2626':'#16a34a';
         const amtSign=out?'−':'+';
         const tc=tColor[o.t]||'#374151';
@@ -2088,7 +2111,7 @@ function renderDebts(){
         })
         .map(([n,v])=>`<tr>
             <td><strong>${n}</strong></td>
-            <td>${fD(v.di,0,'Da')}</td><td>${fD(v.do,2,'$')}</td>
+            <td>${fD(v.di,0,'Da')}</td><td>${fD(v.do,2,'غ')}</td>
             <td>${fD(v.g7,2,'غ (730)')}</td><td>${fD(v.g2,2,'غ (24)')}</td>
             <td><button class="btn-settle" onclick="openSettle('${n.replace(/'/g,"\\'")}')">✅ تصفية</button></td>
         </tr>`).join('');
@@ -2118,7 +2141,7 @@ window.exportDebtsPdf=function(){
                 <tr style="background:#1a1a1a;color:#fff;font-weight:800;text-align:center">
                     <th style="padding:7px;border:1px solid #555">الزبون</th>
                     <th style="padding:7px;border:1px solid #555">💵 دينار (Da)</th>
-                    <th style="padding:7px;border:1px solid #555">💲 دولار ($)</th>
+                    <th style="padding:7px;border:1px solid #555">🛍️ سلعة (غ)</th>
                     <th style="padding:7px;border:1px solid #555">👑 ذهب 730 (غ)</th>
                     <th style="padding:7px;border:1px solid #555">💎 ذهب 24 (غ)</th>
                 </tr>
@@ -2153,8 +2176,8 @@ function _renderSettleRows(){
     const rows=document.getElementById('settleRows');
     const cd={دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0};
     debts.filter(d=>d.c===_settleCustomer).forEach(d=>{cd[d.type]=(cd[d.type]||0)+(d.a||0)});
-    const icons={دينار:'💵',دولار:'💲','ذهب 730':'👑','ذهب 24':'💎'};
-    const units={دينار:'دج',دولار:'$','ذهب 730':'غ','ذهب 24':'غ'};
+    const icons={دينار:'💵',دولار:'🛍️','ذهب 730':'👑','ذهب 24':'💎'};
+    const units={دينار:'دج',دولار:'غ','ذهب 730':'غ','ذهب 24':'غ'};
     const decs={دينار:0,دولار:2,'ذهب 730':2,'ذهب 24':2};
     const active=Object.entries(cd).filter(([,v])=>Math.abs(v)>0.001);
     const buyGoldBox=`<div style="margin-top:.7rem;padding-top:.7rem;border-top:1px dashed var(--border)">
@@ -2205,7 +2228,7 @@ window.openXfer=(srcType)=>{
     _xferSrcType=srcType; _xferSrcBal=bal; _xferMode='same';
     _ensureXferModal();
     const isGold=srcType==='ذهب 730'||srcType==='ذهب 24';
-    const unit=srcType==='دينار'?'دج':srcType==='دولار'?'$':'غ';
+    const unit=srcType==='دينار'?'دج':'غ';
     const dec=srcType==='دينار'?0:srcType==='دولار'?2:3;
     const dir=bal>0?'تسالو (مدين لك)':'يسالك (أنت مدين له)';
     document.getElementById('xferFrom').textContent=_settleCustomer;
@@ -2260,7 +2283,7 @@ window.doXfer=()=>{
     if(to===_settleCustomer){toast('⚠️ لا يمكن التحويل لنفس الزبون','error');return;}
     const W=readNum('xferW');
     if(!W||W<=0){toast('⚠️ أدخل كمية صحيحة','error');return;}
-    const unit=_xferSrcType==='دينار'?'دج':_xferSrcType==='دولار'?'$':'غ';
+    const unit=_xferSrcType==='دينار'?'دج':'غ';
     const dec=_xferSrcType==='دينار'?0:_xferSrcType==='دولار'?2:3;
     if(W>Math.abs(_xferSrcBal)+0.001){toast(`⚠️ الكمية أكبر من الرصيد المتاح (${fmt(Math.abs(_xferSrcBal),dec)} ${unit})`,'error');return;}
     const sign=_xferSrcBal>0?1:-1;
@@ -2321,8 +2344,8 @@ function _ensureXferModal(){
 function _cashSettlePrompt(type){
     const net=debts.filter(x=>x.c===_settleCustomer&&x.type===type).reduce((s,x)=>s+(x.a||0),0);
     if(Math.abs(net)<0.001)return false;
-    const unit=type==='دولار'?'$':'دج';
-    const v=prompt(`تصفية ${type} مع ${_settleCustomer}\nالدين الحالي: ${fmt(Math.abs(net),type==='دولار'?2:0)} ${unit} ${net>0?'(يسالك)':'(تسالو)'}\nأدخل المبلغ (افتراضي: كامل الدين):`,String(Math.abs(net)));
+    const unit=type==='دولار'?'غ':'دج';
+    const v=prompt(`تصفية ${_tDisp(type)} مع ${_settleCustomer}\nالدين الحالي: ${fmt(Math.abs(net),type==='دولار'?2:0)} ${unit} ${net>0?'(يسالك)':'(تسالو)'}\nأدخل المبلغ (افتراضي: كامل الدين):`,String(Math.abs(net)));
     if(v===null)return false;
     const amt=parseFloat(String(v).replace(',','.'));
     if(isNaN(amt)||amt<=0)return toast('مبلغ غير صالح','error'),false;
@@ -2814,10 +2837,11 @@ function renderArchive(){
             <div>
                 <strong>👤 ${d.c}</strong>
                 <span style="color:${d.isBuy?'var(--gr)':'#0369a1'};font-weight:800;margin-right:.25rem">${d.isBuy?'شراء سلعة':'بيع سلعة'}</span>
-                <span style="color:var(--g600);font-weight:900">${fmt(d.a||0,0)} دج</span>
+                <span style="color:var(--g600);font-weight:900">${fmt(d.a||0,2)} غ (705)</span>
+                ${d.fee?`<span style="color:var(--t2);font-weight:800;font-size:.7rem"> · أجرة ${fmt(d.fee,0)} دج</span>`:''}
                 ${Array.isArray(d.items)&&d.items.length
-                    ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n}${it.w?' · ⚖️ '+fmt(it.w,2)+' غ':''}${it.k?' · 🏷️ '+fmt(it.k,0):''} · 💰 ${fmt(it.p||0,0)} دج</small>`).join('')
-                    :`<small style="color:var(--t2);display:block">${d.gw?'⚖️ '+fmt(d.gw,2)+' غ · ':''}${d.gk?'🏷️ عيار '+fmt(d.gk,0)+' · ':''}${fmt(d.a||0,0)} دج</small>`}
+                    ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n} · ⚖️ ${fmt(it.w||0,2)} غ · 🏷️ ${fmt(it.k||0,0)}${it.p?' · 💰 '+fmt(it.p,0)+' دج':''}</small>`).join('')
+                    :''}
                 <small style="color:var(--t3);display:block;font-size:.58rem">${d.dt}</small>
             </div>
             <div style="display:flex;gap:.3rem">
@@ -2827,9 +2851,11 @@ function renderArchive(){
                 <button class="btndel" onclick="delDoll('${d.id}')"><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>`).join(''):empty;
-    /* أرشيف دبي */
-    document.getElementById('dubaiArchiveCount').textContent=dubaiInvoices.length;
-    document.getElementById('dubaiArchiveList').innerHTML=dubaiInvoices.length?dubaiInvoices.map(d=>`
+    /* أرشيف دبي — القسم محذوف من الواجهة، حراسة فقط */
+    const _dubCntEl=document.getElementById('dubaiArchiveCount');
+    const _dubListEl=document.getElementById('dubaiArchiveList');
+    if(_dubCntEl)_dubCntEl.textContent=dubaiInvoices.length;
+    if(_dubListEl)_dubListEl.innerHTML=dubaiInvoices.length?dubaiInvoices.map(d=>`
         <div class="saved-card">
             <div>
                 <strong>${d.c}</strong>
@@ -3161,13 +3187,14 @@ function buildDollHtml(d){
                 <th style="padding:5px;border:1px solid #bbb">السلعة</th>
                 <th style="padding:5px;border:1px solid #bbb">الوزن</th>
                 <th style="padding:5px;border:1px solid #bbb">العيار</th>
-                <th style="padding:5px;border:1px solid #bbb">السعر</th>
+                <th style="padding:5px;border:1px solid #bbb">الأجرة</th>
             </tr></thead>
             <tbody>${rows}</tbody>
         </table>
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:900;font-size:16px;border-top:2px solid ${col};padding-top:6px">
-            <span>المجموع:</span><span>${fmt(d.a,0)} دج</span>
+            <span>المكافئ (705):</span><span>${fmt(d.a,2)} غ</span>
         </div>
+        ${d.fee?`<div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;padding-top:4px"><span>مجموع الأجرة:</span><span>${fmt(d.fee,0)} دج</span></div>`:''}
         <div style="text-align:center;margin-top:12px;font-size:12px;color:#666"><p>توقيع: _______________</p></div>
         </div>
     </div>`;

@@ -23,6 +23,22 @@ firebase.database.enableLogging(false);
 /* مفتاح Vision المشترك — عقدة عامة لكل المستخدمين المصادَقين */
 window._sharedVisionKey='';
 window._saveSharedVisionKey=(v)=>{ try{return _db.ref('goldpro/_appcfg/visionKey').set(v||'');}catch(e){return Promise.reject(e);} };
+/* ── أسماء السلع المشتركة ── */
+window._saveGoodsNamesFb=(arr)=>{ try{return _db.ref('goldpro/_appcfg/goodsNames').set(Array.isArray(arr)?arr:[]);}catch(e){return Promise.reject(e);} };
+_auth.onAuthStateChanged(u=>{
+    if(!u)return;
+    try{
+        _db.ref('goldpro/_appcfg/goodsNames').on('value',sn=>{
+            const v=sn.val();
+            if(Array.isArray(v)){
+                window._goodsNames=v;
+                try{localStorage.setItem('gp12_goodsNames',JSON.stringify(v));}catch(e){}
+                if(typeof renderGoodsNamesList==='function')try{renderGoodsNamesList();}catch(e){}
+                if(typeof _refreshGoodsSelects==='function')try{_refreshGoodsSelects();}catch(e){}
+            }
+        });
+    }catch(e){}
+});
 _auth.onAuthStateChanged(u=>{
     if(!u)return;
     try{
@@ -297,8 +313,8 @@ function _applyEvt(st,evt){
     switch(evt.type){
 
         case 'OPENING':{
-            if(d.dinar>0)st.B.دينار+=d.dinar;
-            if(d.dollar>0)st.B.دولار+=d.dollar;
+            if(d.dinar&&!isNaN(d.dinar))st.B.دينار+=Number(d.dinar);
+            if(d.dollar&&!isNaN(d.dollar))st.B.دولار+=Number(d.dollar);
             applyBars();
             (d.debtRows||[]).forEach(r=>{
                 const sign=r.dir==='لنا'?1:-1;
@@ -334,6 +350,41 @@ function _applyEvt(st,evt){
         }
 
         case 'DOLLAR':{
+            /* ═══ gv:2 — نظام السلعة: دائماً غير خالص ═══
+               شراء: بطاقة السلعة += المكافئ(705) · دين الزبون: سلعة −المكافئ (أحمر) ودينار −الأجرة (أحمر)
+               بيع : بطاقة السلعة −= المكافئ       · دين الزبون: سلعة +المكافئ (أخضر) ودينار +الأجرة (أخضر)
+               البيع يخصم الوزن بالتجزئة من المخزون حسب اسم السلعة (الأقدم أولاً) */
+            if(d.gv===2){
+                const eq=Number(d.equiv)||0, fee=Number(d.fee)||0;
+                if(d.isBuy){
+                    st.B.دولار+=eq;
+                    stUpdDebt(d.c,'دولار',-eq);
+                    if(fee)stUpdDebt(d.c,'دينار',-fee);
+                    (d.items||[]).forEach((it,i)=>{
+                        st.goodsStock.unshift({
+                            id:(evt.id||'')+'_g'+i,
+                            n:it.n||'؟', w:Number(it.w)||0, k:Number(it.k)||0, p:Number(it.p)||0,
+                            src:d.c||'', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'', ts:evt.ts||0
+                        });
+                    });
+                }else{
+                    st.B.دولار-=eq;
+                    stUpdDebt(d.c,'دولار',eq);
+                    if(fee)stUpdDebt(d.c,'دينار',fee);
+                    (d.items||[]).forEach(it=>{
+                        let rem=Number(it.w)||0;
+                        for(let i=st.goodsStock.length-1;i>=0&&rem>0.0005;i--){
+                            const g=st.goodsStock[i];
+                            if(g.n!==it.n)continue;
+                            const take=Math.min(g.w,rem);
+                            g.w=Math.round((g.w-take)*1000)/1000; rem=Math.round((rem-take)*1000)/1000;
+                            if(g.w<=0.0005)st.goodsStock.splice(i,1);
+                        }
+                    });
+                }
+                if(disp.dollInvoice)st.dollInvoices.unshift(disp.dollInvoice);
+                break;
+            }
             if(d.isBuy){
                 if(d.party)stUpdDebt(d.party,'دولار',d.a);else st.B.دولار+=d.a;
                 if(d.paid)st.B.دينار-=d.dinarVal;else stUpdDebt(d.c,'دينار',-d.dinarVal);
