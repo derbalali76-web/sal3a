@@ -147,7 +147,7 @@
                         <th style="width:16px">#</th>
                         <th>الميزان</th>
                         <th>القوبال</th>
-                        <th>ال730</th>
+                        <th>ال705</th>
                         <th>السعر</th>
                         <th>المجموع</th>
                     </tr></thead>
@@ -155,7 +155,7 @@
                     <tfoot>
                         <tr class="inv-tf-total">
                             <td class="inv-tf-label" colspan="4">المجموع</td>
-                            <td class="inv-tf-val" id="invSumEq730">—</td>
+                            <td class="inv-tf-val" id="invSumEq730" title="مكافئ 705">—</td>
                             <td></td>
                             <td class="inv-tf-val inv-sum-cell" id="invSumTotal">—</td>
                         </tr>
@@ -176,27 +176,7 @@
                     </tfoot>
                 </table>
             </div>
-            <!-- Add row -->
-            <div style="text-align:center;margin:.35rem 0">
-                <button onclick="addInvRow()"
-                    style="width:100%;background:transparent;border:1.5px dashed var(--g500);color:var(--t2);border-radius:8px;padding:.35rem 1.2rem;font-size:.72rem;font-family:Tajawal,sans-serif;cursor:pointer;transition:all .15s"
-                    onmouseover="this.style.borderColor='var(--g700)';this.style.color='var(--t)'"
-                    onmouseout="this.style.borderColor='var(--g500)';this.style.color='var(--t2)'">
-                    ＋ إضافة سطر
-                </button>
-                <div style="display:flex;gap:.4rem;margin-top:.4rem">
-                    <button onclick="document.getElementById('barPhotoInput').click()" id="barPhotoBtn"
-                        style="flex:1;background:linear-gradient(135deg,#0ea5e9,#2563eb);border:none;color:#fff;border-radius:8px;padding:.55rem .6rem;font-size:.8rem;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem">
-                        📷 تصوير السبائك
-                    </button>
-                    <button onclick="document.getElementById('barGalleryInput').click()" id="barGalleryBtn"
-                        style="flex:1;background:linear-gradient(135deg,#7c3aed,#9333ea);border:none;color:#fff;border-radius:8px;padding:.55rem .6rem;font-size:.8rem;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem">
-                        🖼️ من المعرض
-                    </button>
-                </div>
-                <input type="file" id="barPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="onBarPhoto(event)">
-                <input type="file" id="barGalleryInput" accept="image/*" style="display:none" onchange="onBarPhoto(event)">
-            </div>
+            <!-- الأسطر تُضاف تلقائياً بمجرد الكتابة في آخر سطر -->
             <!-- Save + Clear (sticky so always visible) -->
             <div style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
                 <button onclick="resetInvForm()" title="تفريغ الفاتورة"
@@ -231,12 +211,7 @@
                     </tr></thead>
                     <tbody id="rafTableBody"></tbody>
                 </table>
-                <div style="display:flex;gap:.4rem;margin-top:.3rem">
-                    <button onclick="addRafRow()"
-                        style="flex:1;padding:.45rem;border:1.5px dashed var(--t3);border-radius:8px;background:transparent;color:var(--t2);font-size:.78rem;font-family:Tajawal,sans-serif;cursor:pointer">
-                        ＋ إضافة سطر
-                    </button>
-                </div>
+                <!-- الأسطر تُضاف تلقائياً بمجرد الكتابة في آخر سطر -->
             </div>
             <!-- ذيل الفاتورة -->
             <div class="raf-footer">

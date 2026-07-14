@@ -152,7 +152,7 @@ function calcInvRow(i){
     const kRaw=document.getElementById(`inv_k_${i}`)?.value;
     const k=parseInvNum(kRaw||'712')||712;
     const p=parseInvNum(document.getElementById(`inv_p_${i}`)?.value);
-    const eq=w>0?w*k/730:0;
+    const eq=w>0?w*k/705:0;
     const total=eq*p;
     const eqEl=document.getElementById(`inv_eq_${i}`);
     const tEl=document.getElementById(`inv_t_${i}`);
@@ -190,7 +190,7 @@ function calcInvTotals(){
         const w=parseInvNum(document.getElementById(`inv_w_${i}`)?.value);
         const k=parseInvNum(document.getElementById(`inv_k_${i}`)?.value||'712')||712;
         const p=parseInvNum(document.getElementById(`inv_p_${i}`)?.value);
-        if(w>0){sumEq+=w*k/730;sumTotal+=w*k/730*p;}
+        if(w>0){sumEq+=w*k/705;sumTotal+=w*k/705*p;}
     }
     document.getElementById('invSumEq730').textContent=sumEq>0?fmt(sumEq,2):'—';
     document.getElementById('invSumTotal').textContent=sumTotal>0?fmt(sumTotal,0):'—';
@@ -300,7 +300,7 @@ window.saveInvoice=()=>{
         const k=parseInvNum(document.getElementById(`inv_k_${i}`)?.value||'712')||712;
         const p=parseInvNum(document.getElementById(`inv_p_${i}`)?.value);
         if(!(p>0)){ document.getElementById(`inv_p_${i}`)?.focus(); return toast(`⚠️ أدخل سعر السطر ${i} قبل الحفظ`,'error'); }
-        const eq730=w*k/730,total=eq730*p;
+        const eq730=w*k/705,total=eq730*p;
         const bref=invRowBar[i]||null;
         newItems.push({id:uid(),w,k,is1000:k>=999,eq730,ppg:p,total,sbid:bref?.barId||null,sbt:bref?.btype||null});
     }

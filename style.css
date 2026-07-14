@@ -404,11 +404,14 @@
         .modal{
             background:var(--card);width:100%;max-width:480px;
             border-radius:22px 22px 0 0;padding:1.15rem;
-            max-height:88vh;overflow-y:auto;
+            max-height:88vh;max-height:88dvh;overflow-y:auto;
             box-shadow:0 -20px 60px rgba(0,0,0,.22);
             transform:translateY(100%);
             transition:transform .35s cubic-bezier(.32,.72,0,1);
+            padding-bottom:calc(1.15rem + env(safe-area-inset-bottom,0px));
         }
+        /* عند فتح الكيبورد: الحاوية تستخدم الارتفاع المرئي الديناميكي */
+        .modal-overlay{height:100dvh}
         .modal-overlay.active .modal{transform:translateY(0)}
         /* نوافذ ديناميكية (modal-box): كانت شفافة لعدم تعريف الصنف */
         .modal-box{

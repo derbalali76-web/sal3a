@@ -1,4 +1,15 @@
 /* ═══════════ STATE ═══════════ */
+/* عند التركيز على حقل داخل نافذة، مرّره للمنتصف كي لا يغطّيه كيبورد الهاتف */
+if(!window._focusScrollBound){
+    window._focusScrollBound=true;
+    document.addEventListener('focusin',(e)=>{
+        const t=e.target;
+        if(!t||!(t.matches&&t.matches('input,select,textarea')))return;
+        const modal=t.closest('.modal,.modal-box'); if(!modal)return;
+        setTimeout(()=>{ try{t.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){ } },250);
+    });
+}
+
 window._tDisp=(t)=>t==='دولار'?'سلعة':t;
 
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
@@ -924,7 +935,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v81';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v83';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
