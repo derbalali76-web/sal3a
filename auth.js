@@ -114,6 +114,8 @@ async function doLogin(){
     _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+uname;
     _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+uname;
     _baseRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+uname+'/data');
+    window._cfgRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+uname+'/cfg');
+    if(window._attachUserCfg)window._attachUserCfg();
     localStorage.setItem('gp12_auth','1');localStorage.setItem('gp12_user',uname);
     const ud=document.getElementById('currentUserDisplay');if(ud)ud.textContent=uname;
     const ov=document.getElementById('loginOverlay');
@@ -144,6 +146,9 @@ function doLogout(){
     _encKey='';
     sessionStorage.removeItem('gp12_auth');localStorage.removeItem('gp12_auth');
     sessionStorage.removeItem('gp12_user');localStorage.removeItem('gp12_user');
+    if(window._cfgRef){try{window._cfgRef.child('goodsNames').off();window._cfgRef.child('custPhones').off();}catch(e){} window._cfgRef=null;}
+    window._goodsNames=[];window._portalCust={};
+    try{localStorage.removeItem('gp12_goodsNames');localStorage.removeItem('gp12_portalCust');}catch(e){}
     sessionStorage.removeItem('gp12_ek');localStorage.removeItem('gp12_ek');
     location.reload();
 }
@@ -215,6 +220,8 @@ async function _checkAuth(){
         _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+savedUser;
         _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+savedUser;
         _baseRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+savedUser+'/data');
+        window._cfgRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+savedUser+'/cfg');
+        if(window._attachUserCfg)window._attachUserCfg();
         const ud=document.getElementById('currentUserDisplay');if(ud)ud.textContent=savedUser;
         document.getElementById('loginOverlay').remove();
         _loadUsers().catch(()=>{});
@@ -293,6 +300,9 @@ async function activateSerial(){
     localStorage.setItem(_SN_LS, h+':'+(site||''));
     sessionStorage.removeItem('gp12_auth');localStorage.removeItem('gp12_auth');
     sessionStorage.removeItem('gp12_user');localStorage.removeItem('gp12_user');
+    if(window._cfgRef){try{window._cfgRef.child('goodsNames').off();window._cfgRef.child('custPhones').off();}catch(e){} window._cfgRef=null;}
+    window._goodsNames=[];window._portalCust={};
+    try{localStorage.removeItem('gp12_goodsNames');localStorage.removeItem('gp12_portalCust');}catch(e){}
     _applySite(site);
     const ov=document.getElementById('serialOverlay');
     ov.classList.add('fade-out');
@@ -304,6 +314,9 @@ window._changeSN=function(){
     localStorage.removeItem(_SN_LS);
     sessionStorage.removeItem('gp12_auth');localStorage.removeItem('gp12_auth');
     sessionStorage.removeItem('gp12_user');localStorage.removeItem('gp12_user');
+    if(window._cfgRef){try{window._cfgRef.child('goodsNames').off();window._cfgRef.child('custPhones').off();}catch(e){} window._cfgRef=null;}
+    window._goodsNames=[];window._portalCust={};
+    try{localStorage.removeItem('gp12_goodsNames');localStorage.removeItem('gp12_portalCust');}catch(e){}
     location.reload();
 };
 

@@ -879,7 +879,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v74';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v75';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -966,15 +966,19 @@ window._normPhone=(p)=>String(p||'').replace(/[^0-9]/g,'');
 window.addPortalCust=()=>{
     const n=(document.getElementById('portalCustName')?.value||'').trim();
     const ph=window._normPhone(document.getElementById('portalCustPhone')?.value);
+    const pin=(document.getElementById('portalCustPin')?.value||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
     if(!n||!ph||ph.length<8)return toast('أدخل اسم الزبون ورقم هاتف صحيح','error');
-    window._portalCust[ph]=n;
+    if(!pin||pin.length<4)return toast('اختر كلمة سر للزبون (4 خانات على الأقل)','error');
+    window._portalCust[ph]={n,pin};
     document.getElementById('portalCustName').value='';
     document.getElementById('portalCustPhone').value='';
+    document.getElementById('portalCustPin').value='';
     _persistPortalCust();
-    toast(`✅ ${n} — ${ph} أصبح بإمكانه رؤية كشف حسابه`);
+    toast(`✅ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`);
 };
 window.delPortalCust=(ph)=>{
-    if(!confirm(`إلغاء وصول ${window._portalCust[ph]} (${ph})؟`))return;
+    const _e=window._portalCust[ph];
+    if(!confirm(`إلغاء وصول ${_e&&_e.n?_e.n:_e} (${ph})؟`))return;
     delete window._portalCust[ph];
     if(window._delPortalNodeFb)try{window._delPortalNodeFb(ph);}catch(e){}
     _persistPortalCust();
@@ -982,12 +986,17 @@ window.delPortalCust=(ph)=>{
 window.renderPortalCustList=()=>{
     const el=document.getElementById('portalCustList'); if(!el)return;
     const keys=Object.keys(window._portalCust);
-    el.innerHTML=keys.length?keys.map(ph=>`
+    el.innerHTML=keys.length?keys.map(ph=>{
+        const e=window._portalCust[ph];
+        const nm=e&&e.n?e.n:String(e||'');
+        const pin=e&&e.pin?e.pin:'—';
+        return `
         <div style="display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.3rem .5rem;font-size:.72rem;font-weight:800">
-            <span style="flex:1">👤 ${window._portalCust[ph]}</span>
+            <span style="flex:1">👤 ${nm}</span>
             <span dir="ltr" style="color:var(--t2)">${ph}</span>
+            <span dir="ltr" style="color:var(--g500)">🔑 ${pin}</span>
             <b onclick="delPortalCust('${ph}')" style="cursor:pointer;color:var(--rd)">✕</b>
-        </div>`).join(''):'<small style="color:var(--t3)">لا يوجد زبائن مرتبطون بعد</small>';
+        </div>`;}).join(''):'<small style="color:var(--t3)">لا يوجد زبائن مرتبطون بعد</small>';
 };
 /* ── الناشر: يدفع كشف كل زبون مرتبط إلى عقدة goldpro/portal/{هاتف} ── */
 window._publishPortal=()=>{
@@ -995,7 +1004,10 @@ window._publishPortal=()=>{
     const phones=Object.keys(window._portalCust||{});
     if(!phones.length)return;
     phones.forEach(ph=>{
-        const name=window._portalCust[ph];
+        const _e=window._portalCust[ph];
+        const name=_e&&_e.n?_e.n:String(_e||'');
+        const pin=_e&&_e.pin?_e.pin:null;
+        if(!name||!pin)return; /* الصيغة القديمة بلا كلمة سر لا تُنشر */
         const myOps=(ops||[]).filter(o=>o.c===name).slice(0,200).map(o=>({
             id:o.id||'',t:o.t||'',a:o.a||0,m:o.m||'',dt:o.dt||'',did:o.did||'',fee:o.fee||0
         }));
@@ -1007,7 +1019,7 @@ window._publishPortal=()=>{
             gold:Math.round(getCustBal(name,'دولار')*1000)/1000,
             ops:myOps, inv
         };
-        try{window._savePortalDataFb(ph,payload);}catch(e){}
+        try{window._savePortalDataFb(ph,pin,payload);}catch(e){}
     });
 };
 window._publishPortalDebounced=(function(){let t=null;return function(){clearTimeout(t);t=setTimeout(()=>{try{window._publishPortal();}catch(e){}},2500);};})();
@@ -1021,17 +1033,19 @@ window.closeCustPortal=()=>{
 };
 window.custPortalLogin=async()=>{
     const ph=window._normPhone(document.getElementById('custPortalPhone')?.value);
+    const pin=(document.getElementById('custPortalPin')?.value||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
     const err=document.getElementById('custPortalErr');
     const showErr=(m)=>{if(err){err.textContent=m;err.style.display='block';}};
     if(!ph||ph.length<8)return showErr('أدخل رقم هاتف صحيح');
+    if(!pin)return showErr('أدخل كلمة السر');
     if(err)err.style.display='none';
     try{
         window._portalMode=true;
         if(!firebase.auth().currentUser)await firebase.auth().signInAnonymously();
-        const ref=firebase.database().ref('goldpro/portal/'+ph);
+        const ref=firebase.database().ref('goldpro/portal/'+ph+'/'+pin);
         const snap=await ref.once('value');
         const d=snap.val();
-        if(!d||!d.name)return showErr('لا يوجد حساب مرتبط بهذا الرقم — راجع المحل');
+        if(!d||!d.name)return showErr('الرقم أو كلمة السر غير صحيحة — راجع المحل');
         window._portalRef=ref;
         ref.on('value',s2=>{const v=s2.val();if(v)window._renderCustPortal(v);});
         window._renderCustPortal(d);

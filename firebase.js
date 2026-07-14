@@ -24,28 +24,18 @@ firebase.database.enableLogging(false);
 window._sharedVisionKey='';
 window._saveSharedVisionKey=(v)=>{ try{return _db.ref('goldpro/_appcfg/visionKey').set(v||'');}catch(e){return Promise.reject(e);} };
 /* ── أسماء السلع المشتركة ── */
-window._saveGoodsNamesFb=(arr)=>{ try{return _db.ref('goldpro/_appcfg/goodsNames').set(Array.isArray(arr)?arr:[]);}catch(e){return Promise.reject(e);} };
+/* 🏪 متعدد المستأجرين: إعدادات كل مستخدم (أسماء السلع + زبائن البوابة) في مساحته الخاصة goldpro/{user}/cfg */
+window._cfgRef=null; /* يُضبط عند الدخول من auth.js */
+window._saveGoodsNamesFb=(arr)=>{ try{return window._cfgRef?window._cfgRef.child('goodsNames').set(Array.isArray(arr)?arr:[]):Promise.resolve();}catch(e){return Promise.reject(e);} };
 /* ── بوابة الزبائن ── */
-window._savePortalCustFb=(obj)=>{ try{return _db.ref('goldpro/_appcfg/custPhones').set(obj||{});}catch(e){return Promise.reject(e);} };
-window._savePortalDataFb=(ph,payload)=>{ try{return _db.ref('goldpro/portal/'+ph).set(payload);}catch(e){return Promise.reject(e);} };
+window._savePortalCustFb=(obj)=>{ try{return window._cfgRef?window._cfgRef.child('custPhones').set(obj||{}):Promise.resolve();}catch(e){return Promise.reject(e);} };
+window._savePortalDataFb=(ph,pin,payload)=>{ try{return _db.ref('goldpro/portal/'+ph+'/'+pin).set(payload);}catch(e){return Promise.reject(e);} };
 window._delPortalNodeFb=(ph)=>{ try{return _db.ref('goldpro/portal/'+ph).remove();}catch(e){return Promise.reject(e);} };
-_auth.onAuthStateChanged(u=>{
-    if(!u||u.isAnonymous||window._portalMode)return; /* جهاز الزبون لا يزامن خريطة الهواتف */
+/* يُستدعى من auth.js بعد الدخول لربط مستمعي إعدادات هذا المستخدم */
+window._attachUserCfg=()=>{
+    if(!window._cfgRef)return;
     try{
-        _db.ref('goldpro/_appcfg/custPhones').on('value',sn=>{
-            const v=sn.val();
-            if(v&&typeof v==='object'){
-                window._portalCust=v;
-                try{localStorage.setItem('gp12_portalCust',JSON.stringify(v));}catch(e){}
-                if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
-            }
-        });
-    }catch(e){}
-});
-_auth.onAuthStateChanged(u=>{
-    if(!u)return;
-    try{
-        _db.ref('goldpro/_appcfg/goodsNames').on('value',sn=>{
+        window._cfgRef.child('goodsNames').on('value',sn=>{
             const v=sn.val();
             if(Array.isArray(v)){
                 window._goodsNames=v;
@@ -54,8 +44,16 @@ _auth.onAuthStateChanged(u=>{
                 if(typeof _refreshGoodsSelects==='function')try{_refreshGoodsSelects();}catch(e){}
             }
         });
+        window._cfgRef.child('custPhones').on('value',sn=>{
+            const v=sn.val();
+            if(v&&typeof v==='object'){
+                window._portalCust=v;
+                try{localStorage.setItem('gp12_portalCust',JSON.stringify(v));}catch(e){}
+                if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
+            }
+        });
     }catch(e){}
-});
+};
 _auth.onAuthStateChanged(u=>{
     if(!u)return;
     try{

@@ -752,9 +752,10 @@
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
         <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">📱 زبائن البوابة — يدخلون برقم الهاتف ويرون كشف حسابهم</p>
-        <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
-            <input type="text" id="portalCustName" placeholder="اسم الزبون (كما في الديون)" style="flex:1.3;margin:0">
-            <input type="tel" id="portalCustPhone" placeholder="الهاتف 06…" dir="ltr" style="flex:1;margin:0;text-align:right"
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+            <input type="text" id="portalCustName" placeholder="اسم الزبون (كما في الديون)" style="flex:1.3 1 40%;margin:0">
+            <input type="tel" id="portalCustPhone" placeholder="الهاتف 06…" dir="ltr" style="flex:1 1 26%;margin:0;text-align:right">
+            <input type="text" id="portalCustPin" placeholder="🔑 كلمة السر" dir="ltr" style="flex:.9 1 22%;margin:0;text-align:right"
                 onkeydown="if(event.key==='Enter'){addPortalCust();event.preventDefault()}">
             <button onclick="addPortalCust()" style="padding:.4rem .9rem;border:none;border-radius:8px;background:var(--gr);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">＋</button>
         </div>
@@ -854,12 +855,33 @@
 })();
 </script>
 
-<!-- ═══ شاشة الدخول ═══ -->
+<!-- ═══ شاشة الدخول — بروح الأيقونة: كحلي داكن وذهبي ═══ -->
+<style>
+#loginOverlay{
+    background:
+        radial-gradient(ellipse 70% 55% at 50% 42%, rgba(212,175,55,.16) 0%, rgba(212,175,55,0) 62%),
+        radial-gradient(ellipse at center, #1c2438 0%, #131a2c 45%, #0a0f1e 100%)!important;
+}
+#loginOverlay .login-box, #custPortalLoginPanel .login-box{
+    background:linear-gradient(160deg, rgba(30,39,62,.92), rgba(15,21,38,.94))!important;
+    border:1.5px solid transparent!important;
+    background-clip:padding-box;
+    box-shadow:0 0 0 1.5px rgba(212,175,55,.55), 0 0 42px rgba(212,175,55,.14), 0 24px 60px rgba(0,0,0,.6)!important;
+    border-radius:26px!important;
+}
+#custPortalLoginPanel{
+    background:
+        radial-gradient(ellipse 70% 55% at 50% 42%, rgba(212,175,55,.14) 0%, rgba(212,175,55,0) 62%),
+        radial-gradient(ellipse at center, #1c2438 0%, #131a2c 45%, #0a0f1e 100%)!important;
+}
+</style>
 <div id="loginOverlay">
     <!-- لوحة الدخول الرئيسية -->
     <div class="login-box" id="loginMainPanel">
-        <div class="login-logo">👑</div>
-        <h2 class="login-title">GoldPro</h2>
+        <div class="login-logo" style="margin-bottom:.7rem">
+            <img src="icons/icon-192.png" alt="" style="width:96px;height:96px;border-radius:24px;box-shadow:0 0 34px rgba(212,175,55,.55),0 0 80px rgba(212,175,55,.2);display:block;margin:0 auto">
+        </div>
+        <h2 class="login-title" style="background:linear-gradient(135deg,#f6e27a,#d4af37 45%,#a87b1f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.03em">GoldPro</h2>
         <p class="login-sub">نظام إدارة الذهب — سجّل دخولك</p>
         <input type="text" id="loginUser" placeholder="👤 اسم المستخدم"
             autocomplete="username" dir="ltr"
@@ -946,11 +968,15 @@ window._installPWA = async () => {
 <!-- ═══ بوابة الزبون: كشف الحساب ═══ -->
 <div id="custPortalLoginPanel" style="display:none;position:fixed;inset:0;z-index:10001;background:radial-gradient(ellipse at center,#1a1206 0%,#0a0700 100%);align-items:center;justify-content:center">
     <div class="login-box" style="max-width:360px">
-        <div class="login-logo">👤</div>
+        <div class="login-logo" style="margin-bottom:.7rem">
+            <img src="icons/icon-192.png" alt="" style="width:80px;height:80px;border-radius:20px;box-shadow:0 0 28px rgba(212,175,55,.5);display:block;margin:0 auto">
+        </div>
         <h2 class="login-title" style="font-size:1.25rem">كشف حساب الزبون</h2>
-        <p class="login-sub" style="font-size:.78rem">أدخل رقم هاتفك المسجَّل لدى المحل</p>
-        <input type="tel" id="custPortalPhone" placeholder="06XXXXXXXX" dir="ltr" maxlength="15"
-            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.15rem;text-align:center;letter-spacing:.12em;outline:none;margin-bottom:.55rem"
+        <p class="login-sub" style="font-size:.78rem">أدخل رقم هاتفك وكلمة السر التي أعطاك إياها المحل</p>
+        <input type="tel" id="custPortalPhone" placeholder="📱 06XXXXXXXX" dir="ltr" maxlength="15"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.1rem;text-align:center;letter-spacing:.12em;outline:none;margin-bottom:.55rem">
+        <input type="password" id="custPortalPin" placeholder="🔑 كلمة السر" dir="ltr" maxlength="20"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.1rem;text-align:center;letter-spacing:.14em;outline:none;margin-bottom:.55rem"
             onkeydown="if(event.key==='Enter'){event.stopPropagation();custPortalLogin()}">
         <button class="login-btn" onclick="custPortalLogin()">عرض حسابي →</button>
         <p id="custPortalErr" style="display:none;color:#ff6b6b;font-size:.76rem;text-align:center;margin-top:.5rem"></p>
