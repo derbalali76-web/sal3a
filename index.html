@@ -60,17 +60,10 @@
 
         <!-- الرئيسية -->
         <div class="page active" id="page-home">
-            <div class="nw-row">
-                <div class="nw-card">
-                    <h3><i class="fas fa-chart-pie"></i> القيمة الإجمالية للأصول</h3>
-                    <div class="nw-val" id="netWorth">0 DZD</div>
-                    <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
-                </div>
-                <div class="gold-sale-card">
-                    <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع</div>
-                    <div class="gs-val" id="goldSaleTotal">0.00 غ</div>
-                    <div class="gs-lbl" style="margin-top:.2rem">عيار 730</div>
-                </div>
+            <div class="nw-card" style="width:100%;margin-bottom:.7rem">
+                <h3><i class="fas fa-chart-pie"></i> القيمة الإجمالية للأصول</h3>
+                <div class="nw-val" id="netWorth">0 DZD</div>
+                <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
             </div>
             <div class="bgrid">
                 <div class="bcard bcard-din" style="position:relative">
@@ -105,6 +98,10 @@
                     <span class="cv" id="usdBal">0<small> دج</small></span>
                     <span class="hint">👆 المخزون</span>
                 </div>
+            </div>
+            <div class="gold-sale-card" id="goldSaleCard" style="width:100%;margin:.4rem 0 .7rem;display:flex;flex-direction:column;gap:.3rem">
+                <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع (الكاصي)</div>
+                <div id="goldSaleContent" style="display:flex;flex-direction:column;gap:.35rem"></div>
             </div>
             <div class="astrip">
                 <button class="btn buy"  onclick="openDollar('buy')"> <i class="fas fa-cart-plus"></i>شراء سلعة</button>

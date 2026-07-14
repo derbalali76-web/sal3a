@@ -422,14 +422,18 @@ function _applyEvt(st,evt){
                         st.B.دينار-=Number(d.cash);
                         stUpdDebt(d.c,'دينار',Number(d.cash));
                     }
-                    /* 💵 دفع كاصي بالدينار عند الشراء: المبلغ يدخل السيولة، والوزن المكافئ يزيد دين الزبون (كأنه دفع لك هذا الميزان) */
+                    /* 💵 دفع كاصي بالدينار عند الشراء: المبلغ يدخل السيولة، والوزن المكافئ يزيد دين الزبون · عكس تتبّع اللاكاص المطلوب */
                     if(d.cashiCash&&Number(d.cashiCash.amt)>0){
                         st.B.دينار+=Number(d.cashiCash.amt);
                         stUpdDebt(d.c,'دولار',Number(d.cashiCash.eq)||0);
+                        st.cashiBuyW-=Number(d.cashiCash.eq)||0;
+                        st.cashiBuyDin-=Number(d.cashiCash.amt)||0;
                     }
-                    /* ⚱️ دفع أجرة بالكاصي عند الشراء: المبلغ يُضاف لرصيد الزبون بالدينار، والسبيكة تخرج من مخزون 705 */
+                    /* ⚱️ دفع أجرة بالكاصي عند الشراء: المبلغ يُضاف لرصيد الزبون بالدينار، والسبيكة تخرج من مخزون 705 · عكس */
                     if(d.cashiFee&&Array.isArray(d.cashiFee.items)&&d.cashiFee.items.length){
                         stUpdDebt(d.c,'دينار',Number(d.cashiFee.din)||0);
+                        st.cashiSoldW-=Number(d.cashiFee.eq)||0;
+                        st.cashiSoldDin-=Number(d.cashiFee.din)||0;
                         d.cashiFee.items.forEach(it=>{
                             let needEq730=(Number(it.w)||0)*((Number(it.k)||705)/730);
                             for(let bi=0;bi<st.g730.length&&needEq730>0.0000005;bi++){
@@ -484,14 +488,18 @@ function _applyEvt(st,evt){
                         st.B.دينار+=Number(d.cash);
                         stUpdDebt(d.c,'دينار',-Number(d.cash));
                     }
-                    /* 💵 قبض كاصي بالدينار عند البيع: المبلغ يخرج من السيولة، والوزن المكافئ ينقص من دين الزبون */
+                    /* 💵 قبض كاصي بالدينار عند البيع: المبلغ يخرج من السيولة، والوزن المكافئ ينقص من دين الزبون · ويُسجَّل كلاكاص يجب شراؤه */
                     if(d.cashiCash&&Number(d.cashiCash.amt)>0){
                         st.B.دينار-=Number(d.cashiCash.amt);
                         stUpdDebt(d.c,'دولار',-(Number(d.cashiCash.eq)||0));
+                        st.cashiBuyW+=Number(d.cashiCash.eq)||0;
+                        st.cashiBuyDin+=Number(d.cashiCash.amt)||0;
                     }
-                    /* ⚱️ أجرة بالكاصي عند البيع: المبلغ ينقص من رصيد الزبون بالدينار، والسبيكة تدخل مخزون 705 */
+                    /* ⚱️ أجرة بالكاصي عند البيع: المبلغ ينقص من رصيد الزبون بالدينار، والسبيكة تدخل مخزون 705 · وتُحسب كلاكاص اشتُري فعلاً */
                     if(d.cashiFee&&Array.isArray(d.cashiFee.items)&&d.cashiFee.items.length){
                         stUpdDebt(d.c,'دينار',-(Number(d.cashiFee.din)||0));
+                        st.cashiSoldW+=Number(d.cashiFee.eq)||0;
+                        st.cashiSoldDin+=Number(d.cashiFee.din)||0;
                         d.cashiFee.items.forEach((it,i)=>{
                             st.g730.push({
                                 id:(evt.id||'')+'_cf'+i,
@@ -762,6 +770,8 @@ function _reproject(){
     const st={
         B:{دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0,vg730:0,vg24:0},
         g730:[],g24:[],debts:[],loans:[],goodsStock:[],
+        cashiBuyW:0,cashiBuyDin:0,   /* كاصي بالدينار مقبوض: لاكاص يجب شراؤه + الدينار المقبوض */
+        cashiSoldW:0,cashiSoldDin:0, /* أجرة بالكاصي: لاكاص اشتُري فعلاً (يُنقص) + قيمته */
         ops:[],invoices:[],dollInvoices:[],rafInvoices:[],dubaiInvoices:[]
     };
     live.forEach(evt=>_applyEvt(st,evt));
@@ -773,6 +783,7 @@ function _reproject(){
     invoices=st.invoices;
     dollInvoices=st.dollInvoices;
     goodsStock=st.goodsStock;
+    window._cashiTracker={buyW:st.cashiBuyW||0,buyDin:st.cashiBuyDin||0,soldW:st.cashiSoldW||0,soldDin:st.cashiSoldDin||0};
     if(typeof renderGoodsStock==='function')try{renderGoodsStock();}catch(e){}
     /* 📱 نشر كشوف زبائن البوابة (من جهاز المحل فقط، وليس من جهاز الزبون) */
     if(!window._portalMode&&window._publishPortalDebounced)try{window._publishPortalDebounced();}catch(e){}
