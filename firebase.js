@@ -347,6 +347,16 @@ function _applyEvt(st,evt){
                 }
             }
             if(disp.dollInvoice)st.dollInvoices.unshift(disp.dollInvoice);
+            /* 📦 سلعة متعددة الأسطر: الشراء يُدخل كل سطر للمخزون (المصدر=الزبون، p=ثمن الشراء) */
+            if(Array.isArray(d.items)&&d.items.length&&d.isBuy){
+                d.items.forEach((it,i)=>{
+                    st.goodsStock.unshift({
+                        id:(evt.id||'')+'_g'+i,
+                        n:it.n||'؟', w:Number(it.w)||0, k:Number(it.k)||0, p:Number(it.p)||0,
+                        src:d.c||'', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'', ts:evt.ts||0
+                    });
+                });
+            }
             /* سطر سجل للطرف (من أخذه/المسلم) كي تظهر العملية في سجلّه أيضاً */
             if(d.party){
                 st.ops.push({
@@ -568,7 +578,7 @@ function _reproject(){
 
     const st={
         B:{دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0,vg730:0,vg24:0},
-        g730:[],g24:[],debts:[],loans:[],
+        g730:[],g24:[],debts:[],loans:[],goodsStock:[],
         ops:[],invoices:[],dollInvoices:[],rafInvoices:[],dubaiInvoices:[]
     };
     live.forEach(evt=>_applyEvt(st,evt));
@@ -579,6 +589,8 @@ function _reproject(){
     ops=st.ops.sort((a,b)=>((b._ts||0)-(a._ts||0))||String(b.id||'').localeCompare(String(a.id||'')));
     invoices=st.invoices;
     dollInvoices=st.dollInvoices;
+    goodsStock=st.goodsStock;
+    if(typeof renderGoodsStock==='function')try{renderGoodsStock();}catch(e){}
     rafInvoices=st.rafInvoices;
     dubaiInvoices=st.dubaiInvoices;
 

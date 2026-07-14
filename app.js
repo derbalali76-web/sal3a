@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
-let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[];
+let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
 let goldPrice=12500,dollarRate=24800,dollarSellRate=0,dollarBuyRate=0,liveSpotPrice=0;
 let g24=[],g730=[];
 let invItems=[],currentRafBars=[];
@@ -428,8 +428,12 @@ function _applyHomeVoice(rawTxt){
             return toast('⚠️ قل مثلاً: بيع سلعة خاتم 150000','error');
         openDollar(isBuyDoll?'buy':'sell');
         setTimeout(()=>{
-            document.getElementById('goodsName').value=gname;
-            liveSet('goodsPrice',amount);
+            const row=document.querySelector('#goodsRows .g-row');
+            if(row){
+                row.querySelector('.g-n').value=gname;
+                const pEl=row.querySelector('.g-p'); pEl.value=String(amount); liveNum(pEl);
+                _gRowsChanged();
+            }
             toast(`🛍️ ${isBuyDoll?'شراء':'بيع'} سلعة — ${gname}: ${fmt(amount,0)} دج | اضغط حفظ للتأكيد`,'info');
         },420);
         return;
@@ -513,7 +517,6 @@ document.addEventListener('fullscreenchange',()=>{
 /* ═══════════ SETTINGS ═══════════ */
 function openSettings(){
     document.getElementById('settingGoldPrice').value=goldPrice;
-    document.getElementById('settingDollarRate').value=dollarRate;
     /* لوحة الأدمن */
     const isAdmin=_usersCache[_currentUser]?.isAdmin;
     const ap=document.getElementById('adminPanel');
@@ -525,9 +528,7 @@ function openSettings(){
 }
 function saveSettings(){
     const gp=parseFloat(document.getElementById('settingGoldPrice').value);
-    const dr=parseFloat(document.getElementById('settingDollarRate').value);
     if(!isNaN(gp)&&gp>0)goldPrice=gp;
-    if(!isNaN(dr)&&dr>0)dollarRate=dr;
     closeModal('settingsModal');updAll();save();toast('✅ تم حفظ الإعدادات');
 }
 
@@ -860,7 +861,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v66';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v67';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -940,38 +941,99 @@ function _updDollarEq(){} /* مُحيَّدة — لا سعر صرف في نظا
 window.showDollarBalance=()=>{}; /* مُحيَّدة */
 window.openDollar=(t)=>{
     document.getElementById('dollarTitle').textContent=t==='buy'?'🛍️ شراء سلعة':'🛍️ بيع سلعة';
-    document.getElementById('goodsName').value='';
-    document.getElementById('goodsWeight').value='';
-    document.getElementById('goodsKarat').value='';
-    document.getElementById('goodsPrice').value='';
+    document.getElementById('goodsCustomer').value='';
+    document.getElementById('goodsCustomer').placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
+    document.getElementById('goodsRows').innerHTML='';
+    _addGoodsRow();
+    _updGoodsTotal();
     _dollPaid=true;
     document.getElementById('dollarModal').classList.add('active');
-    setTimeout(()=>document.getElementById('goodsName').focus(),350);
+    setTimeout(()=>document.getElementById('goodsCustomer').focus(),350);
 };
+/* ── أسطر السلعة الديناميكية ── */
+function _addGoodsRow(vals){
+    const box=document.getElementById('goodsRows');
+    if(!box||box.children.length>=30)return;
+    const div=document.createElement('div');
+    div.className='g-row';
+    div.style.cssText='display:flex;gap:.35rem';
+    div.innerHTML=`
+        <input type="text" class="g-n" placeholder="🛍️ السلعة" style="flex:1.5;margin:0;min-width:0">
+        <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
+        <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">
+        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 السعر" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
+    div.querySelectorAll('input').forEach(inp=>{
+        inp.addEventListener('input',()=>{ if(inp.classList.contains('g-n'))_gRowsChanged(); else{liveNum(inp);_gRowsChanged();} });
+    });
+    if(vals){
+        div.querySelector('.g-n').value=vals.n||'';
+        div.querySelector('.g-w').value=vals.w||'';
+        div.querySelector('.g-k').value=vals.k||'';
+        div.querySelector('.g-p').value=vals.p||'';
+    }
+    box.appendChild(div);
+}
+function _rowVal(row,cls){ const el=row.querySelector(cls); return el?el.value.trim():''; }
+function _rowNum(row,cls){ const el=row.querySelector(cls); return el?(parseFloat(el.value.replace(/\s/g,'').replace(/,/g,'.'))||0):0; }
+function _gRowsChanged(){
+    const box=document.getElementById('goodsRows'); if(!box)return;
+    const last=box.lastElementChild;
+    /* إضافة تلقائية: بمجرد الكتابة في السطر الأخير يظهر سطر جديد */
+    if(last&&(_rowVal(last,'.g-n')||_rowVal(last,'.g-w')||_rowVal(last,'.g-k')||_rowVal(last,'.g-p')))_addGoodsRow();
+    _updGoodsTotal();
+}
+function _readGoodsRows(){
+    const items=[];
+    document.querySelectorAll('#goodsRows .g-row').forEach(row=>{
+        const n=_rowVal(row,'.g-n'), w=_rowNum(row,'.g-w'), k=_rowNum(row,'.g-k'), p=_rowNum(row,'.g-p');
+        if(n&&p>0)items.push({n,w,k,p});
+    });
+    return items;
+}
+function _updGoodsTotal(){
+    const tot=_readGoodsRows().reduce((s,it)=>s+it.p,0);
+    const el=document.getElementById('goodsTotal');
+    if(el)el.textContent='المجموع: '+fmt(tot,0)+' دج';
+}
 window.saveDollar=()=>{
-    const gname=document.getElementById('goodsName').value.trim();
-    const w=readNum('goodsWeight');
-    const k=readNum('goodsKarat');
-    const price=readNum('goodsPrice');
-    if(!gname||isNaN(price)||price<=0)return toast('تأكد من اسم السلعة والسعر','error');
+    const cust=document.getElementById('goodsCustomer').value.trim();
+    const items=_readGoodsRows();
+    if(!items.length)return toast('أدخل سطراً واحداً على الأقل (اسم السلعة + السعر)','error');
     const isBuy=document.getElementById('dollarTitle').textContent.includes('شراء');
-    if(isBuy&&B.دينار<price-0.001)return toast('⚠️ رصيد الدينار غير كافٍ','error');
+    const total=items.reduce((s,it)=>s+it.p,0);
+    if(isBuy&&B.دينار<total-0.001)return toast('⚠️ رصيد الدينار غير كافٍ','error');
     const did='DOLL-'+uid();
     const dt=new Date().toLocaleDateString('fr-FR');
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    /* التوافق: a=السعر (يتراكم في B.دولار = بطاقة السلعة) · dinarVal=السعر (حركة الدينار) · r=0 حتى لا يؤثر على أسعار دبي/الشحن */
-    const _di={id:did,c:gname,party:'',isBuy,paid:true,a:price,r:0,dinar:price,dt,gw:isNaN(w)?0:w,gk:isNaN(k)?0:k};
+    /* التوافق: a=المجموع (بطاقة السلعة B.دولار) · dinarVal=المجموع (حركة الدينار) · r=0 */
+    const _di={id:did,c:cust||'—',party:'',isBuy,paid:true,a:total,r:0,dinar:total,dt,items};
     emitEvent('DOLLAR',
-        {c:gname,isBuy,paid:true,a:price,r:0,dinarVal:price,party:'',gw:_di.gw,gk:_di.gk},
-        {dollInvoice:_di,op:{c:gname,t:isBuy?'شراء سلعة':'بيع سلعة',m:'دولار',a:price,_ts:Date.now(),dt:nowStr,gw:_di.gw,gk:_di.gk,did}}
+        {c:cust||'—',isBuy,paid:true,a:total,r:0,dinarVal:total,party:'',items},
+        {dollInvoice:_di,op:{c:cust||'سلعة',t:isBuy?'شراء سلعة':'بيع سلعة',m:'دولار',a:total,_ts:Date.now(),dt:nowStr,did,gItems:items.length}}
     );
     window._editRestore=null;
-    document.getElementById('goodsName').value='';
-    document.getElementById('goodsWeight').value='';
-    document.getElementById('goodsKarat').value='';
-    document.getElementById('goodsPrice').value='';
     closeModal('dollarModal');
-    toast(isBuy?'✅ تم شراء السلعة':'✅ تم بيع السلعة');
+    toast(isBuy?`✅ تم شراء ${items.length} سلعة — دخلت المخزون`:`✅ تم بيع ${items.length} سلعة`);
+};
+/* ── مخزون السلعة ── */
+window.openGoodsStock=()=>{
+    renderGoodsStock();
+    document.getElementById('goodsStockModal').classList.add('active');
+};
+window.renderGoodsStock=()=>{
+    const cntEl=document.getElementById('goodsStockCount');
+    const listEl=document.getElementById('goodsStockList');
+    if(!cntEl||!listEl)return;
+    cntEl.textContent=goodsStock.length;
+    listEl.innerHTML=goodsStock.length?goodsStock.map(g=>`
+        <div class="saved-card">
+            <div>
+                <strong>🛍️ ${g.n}</strong>
+                ${g.w?`<span style="color:var(--g600);font-weight:800;margin-right:.3rem">⚖️ ${fmt(g.w,2)} غ</span>`:''}
+                ${g.k?`<span style="color:var(--pu);font-weight:800;margin-right:.3rem">🏷️ عيار ${fmt(g.k,0)}</span>`:''}
+                <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · ثمن الشراء: ${fmt(g.p||0,0)} دج${g.dt?' · '+g.dt:''}</small>
+            </div>
+        </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:1.2rem">لا توجد سلع في المخزون</div>';
 };
 
 /* ═══════════ تعديل الفواتير (دولار/دبي/رافيناج) — إبطال ثم فتح معبّأ، مع استرجاع عند الإلغاء ═══════════ */
@@ -989,10 +1051,12 @@ window.editDoll=(id)=>{
     const snap=_invSnapshot('dollInvoice',id); if(!snap){toast('تعذّر التعديل','error');return;}
     _voidByInvId('dollInvoice',id);
     openDollar(d.isBuy?'buy':'sell');
-    document.getElementById('goodsName').value=d.c||'';
-    document.getElementById('goodsWeight').value=d.gw!=null&&d.gw!==0?d.gw:'';
-    document.getElementById('goodsKarat').value=d.gk!=null&&d.gk!==0?d.gk:'';
-    document.getElementById('goodsPrice').value=d.a!=null?d.a:'';
+    document.getElementById('goodsCustomer').value=(d.c&&d.c!=='—')?d.c:'';
+    document.getElementById('goodsRows').innerHTML='';
+    const _its=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c||'',w:d.gw||'',k:d.gk||'',p:d.a||''}];
+    _its.forEach(it=>_addGoodsRow({n:it.n,w:it.w||'',k:it.k||'',p:it.p!=null?it.p:(it.a||'')}));
+    _addGoodsRow(); /* سطر فارغ للإضافة */
+    _updGoodsTotal();
     window._editRestore={modalId:'dollarModal',snap};
     toast('✏️ عدّل ثم احفظ','info');
 };
@@ -1202,12 +1266,10 @@ window.openDubai=()=>{
 };
 const _modalFields={
     dubaiFields:['dubaiOffice','dubaiWeight','dubaiPrice','dubaiDisc'],
-    dollarFields:['goodsName','goodsWeight','goodsKarat','goodsPrice'],
     shipFields:['shipWeight','shipPrice','shipOffice'],
 };
 const _modalSave={
     dubaiFields:()=>saveDubai(),
-    dollarFields:()=>saveDollar(),
     shipFields:()=>saveShip(),
 };
 window.modalNav=(e,group,idx)=>{
@@ -1565,7 +1627,7 @@ window.calcDubaiSell=()=>{
     res.innerHTML=`<span style="font-size:.72rem;color:var(--t2)">سعر الشاشة: ${spot.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} $/أوقية</span><br>
         <span style="font-size:1.4rem;color:var(--gr);font-weight:900">${fmt(rounded)}</span>`;
     /* تحديث الشارة في الهيدر */
-    document.getElementById('dubaiSellResult').textContent=fmt(rounded);
+    const _dsr=document.getElementById('dubaiSellResult'); if(_dsr)_dsr.textContent=fmt(rounded);
 };
 
 /* يحسب سعر بيع دبي تلقائياً من القيم المحفوظة + السعر اللحظي، دون فتح الحاسبة */
@@ -2750,10 +2812,13 @@ function renderArchive(){
     document.getElementById('dollArchiveList').innerHTML=dollInvoices.length?dollInvoices.map(d=>`
         <div class="saved-card">
             <div>
-                <strong>${d.c}</strong>
+                <strong>👤 ${d.c}</strong>
                 <span style="color:${d.isBuy?'var(--gr)':'#0369a1'};font-weight:800;margin-right:.25rem">${d.isBuy?'شراء سلعة':'بيع سلعة'}</span>
                 <span style="color:var(--g600);font-weight:900">${fmt(d.a||0,0)} دج</span>
-                <small style="color:var(--t2);display:block">${d.dt}${d.gw?' · ⚖️ '+fmt(d.gw,2)+' غ':''}${d.gk?' · 🏷️ عيار '+fmt(d.gk,0):''}${d.party?' · '+d.party:''}</small>
+                ${Array.isArray(d.items)&&d.items.length
+                    ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n}${it.w?' · ⚖️ '+fmt(it.w,2)+' غ':''}${it.k?' · 🏷️ '+fmt(it.k,0):''} · 💰 ${fmt(it.p||0,0)} دج</small>`).join('')
+                    :`<small style="color:var(--t2);display:block">${d.gw?'⚖️ '+fmt(d.gw,2)+' غ · ':''}${d.gk?'🏷️ عيار '+fmt(d.gk,0)+' · ':''}${fmt(d.a||0,0)} دج</small>`}
+                <small style="color:var(--t3);display:block;font-size:.58rem">${d.dt}</small>
             </div>
             <div style="display:flex;gap:.3rem">
                 <button class="btn-pdf" onclick="editDoll('${d.id}')" style="background:rgba(124,58,237,.12);color:#7c3aed" title="تعديل"><i class="fas fa-pen"></i></button>
@@ -3077,21 +3142,31 @@ window.printInv=(id)=>{
 function buildDollHtml(d){
     const lbl=d.isBuy?'شراء سلعة':'بيع سلعة';
     const col=d.isBuy?'#16a34a':'#0369a1';
+    const items=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c,w:d.gw||0,k:d.gk||0,p:d.a||0}];
+    const rows=items.map(it=>`<tr>
+            <td style="padding:5px;border:1px solid #bbb;font-weight:800">${it.n||'—'}</td>
+            <td style="padding:5px;border:1px solid #bbb;text-align:center">${it.w?fmt(it.w,2)+' غ':'—'}</td>
+            <td style="padding:5px;border:1px solid #bbb;text-align:center">${it.k?fmt(it.k,0):'—'}</td>
+            <td style="padding:5px;border:1px solid #bbb;text-align:left;font-weight:800">${fmt(it.p||0,0)} دج</td>
+        </tr>`).join('');
     return`<div style="position:relative;overflow:hidden;padding:12px;font-family:Tajawal,sans-serif;direction:rtl;max-width:480px;margin:auto">
         ${_wmLayer()}
         <div style="position:relative;z-index:1">
         <div style="text-align:center;border-bottom:2px solid ${col};padding-bottom:8px;margin-bottom:10px">
             <div style="font-size:19px;font-weight:900;color:${col}">🛍️ ${lbl}</div>
-            <div style="font-size:13px;color:#555">${d.c} — ${d.dt}</div>
+            <div style="font-size:13px;color:#555">👤 ${d.c} — ${d.dt}</div>
         </div>
-        <div style="font-size:14px;border:1px solid #aaa;padding:10px;border-radius:4px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>نوع العملية:</span><span style="font-weight:900;color:${col}">${lbl}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>اسم السلعة:</span><span style="font-weight:800">${d.c}</span></div>
-            ${d.gw?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>الميزان:</span><span style="font-weight:800">${fmt(d.gw,2)} غ</span></div>`:''}
-            ${d.gk?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>العيار:</span><span style="font-weight:800">${fmt(d.gk,0)}</span></div>`:''}
-            <div style="display:flex;justify-content:space-between;border-top:1px solid #aaa;padding-top:5px;font-weight:900;font-size:16px">
-                <span>السعر:</span><span>${fmt(d.a,0)} دج</span>
-            </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="background:#f3f3f3">
+                <th style="padding:5px;border:1px solid #bbb">السلعة</th>
+                <th style="padding:5px;border:1px solid #bbb">الوزن</th>
+                <th style="padding:5px;border:1px solid #bbb">العيار</th>
+                <th style="padding:5px;border:1px solid #bbb">السعر</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:900;font-size:16px;border-top:2px solid ${col};padding-top:6px">
+            <span>المجموع:</span><span>${fmt(d.a,0)} دج</span>
         </div>
         <div style="text-align:center;margin-top:12px;font-size:12px;color:#666"><p>توقيع: _______________</p></div>
         </div>
@@ -3253,7 +3328,7 @@ async function fetchSpotPrice(){
         inp.addEventListener('focus',()=>_show(inp));
         inp.addEventListener('blur',()=>{ setTimeout(_hide,160); _snapName(inp); });
     }
-    function init(){ ['invCustomer','rafCustomer','loanCustomer','sellCustomer','gtCustomer','expCustomer','sendLogCustomer','shipOffice','dubaiOffice'].forEach(_attach); }
+    function init(){ ['invCustomer','rafCustomer','loanCustomer','sellCustomer','gtCustomer','goodsCustomer','expCustomer','sendLogCustomer','shipOffice','dubaiOffice'].forEach(_attach); }
     window._acAttach=_attach;
     if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
     setTimeout(init,800);
