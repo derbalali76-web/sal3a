@@ -369,7 +369,22 @@ function _applyEvt(st,evt){
                البيع يخصم الوزن بالتجزئة من المخزون حسب اسم السلعة (الأقدم أولاً) */
             if(d.gv===2){
                 const eq=Number(d.equiv)||0, fee=Number(d.fee)||0;
+                const rot=d.rot&&Number(d.rot.w)>0?d.rot:null;
+                /* دالة خصم بالتجزئة من مخزون اسم معيّن — تُرجع المكافئ المخصوم فعلاً بعيار القطع */
+                const _deduct=(name,weight)=>{
+                    let rem=Number(weight)||0,taken=0;
+                    for(let i=st.goodsStock.length-1;i>=0&&rem>0.0005;i--){
+                        const g=st.goodsStock[i];
+                        if(g.n!==name)continue;
+                        const take=Math.min(g.w,rem);
+                        taken+=take*(Number(g.k)||705)/705;
+                        g.w=Math.round((g.w-take)*1000)/1000; rem=Math.round((rem-take)*1000)/1000;
+                        if(g.w<=0.0005)st.goodsStock.splice(i,1);
+                    }
+                    return taken;
+                };
                 if(d.isBuy){
+                    /* السلعة المشتراة: تدخل المخزون، دين أحمر (سلعة + أجرة) */
                     st.B.دولار+=eq;
                     stUpdDebt(d.c,'دولار',-eq);
                     if(fee)stUpdDebt(d.c,'دينار',-fee);
@@ -380,24 +395,31 @@ function _applyEvt(st,evt){
                             src:d.c||'', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'', ts:evt.ts||0
                         });
                     });
+                    /* ♻️ الروتور مرتجع للزبون: يخرج من مخزون «روتور» وينقص دينه (سلعة + أجرة) */
+                    if(rot){
+                        const takenEq=_deduct('روتور',rot.w);
+                        st.B.دولار-=Math.round(takenEq*1000)/1000;
+                        stUpdDebt(d.c,'دولار',Number(rot.eq)||0);
+                        if(Number(rot.fv))stUpdDebt(d.c,'دينار',Number(rot.fv));
+                    }
                 }else{
-                    /* 🚫 لا تُخصم سلعة من سلعة أخرى: الخصم من مخزون نفس الاسم فقط،
-                       والرصيد ينقص بالمكافئ المخصوم فعلاً بعيار قطع المخزون نفسها */
+                    /* 🚫 لا تُخصم سلعة من سلعة أخرى: الخصم من مخزون نفس الاسم فقط */
                     let takenEq=0;
-                    (d.items||[]).forEach(it=>{
-                        let rem=Number(it.w)||0;
-                        for(let i=st.goodsStock.length-1;i>=0&&rem>0.0005;i--){
-                            const g=st.goodsStock[i];
-                            if(g.n!==it.n)continue;
-                            const take=Math.min(g.w,rem);
-                            takenEq+=take*(Number(g.k)||705)/705;
-                            g.w=Math.round((g.w-take)*1000)/1000; rem=Math.round((rem-take)*1000)/1000;
-                            if(g.w<=0.0005)st.goodsStock.splice(i,1);
-                        }
-                    });
+                    (d.items||[]).forEach(it=>{ takenEq+=_deduct(it.n,it.w); });
                     st.B.دولار-=Math.round(takenEq*1000)/1000;
                     stUpdDebt(d.c,'دولار',eq);
                     if(fee)stUpdDebt(d.c,'دينار',fee);
+                    /* ♻️ الروتور يعود إليك من الزبون: يدخل مخزون «روتور» وينقص دينه (سلعة + أجرة) */
+                    if(rot){
+                        st.goodsStock.unshift({
+                            id:(evt.id||'')+'_rot',
+                            n:'روتور', w:Number(rot.w)||0, k:Number(rot.k)||0, p:Number(rot.p)||0,
+                            src:d.c||'', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'', ts:evt.ts||0
+                        });
+                        st.B.دولار+=Number(rot.eq)||0;
+                        stUpdDebt(d.c,'دولار',-(Number(rot.eq)||0));
+                        if(Number(rot.fv))stUpdDebt(d.c,'دينار',-(Number(rot.fv)));
+                    }
                 }
                 if(disp.dollInvoice)st.dollInvoices.unshift(disp.dollInvoice);
                 break;
