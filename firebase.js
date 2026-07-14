@@ -314,7 +314,20 @@ function _applyEvt(st,evt){
 
         case 'OPENING':{
             if(d.dinar&&!isNaN(d.dinar))st.B.دينار+=Number(d.dinar);
-            if(d.dollar&&!isNaN(d.dollar))st.B.دولار+=Number(d.dollar);
+            if(Array.isArray(d.goodsItems)&&d.goodsItems.length){
+                /* سلعة الكوفر الافتتاحية بالتفصيل: تدخل المخزون والبطاقة بالمكافئ 705 */
+                let _eq=0;
+                d.goodsItems.forEach((it,i)=>{
+                    const w=Number(it.w)||0,k=Number(it.k)||0;
+                    _eq+=w*k/705;
+                    st.goodsStock.unshift({
+                        id:(evt.id||'')+'_og'+i,
+                        n:it.n||'؟', w, k, p:0,
+                        src:'افتتاحي', dt:'', ts:evt.ts||0
+                    });
+                });
+                st.B.دولار+=Math.round(_eq*1000)/1000;
+            }else if(d.dollar&&!isNaN(d.dollar))st.B.دولار+=Number(d.dollar);
             applyBars();
             (d.debtRows||[]).forEach(r=>{
                 const sign=r.dir==='لنا'?1:-1;
@@ -368,19 +381,23 @@ function _applyEvt(st,evt){
                         });
                     });
                 }else{
-                    st.B.دولار-=eq;
-                    stUpdDebt(d.c,'دولار',eq);
-                    if(fee)stUpdDebt(d.c,'دينار',fee);
+                    /* 🚫 لا تُخصم سلعة من سلعة أخرى: الخصم من مخزون نفس الاسم فقط،
+                       والرصيد ينقص بالمكافئ المخصوم فعلاً بعيار قطع المخزون نفسها */
+                    let takenEq=0;
                     (d.items||[]).forEach(it=>{
                         let rem=Number(it.w)||0;
                         for(let i=st.goodsStock.length-1;i>=0&&rem>0.0005;i--){
                             const g=st.goodsStock[i];
                             if(g.n!==it.n)continue;
                             const take=Math.min(g.w,rem);
+                            takenEq+=take*(Number(g.k)||705)/705;
                             g.w=Math.round((g.w-take)*1000)/1000; rem=Math.round((rem-take)*1000)/1000;
                             if(g.w<=0.0005)st.goodsStock.splice(i,1);
                         }
                     });
+                    st.B.دولار-=Math.round(takenEq*1000)/1000;
+                    stUpdDebt(d.c,'دولار',eq);
+                    if(fee)stUpdDebt(d.c,'دينار',fee);
                 }
                 if(disp.dollInvoice)st.dollInvoices.unshift(disp.dollInvoice);
                 break;

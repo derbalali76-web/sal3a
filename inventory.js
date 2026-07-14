@@ -16,7 +16,7 @@ function removeFromInventory(type,weight){
 }
 window.openInventory=(type)=>{
     invType=type;
-    document.getElementById('invModalTitle').textContent=type==='24'?'💎 مخزون سبائك الذهب (24)':'👑 مخزون ذهب 730';
+    document.getElementById('invModalTitle').textContent=type==='24'?'💎 مخزون سبائك الذهب (24)':'👑 مخزون ذهب 705 (القطع بوزنها وعيارها الفعلي)';
     document.getElementById('invModal').classList.add('active');
     renderInvModal();
 };

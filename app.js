@@ -537,6 +537,37 @@ function saveSettings(){
 
 /* ═══════════ OPENING BALANCES (مرة واحدة فقط) ═══════════ */
 const _LIQ_USED_KEY='gp12_liq_set';
+/* ── سلعة الكوفر الافتتاحية بالتفصيل ── */
+window._addLiqGoodsRow=(vals)=>{
+    const box=document.getElementById('liqGoodsRows');
+    if(!box||box.children.length>=30)return;
+    const div=document.createElement('div');
+    div.className='lg-row';
+    div.style.cssText='display:flex;gap:.35rem';
+    div.innerHTML=`
+        <select class="lg-n" style="flex:1.4;margin:0;min-width:0">${typeof _goodsOptions==='function'?_goodsOptions(vals&&vals.n?String(vals.n):''):'<option value="">🛍️ السلعة…</option>'}</select>
+        <input type="text" inputmode="decimal" class="lg-w" placeholder="⚖️ الميزان" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
+        <input type="text" inputmode="decimal" class="lg-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">`;
+    div.querySelector('select.lg-n').addEventListener('change',_liqGoodsChanged);
+    div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{liveNum(inp);_liqGoodsChanged();}));
+    box.appendChild(div);
+};
+function _liqGoodsChanged(){
+    const box=document.getElementById('liqGoodsRows'); if(!box)return;
+    const last=box.lastElementChild;
+    const gv=(r,c)=>{const el=r.querySelector(c);return el?el.value.trim():'';};
+    if(last&&(gv(last,'.lg-n')||gv(last,'.lg-w')||gv(last,'.lg-k')))window._addLiqGoodsRow();
+}
+window._readLiqGoods=()=>{
+    const items=[];
+    document.querySelectorAll('#liqGoodsRows .lg-row').forEach(row=>{
+        const gv=c=>{const el=row.querySelector(c);return el?el.value.trim():'';};
+        const gn=c=>{const el=row.querySelector(c);return el?(parseFloat(el.value.replace(/\s/g,'').replace(/,/g,'.'))||0):0;};
+        const n=gv('.lg-n'),w=gn('.lg-w'),k=gn('.lg-k');
+        if(n&&w>0&&k>0)items.push({n,w,k,eq:Math.round(w*k/705*1000)/1000});
+    });
+    return items;
+};
 let _liqDebtCnt=0;
 let _liq730Cnt=0;
 window._add730BarRow=(w,k)=>{
@@ -563,17 +594,17 @@ window.openLiqEdit=()=>{
         return;
     }
     /* تصفير الحقول */
-    ['liqDinar','liqDollar','liqG24'].forEach(id=>{
+    ['liqDinar'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.value='';
     });
-    /* تصفير قائمة سبائك 730 وإضافة صفّ فارغ */
-    _liq730Cnt=0;
-    const b730=document.getElementById('liq730Bars'); if(b730)b730.innerHTML='';
-    if(typeof _add730BarRow==='function')_add730BarRow();
-    /* تصفير جدول الديون */
+    /* أسطر سلعة الكوفر بالتفصيل (إضافة تلقائية) */
+    const lg=document.getElementById('liqGoodsRows'); if(lg)lg.innerHTML='';
+    window._addLiqGoodsRow();
+    /* تصفير جدول الديون وإضافة صف أول */
     _liqDebtCnt=0;
     const tbody=document.getElementById('liqDebtRows');
     if(tbody)tbody.innerHTML='';
+    _addLiqDebtRow();
     document.getElementById('liqModal').classList.add('active');
     setTimeout(()=>document.getElementById('liqDinar').focus(),320);
 };
@@ -589,35 +620,24 @@ window._addLiqDebtRow=()=>{
     tr.innerHTML=`
         <td style="padding:.25rem .3rem">
             <input type="text" id="liqDC_${i}" placeholder="اسم الزبون"
-                style="width:100%;min-width:90px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700">
+                style="width:100%;min-width:80px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700">
         </td>
         <td style="padding:.25rem .3rem">
-            <select id="liqDT_${i}"
-                style="width:100%;padding:.3rem .2rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700">
-                <option value="دينار">دينار (دج)</option>
-                <option value="دولار">سلعة (غ 705)</option>
-            </select>
-        </td>
-        <td style="padding:.25rem .3rem">
-            <input type="text" inputmode="decimal" id="liqDA_${i}" placeholder="0"
-                dir="ltr"
-                style="width:100%;min-width:80px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:800;text-align:right"
+            <input type="text" inputmode="decimal" id="liqDDin_${i}" placeholder="± 0" dir="ltr"
+                style="width:100%;min-width:70px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700;text-align:right"
                 oninput="liveNum(this)">
         </td>
-        <td style="padding:.25rem .3rem;text-align:center">
-            <select id="liqDD_${i}"
-                style="padding:.3rem .2rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700;width:100%">
-                <option value="لنا" style="color:#16a34a">💚 لنا (يدفع)</option>
-                <option value="علينا" style="color:#dc2626">❤️ علينا (نـدفع)</option>
-            </select>
+        <td style="padding:.25rem .3rem">
+            <input type="text" inputmode="decimal" id="liqDGd_${i}" placeholder="± 0 غ" dir="ltr"
+                style="width:100%;min-width:70px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700;text-align:right"
+                oninput="liveNum(this)">
         </td>
         <td style="padding:.25rem;text-align:center">
             <button onclick="document.getElementById('liqRow_${i}').remove()"
-                style="border:none;background:transparent;color:var(--rd);cursor:pointer;font-size:.9rem;padding:.1rem .3rem">🗑️</button>
+                style="border:none;background:transparent;color:var(--rd);cursor:pointer;font-size:.85rem">🗑️</button>
         </td>`;
     tbody.appendChild(tr);
-    document.getElementById('liqDC_'+i).focus();
-};
+}
 
 window.confirmLiqEdit=()=>{
     const allZero=B.دينار===0&&B.دولار===0&&g730.length===0&&g24.length===0;
@@ -625,37 +645,34 @@ window.confirmLiqEdit=()=>{
         toast('⚠️ تم اعتماد الأرصدة مسبقاً','error');return;
     }
     const dinar  = readNum('liqDinar');
-    const dollar = readNum('liqDollar');
-    /* جمع سبائك 730 المتعددة (وزن + عيار لكل سبيكة) */
-    const bars730=[];
-    document.querySelectorAll('#liq730Bars [id^="liq730Row_"]').forEach(row=>{
-        const i=row.id.replace('liq730Row_','');
-        const w=readNum('liq730W_'+i);
-        const k=parseFloat(String(document.getElementById('liq730K_'+i)?.value||'730').replace(',','.'))||730;
-        if(w>0)bars730.push({w,k});
-    });
-    const g730raw = bars730.reduce((s,b)=>s+b.w,0);
-    const g730v   = bars730.reduce((s,b)=>s+b.w*(b.k/730),0);
+    /* 🛍️ سلعة الكوفر بالتفصيل (اسم + ميزان + عيار) — تدخل المخزون */
+    const goodsItems=_readLiqGoods();
+    const dollar = Math.round(goodsItems.reduce((s,it)=>s+it.eq,0)*1000)/1000; /* مكافئ 705 إجمالي */
+    const bars730=[],g730raw=0,g730v=0;
 
+    /* ديون الزبائن: دينار ± وسلعة (705) ± موقّعة مباشرة */
     const debtRows=[];
     document.querySelectorAll('#liqDebtRows tr[id^="liqRow_"]').forEach(tr=>{
         const i=tr.id.replace('liqRow_','');
         const c=(document.getElementById('liqDC_'+i)?.value||'').trim();
-        const type=document.getElementById('liqDT_'+i)?.value||'دينار';
-        const amt=readNum('liqDA_'+i);
-        const dir=document.getElementById('liqDD_'+i)?.value||'لنا';
-        if(!c||!amt)return;
-        debtRows.push({c,type,amt,dir});
+        if(!c)return;
+        const din=readNum('liqDDin_'+i);
+        const gd =readNum('liqDGd_'+i);
+        if(din)debtRows.push({c,type:'دينار',amt:din,dir:'لنا'});   /* الإشارة في القيمة نفسها */
+        if(gd) debtRows.push({c,type:'دولار',amt:gd, dir:'لنا'});
     });
 
     const sumLines=[];
     if(dinar !==0&&!isNaN(dinar)&&dinar) sumLines.push(`💵 دينار: ${fmt(dinar,0)} دج`);
-    if(dollar!==0&&!isNaN(dollar)&&dollar) sumLines.push(`🛍️ سلعة: ${fmt(dollar,2)} غ (705)`);
-    if(g730v >0) sumLines.push(`👑 ذهب 730: ${bars730.length} سبيكة — ${fmt(g730raw,2)} غ`);
+    if(goodsItems.length){
+        sumLines.push(`🛍️ سلعة الكوفر (${goodsItems.length}):`);
+        goodsItems.forEach(it=>sumLines.push(`  • ${it.n}: ${fmt(it.w,2)} غ عيار ${fmt(it.k,0)} → ${fmt(it.eq,2)} غ (705)`));
+        sumLines.push(`  = المجموع بالمكافئ: ${fmt(dollar,2)} غ (705)`);
+    }
     if(debtRows.length){
         sumLines.push('');sumLines.push('ديون الزبائن:');
         debtRows.forEach(r=>sumLines.push(
-            `  ${r.dir==='لنا'?'🟢':'🔴'} ${r.c}: ${fmt(r.amt,2)} ${r.type} (${r.dir})`
+            `  ${r.amt>=0?'🟢':'🔴'} ${r.c}: ${fmt(r.amt,2)} ${r.type==='دولار'?'غ سلعة (705)':'دج'}`
         ));
     }
     if(!sumLines.length) return toast('أدخل رصيداً أو ديناً واحداً على الأقل','error');
@@ -671,7 +688,7 @@ window.confirmLiqEdit=()=>{
         dispBars[bid]={desc:'رصيد افتتاحي',dt,src:'افتتاحي'};
     });
     emitEvent('OPENING',
-        {dinar,dollar,g730v,debtRows,barsAdd},
+        {dinar,dollar,g730v,debtRows,barsAdd,goodsItems},
         {
             bars:Object.keys(dispBars).length?dispBars:undefined,
             op:{c:'النظام',t:'رصيد افتتاحي',m:'متعدد',a:dinar||dollar||g730v,
@@ -718,7 +735,8 @@ function getCustBal(c,metal){return debts.filter(d=>d.c===c&&d.type===metal).red
 /* ═══════════ UI ═══════════ */
 function upd(){
     document.getElementById('dinarBal').innerHTML=fmt(B.دينار,0)+'<small> DZD</small>';
-    document.getElementById('g730Bal').innerHTML=fmt(B['ذهب 730']+(B.vg730||0),2)+'<small> g</small>';
+    /* بطاقة 705: القيمة الداخلية مكافئ 730 — نعرضها مكافئ 705 (×730÷705) */
+    document.getElementById('g730Bal').innerHTML=fmt((B['ذهب 730']+(B.vg730||0))*(730/705),2)+'<small> غ (705)</small>';
     document.getElementById('g24Bal').innerHTML=fmt(B['ذهب 24']+(B.vg24||0),2)+'<small> g</small>';
     document.getElementById('usdBal').innerHTML=fmt(B.دولار,2)+'<small> غ</small>';
     const _bk=_netBuckets();
@@ -860,7 +878,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v68';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v70';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -977,6 +995,7 @@ window.openDollar=(t)=>{
     document.getElementById('goodsCustomer').placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
     document.getElementById('goodsRows').innerHTML='';
     _addGoodsRow();
+    ['rotW','rotK','rotP'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     _updGoodsTotal();
     _dollPaid=true;
     document.getElementById('dollarModal').classList.add('active');
@@ -993,7 +1012,7 @@ function _addGoodsRow(vals){
         <select class="g-n" style="flex:1.4;margin:0;min-width:0">${_goodsOptions(vals&&vals.n?String(vals.n):'')}</select>
         <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
         <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">
-        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 الأجرة" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
+        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 الأجرة/غ" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
     div.querySelector('select.g-n').addEventListener('change',_gRowsChanged);
     div.querySelectorAll('input').forEach(inp=>{
         inp.addEventListener('input',()=>{ liveNum(inp);_gRowsChanged(); });
@@ -1018,17 +1037,23 @@ function _readGoodsRows(){
     const items=[];
     document.querySelectorAll('#goodsRows .g-row').forEach(row=>{
         const n=_rowVal(row,'.g-n'), w=_rowNum(row,'.g-w'), k=_rowNum(row,'.g-k'), p=_rowNum(row,'.g-p');
-        if(n&&w>0&&k>0)items.push({n,w,k,p:p>0?p:0,eq:Math.round(w*k/705*1000)/1000});
+        /* p = سعر الأجرة للغرام الواحد (دج/غ) · fv = الأجرة الكلية للسطر = الوزن × السعر */
+        if(n&&w>0&&k>0)items.push({n,w,k,p:p>0?p:0,fv:Math.round(w*(p>0?p:0)),eq:Math.round(w*k/705*1000)/1000});
     });
+    /* ♻️ الروتور — السطر الثابت في الأسفل */
+    const rw=readNum('rotW'),rk=readNum('rotK'),rp=readNum('rotP');
+    if(rw>0&&rk>0)items.push({n:'روتور',w:rw,k:rk,p:rp>0?rp:0,fv:Math.round(rw*(rp>0?rp:0)),eq:Math.round(rw*rk/705*1000)/1000,rot:1});
     return items;
 }
+/* الوزن المتاح في المخزون لاسم سلعة معيّن */
+function _stockAvail(name){ return goodsStock.filter(g=>g.n===name).reduce((s,g)=>s+(g.w||0),0); }
 function _updGoodsTotal(){
     const items=_readGoodsRows();
     const w=items.reduce((s,it)=>s+it.w,0);
     const eq=items.reduce((s,it)=>s+it.eq,0);
-    const fee=items.reduce((s,it)=>s+it.p,0);
+    const fee=items.reduce((s,it)=>s+it.fv,0);
     const el=document.getElementById('goodsTotal');
-    if(el)el.textContent=`⚖️ ${fmt(w,2)} غ · مكافئ 705: ${fmt(eq,2)} غ · 💰 الأجرة: ${fmt(fee,0)} دج`;
+    if(el)el.textContent=`⚖️ ${fmt(w,2)} غ · مكافئ 705: ${fmt(eq,2)} غ · 💰 الأجرة (الوزن × دج/غ): ${fmt(fee,0)} دج`;
 }
 window.saveDollar=()=>{
     const cust=document.getElementById('goodsCustomer').value.trim();
@@ -1037,7 +1062,17 @@ window.saveDollar=()=>{
     if(!items.length)return toast('أدخل سطراً مكتملاً واحداً على الأقل (السلعة + الوزن + العيار)','error');
     const isBuy=document.getElementById('dollarTitle').textContent.includes('شراء');
     const equiv=Math.round(items.reduce((s,it)=>s+it.eq,0)*1000)/1000;
-    const fee=items.reduce((s,it)=>s+it.p,0);
+    const fee=items.reduce((s,it)=>s+it.fv,0);
+    /* 🚫 البيع لا يخصم سلعة من سلعة أخرى: كل اسم يُخصم من مخزونه هو فقط */
+    if(!isBuy){
+        const need={};
+        items.forEach(it=>{ need[it.n]=(need[it.n]||0)+it.w; });
+        for(const nm in need){
+            const avail=_stockAvail(nm);
+            if(need[nm]>avail+0.0005)
+                return toast(`⚠️ مخزون «${nm}» غير كافٍ — متاح ${fmt(avail,2)} غ والمطلوب ${fmt(need[nm],2)} غ`,'error');
+        }
+    }
     const did='DOLL-'+uid();
     const dt=new Date().toLocaleDateString('fr-FR');
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -1049,7 +1084,7 @@ window.saveDollar=()=>{
     );
     window._editRestore=null;
     closeModal('dollarModal');
-    toast(isBuy?`✅ شراء ${items.length} سلعة — ${fmt(equiv,2)} غ (705) + أجرة ${fmt(fee,0)} دج دَيناً بالأحمر`:`✅ بيع ${items.length} سلعة — ${fmt(equiv,2)} غ (705) + أجرة ${fmt(fee,0)} دج بالأخضر`);
+    toast(isBuy?`✅ شراء ${items.length} سلعة — ${fmt(equiv,2)} غ (705) + أجرة ${fmt(fee,0)} دج دَيناً بالأحمر · حُفظت الفاتورة في الأرشيف`:`✅ بيع ${items.length} سلعة — ${fmt(equiv,2)} غ (705) + أجرة ${fmt(fee,0)} دج بالأخضر · حُفظت الفاتورة في الأرشيف`);
 };
 /* ── مخزون السلعة ── */
 window.openGoodsStock=()=>{
@@ -1067,7 +1102,7 @@ window.renderGoodsStock=()=>{
                 <strong>🛍️ ${g.n}</strong>
                 <span style="color:var(--g600);font-weight:900;margin-right:.3rem">⚖️ ${fmt(g.w,2)} غ</span>
                 ${g.k?`<span style="color:var(--pu);font-weight:800;margin-right:.3rem">🏷️ عيار ${fmt(g.k,0)}</span>`:''}
-                <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · الأجرة: ${fmt(g.p||0,0)} دج${g.dt?' · '+g.dt:''}</small>
+                <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · الأجرة: ${fmt(g.p||0,0)} دج/غ${g.dt?' · '+g.dt:''}</small>
             </div>
         </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:1.2rem">لا توجد سلع في المخزون</div>';
 };
@@ -1089,7 +1124,13 @@ window.editDoll=(id)=>{
     openDollar(d.isBuy?'buy':'sell');
     document.getElementById('goodsCustomer').value=(d.c&&d.c!=='—')?d.c:'';
     document.getElementById('goodsRows').innerHTML='';
-    const _its=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c||'',w:d.gw||'',k:d.gk||'',p:d.a||''}];
+    const _all=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c||'',w:d.gw||'',k:d.gk||'',p:d.a||''}];
+    const _rot=_all.find(it=>it.n==='روتور'||it.rot);
+    if(_rot){
+        const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v!=null&&v!==0?v:'';};
+        set('rotW',_rot.w);set('rotK',_rot.k);set('rotP',_rot.p);
+    }
+    const _its=_all.filter(it=>!(it.n==='روتور'||it.rot));
     _its.forEach(it=>_addGoodsRow({n:it.n,w:it.w||'',k:it.k||'',p:it.p!=null?it.p:(it.a||'')}));
     _addGoodsRow(); /* سطر فارغ للإضافة */
     _updGoodsTotal();
@@ -1716,7 +1757,17 @@ function opDetailLines(o){
     const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
     const lines=[];
     const t=o.t||'';
-    if(t==='بيع دولار'||t==='شراء دولار'){
+    if(t==='شراء سلعة'||t==='بيع سلعة'){
+        const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
+        if(inv&&Array.isArray(inv.items)){
+            inv.items.forEach(it=>{
+                const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));
+                lines.push(`${it.n==='روتور'?'♻️':'🛍️'} ${it.n} — ${f(it.w,2)}غ عيار ${f(it.k,0)}${it.p?` × ${f(it.p,0)} دج/غ = ${f(fv,0)} دج`:''}`);
+            });
+            lines.push(`⚖️ المكافئ (705): ${f(inv.a,2)} غ${inv.fee?` · 💰 مجموع الأجرة: ${f(inv.fee,0)} دج`:''}`);
+            lines.push(t==='شراء سلعة'?'🔴 دَين بالأحمر: سلعة + أجرة':'🟢 بالأخضر: سلعة + أجرة');
+        }
+    } else if(t==='بيع دولار'||t==='شراء دولار'){
         if(o.dr) lines.push(`💱 سعر الصرف: ${f(o.dr,0)} دج/$`);
         lines.push(`💵 بالدينار: ${f((o.a||0)*(o.dr||0)/100,0)} دج`);
         lines.push(o.paid===false?'⏳ غير خالص — مُضاف للديون':'✅ خالص — تمت المقاصة مباشرة');
@@ -2840,7 +2891,7 @@ function renderArchive(){
                 <span style="color:var(--g600);font-weight:900">${fmt(d.a||0,2)} غ (705)</span>
                 ${d.fee?`<span style="color:var(--t2);font-weight:800;font-size:.7rem"> · أجرة ${fmt(d.fee,0)} دج</span>`:''}
                 ${Array.isArray(d.items)&&d.items.length
-                    ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n} · ⚖️ ${fmt(it.w||0,2)} غ · 🏷️ ${fmt(it.k||0,0)}${it.p?' · 💰 '+fmt(it.p,0)+' دج':''}</small>`).join('')
+                    ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n} · ⚖️ ${fmt(it.w||0,2)} غ · 🏷️ ${fmt(it.k||0,0)}${it.p?' · 💰 '+fmt(it.p,0)+' دج/غ = '+fmt(it.fv!=null?it.fv:(it.w*it.p),0)+' دج':''}</small>`).join('')
                     :''}
                 <small style="color:var(--t3);display:block;font-size:.58rem">${d.dt}</small>
             </div>
@@ -3169,12 +3220,15 @@ function buildDollHtml(d){
     const lbl=d.isBuy?'شراء سلعة':'بيع سلعة';
     const col=d.isBuy?'#16a34a':'#0369a1';
     const items=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c,w:d.gw||0,k:d.gk||0,p:d.a||0}];
-    const rows=items.map(it=>`<tr>
+    const rows=items.map(it=>{
+        const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));
+        return`<tr>
             <td style="padding:5px;border:1px solid #bbb;font-weight:800">${it.n||'—'}</td>
             <td style="padding:5px;border:1px solid #bbb;text-align:center">${it.w?fmt(it.w,2)+' غ':'—'}</td>
             <td style="padding:5px;border:1px solid #bbb;text-align:center">${it.k?fmt(it.k,0):'—'}</td>
-            <td style="padding:5px;border:1px solid #bbb;text-align:left;font-weight:800">${fmt(it.p||0,0)} دج</td>
-        </tr>`).join('');
+            <td style="padding:5px;border:1px solid #bbb;text-align:center">${it.p?fmt(it.p,0)+' دج/غ':'—'}</td>
+            <td style="padding:5px;border:1px solid #bbb;text-align:left;font-weight:800">${fmt(fv,0)} دج</td>
+        </tr>`;}).join('');
     return`<div style="position:relative;overflow:hidden;padding:12px;font-family:Tajawal,sans-serif;direction:rtl;max-width:480px;margin:auto">
         ${_wmLayer()}
         <div style="position:relative;z-index:1">
@@ -3187,7 +3241,8 @@ function buildDollHtml(d){
                 <th style="padding:5px;border:1px solid #bbb">السلعة</th>
                 <th style="padding:5px;border:1px solid #bbb">الوزن</th>
                 <th style="padding:5px;border:1px solid #bbb">العيار</th>
-                <th style="padding:5px;border:1px solid #bbb">الأجرة</th>
+                <th style="padding:5px;border:1px solid #bbb">أجرة/غ</th>
+                <th style="padding:5px;border:1px solid #bbb">المجموع</th>
             </tr></thead>
             <tbody>${rows}</tbody>
         </table>
