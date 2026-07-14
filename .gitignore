@@ -1,0 +1,24 @@
+# نسخ احتياطية وبيانات حقيقية — لا تُرفع أبداً
+*.json
+!package.json
+!package-lock.json
+!manifest.json
+!database.rules.json
+GoldPro_*.json
+download*.json
+deepseek_json_*.json
+Partager_*.json
+*backup*.json
+*.zip
+
+# أسرار وبيئة
+.env
+.env.*
+*secret*
+*serviceAccount*
+service-account*.json
+
+# نظام
+node_modules/
+.DS_Store
+*.log
