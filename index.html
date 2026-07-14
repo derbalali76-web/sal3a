@@ -31,10 +31,7 @@
 <div class="app">
     <!-- Header -->
     <div class="hdr">
-        <div class="brand">
-            <div class="logo">🪙</div>
-            <div class="brand-text"><h2>GoldPro</h2><span>نظام الذهب والدولار</span></div>
-        </div>
+        <div class="brand" style="min-width:0"></div>
         <div class="hdr-center-wrap" id="hdrCenterWrap">
             <div class="price-ball" id="priceBall" onclick="if(!window._badgeDragMoved)window._togglePricePop()" title="اضغط لعرض السعر اللحظي وسعر بيع دبي — اسحب لتحريكها">💰</div>
             <div class="price-pop" id="pricePop">
@@ -109,24 +106,11 @@
                     <span class="hint">👆 المخزون</span>
                 </div>
             </div>
-            <div class="qgrid">
-                <div class="qcard give" onclick="openGiveTake('give')">
-                    <div class="qi"><i class="fas fa-hand-holding-heart"></i></div>
-                    <div class="qt">تسليم (أعطيت)</div>
-                </div>
-                <div class="qcard receive" onclick="openGiveTake('receive')">
-                    <div class="qi"><i class="fas fa-handshake"></i></div>
-                    <div class="qt">استلام (قبضت)</div>
-                </div>
-            </div>
             <div class="astrip">
                 <button class="btn buy"  onclick="openDollar('buy')"> <i class="fas fa-cart-plus"></i>شراء سلعة</button>
                 <button class="btn sell" onclick="openDollar('sell')"><i class="fas fa-tag"></i>بيع سلعة</button>
                 <button class="btn exp"  onclick="openExpense()">    <i class="fas fa-receipt"></i>مصاريف</button>
             </div>
-            <button onclick="openTarbah()" style="width:100%;margin-top:.5rem;padding:.85rem;border:none;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:900;font-size:1.05rem;font-family:Tajawal,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(124,58,237,.35);display:flex;align-items:center;justify-content:center;gap:.5rem">
-                📒 ترباح
-            </button>
         </div>
 
         <!-- الفاتورة -->
@@ -766,6 +750,16 @@
         </div>
         <div id="goodsNamesList" style="display:flex;flex-wrap:wrap;gap:.35rem"></div>
     </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
+        <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">📱 زبائن البوابة — يدخلون برقم الهاتف ويرون كشف حسابهم</p>
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+            <input type="text" id="portalCustName" placeholder="اسم الزبون (كما في الديون)" style="flex:1.3;margin:0">
+            <input type="tel" id="portalCustPhone" placeholder="الهاتف 06…" dir="ltr" style="flex:1;margin:0;text-align:right"
+                onkeydown="if(event.key==='Enter'){addPortalCust();event.preventDefault()}">
+            <button onclick="addPortalCust()" style="padding:.4rem .9rem;border:none;border-radius:8px;background:var(--gr);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">＋</button>
+        </div>
+        <div id="portalCustList" style="display:flex;flex-direction:column;gap:.3rem"></div>
+    </div>
     <div class="mactions">
         <button class="bgy" onclick="closeModal('settingsModal')">إلغاء</button>
         <button class="bg" onclick="saveSettings()">💾 حفظ</button>
@@ -875,6 +869,10 @@
             autocomplete="current-password"
             onkeydown="if(event.key==='Enter'){event.stopPropagation();doLogin()}">
         <button class="login-btn" onclick="doLogin()">دخول →</button>
+        <button onclick="openCustPortalLogin()"
+            style="width:100%;margin-top:.6rem;padding:.7rem;border:1.5px solid rgba(212,175,55,.45);border-radius:12px;background:transparent;color:var(--g400,#d4af37);font-weight:900;font-family:Tajawal,sans-serif;font-size:.9rem;cursor:pointer">
+            👤 دخول الزبائن — كشف الحساب برقم الهاتف
+        </button>
         <p id="loginErr" style="display:none">❌ خطأ</p>
         <p style="margin-top:.8rem;font-size:.72rem;color:rgba(255,255,255,.35);text-align:center">
             <span onclick="window._changeSN()" style="cursor:pointer;text-decoration:underline;color:rgba(212,175,55,.5)">🔁 تغيير رمز التفعيل</span>
@@ -944,6 +942,50 @@ window._installPWA = async () => {
   }
 };
 </script>
+
+<!-- ═══ بوابة الزبون: كشف الحساب ═══ -->
+<div id="custPortalLoginPanel" style="display:none;position:fixed;inset:0;z-index:10001;background:radial-gradient(ellipse at center,#1a1206 0%,#0a0700 100%);align-items:center;justify-content:center">
+    <div class="login-box" style="max-width:360px">
+        <div class="login-logo">👤</div>
+        <h2 class="login-title" style="font-size:1.25rem">كشف حساب الزبون</h2>
+        <p class="login-sub" style="font-size:.78rem">أدخل رقم هاتفك المسجَّل لدى المحل</p>
+        <input type="tel" id="custPortalPhone" placeholder="06XXXXXXXX" dir="ltr" maxlength="15"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.15rem;text-align:center;letter-spacing:.12em;outline:none;margin-bottom:.55rem"
+            onkeydown="if(event.key==='Enter'){event.stopPropagation();custPortalLogin()}">
+        <button class="login-btn" onclick="custPortalLogin()">عرض حسابي →</button>
+        <p id="custPortalErr" style="display:none;color:#ff6b6b;font-size:.76rem;text-align:center;margin-top:.5rem"></p>
+        <button onclick="closeCustPortalLogin()" style="width:100%;margin-top:.6rem;padding:.55rem;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#ccc;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">← رجوع</button>
+    </div>
+</div>
+
+<div id="custPortalScreen" style="display:none;position:fixed;inset:0;z-index:10002;background:var(--bg,#0d1120);overflow-y:auto;direction:rtl;font-family:Tajawal,sans-serif">
+    <div style="position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#1a1206,#0d1120);border-bottom:1px solid rgba(212,175,55,.25);padding:.8rem 1rem;display:flex;align-items:center;gap:.6rem">
+        <button onclick="closeCustPortal()" style="width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:1rem;cursor:pointer">✕</button>
+        <div style="flex:1">
+            <div id="custPortalName" style="font-weight:900;font-size:1.05rem;color:#d4af37">—</div>
+            <div id="custPortalUpd" style="font-size:.62rem;color:#888"></div>
+        </div>
+        <div style="font-size:1.5rem">👤</div>
+    </div>
+    <div style="max-width:640px;margin:0 auto;padding:1rem">
+        <!-- بطاقتا الرصيد -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
+            <div style="background:linear-gradient(135deg,rgba(3,105,161,.18),rgba(3,105,161,.06));border:1px solid rgba(3,105,161,.4);border-radius:14px;padding:.9rem;text-align:center">
+                <div style="font-size:1.3rem">💵</div>
+                <div style="font-size:.68rem;color:#93c5fd;font-weight:800">دينار</div>
+                <div id="custPortalDin" style="font-size:1.15rem;font-weight:900;color:#fff" dir="ltr">0 دج</div>
+            </div>
+            <div style="background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(212,175,55,.06));border:1px solid rgba(212,175,55,.4);border-radius:14px;padding:.9rem;text-align:center">
+                <div style="font-size:1.3rem">👑</div>
+                <div style="font-size:.68rem;color:#fcd34d;font-weight:800">ذهب (غ 705)</div>
+                <div id="custPortalGold" style="font-size:1.15rem;font-weight:900;color:#fff" dir="ltr">0 غ</div>
+            </div>
+        </div>
+        <p style="font-size:.62rem;color:#888;text-align:center;margin:0 0 .8rem">🟢 موجب = لك عند المحل · 🔴 سالب = عليك للمحل</p>
+        <div style="font-weight:900;color:#d4af37;font-size:.85rem;margin-bottom:.5rem">📒 سجل معاملاتك <span style="font-size:.62rem;color:#888">(اضغط على المعاملة لعرض فاتورتها)</span></div>
+        <div id="custPortalOps"></div>
+    </div>
+</div>
 
 <!-- زر تثبيت التطبيق -->
 <div id="pwaInstallBtn" onclick="window._installPWA()" style="

@@ -526,6 +526,7 @@ function openSettings(){
     if(isAdmin)renderUsersList();
     try{ const vi=document.getElementById('visionKeyInput'); if(vi)vi.value=_getVisionKey(); }catch(e){}
     renderGoodsNamesList();
+    renderPortalCustList();
     document.getElementById('settingsModal').classList.add('active');
     setTimeout(()=>document.getElementById('settingGoldPrice').focus(),320);
 }
@@ -878,7 +879,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v73';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v74';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -952,6 +953,141 @@ window.saveGT=()=>{
 };
 
 /* ═══════════ سلعة (كانت DOLLAR — نحافظ على نوع الحدث للتوافق) ═══════════ */
+/* ═══════════ 📱 بوابة الزبائن — كشف الحساب برقم الهاتف ═══════════ */
+window._portalCust=window._portalCust||{}; /* {phone: customerName} */
+(function(){ try{ const v=JSON.parse(localStorage.getItem('gp12_portalCust')||'{}'); if(v&&typeof v==='object')window._portalCust=v; }catch(e){} })();
+function _persistPortalCust(){
+    try{localStorage.setItem('gp12_portalCust',JSON.stringify(window._portalCust));}catch(e){}
+    if(window._savePortalCustFb)try{window._savePortalCustFb(window._portalCust);}catch(e){}
+    renderPortalCustList();
+    if(window._publishPortalDebounced)window._publishPortalDebounced();
+}
+window._normPhone=(p)=>String(p||'').replace(/[^0-9]/g,'');
+window.addPortalCust=()=>{
+    const n=(document.getElementById('portalCustName')?.value||'').trim();
+    const ph=window._normPhone(document.getElementById('portalCustPhone')?.value);
+    if(!n||!ph||ph.length<8)return toast('أدخل اسم الزبون ورقم هاتف صحيح','error');
+    window._portalCust[ph]=n;
+    document.getElementById('portalCustName').value='';
+    document.getElementById('portalCustPhone').value='';
+    _persistPortalCust();
+    toast(`✅ ${n} — ${ph} أصبح بإمكانه رؤية كشف حسابه`);
+};
+window.delPortalCust=(ph)=>{
+    if(!confirm(`إلغاء وصول ${window._portalCust[ph]} (${ph})؟`))return;
+    delete window._portalCust[ph];
+    if(window._delPortalNodeFb)try{window._delPortalNodeFb(ph);}catch(e){}
+    _persistPortalCust();
+};
+window.renderPortalCustList=()=>{
+    const el=document.getElementById('portalCustList'); if(!el)return;
+    const keys=Object.keys(window._portalCust);
+    el.innerHTML=keys.length?keys.map(ph=>`
+        <div style="display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.3rem .5rem;font-size:.72rem;font-weight:800">
+            <span style="flex:1">👤 ${window._portalCust[ph]}</span>
+            <span dir="ltr" style="color:var(--t2)">${ph}</span>
+            <b onclick="delPortalCust('${ph}')" style="cursor:pointer;color:var(--rd)">✕</b>
+        </div>`).join(''):'<small style="color:var(--t3)">لا يوجد زبائن مرتبطون بعد</small>';
+};
+/* ── الناشر: يدفع كشف كل زبون مرتبط إلى عقدة goldpro/portal/{هاتف} ── */
+window._publishPortal=()=>{
+    if(!window._savePortalDataFb)return;
+    const phones=Object.keys(window._portalCust||{});
+    if(!phones.length)return;
+    phones.forEach(ph=>{
+        const name=window._portalCust[ph];
+        const myOps=(ops||[]).filter(o=>o.c===name).slice(0,200).map(o=>({
+            id:o.id||'',t:o.t||'',a:o.a||0,m:o.m||'',dt:o.dt||'',did:o.did||'',fee:o.fee||0
+        }));
+        const inv={};
+        (dollInvoices||[]).filter(v=>v.c===name).slice(0,100).forEach(v=>{inv[v.id]=v;});
+        const payload={
+            name, upd:Date.now(),
+            din:Math.round(getCustBal(name,'دينار')*100)/100,
+            gold:Math.round(getCustBal(name,'دولار')*1000)/1000,
+            ops:myOps, inv
+        };
+        try{window._savePortalDataFb(ph,payload);}catch(e){}
+    });
+};
+window._publishPortalDebounced=(function(){let t=null;return function(){clearTimeout(t);t=setTimeout(()=>{try{window._publishPortal();}catch(e){}},2500);};})();
+
+/* ── جهة الزبون ── */
+window.openCustPortalLogin=()=>{ const p=document.getElementById('custPortalLoginPanel'); if(p)p.style.display='flex'; };
+window.closeCustPortalLogin=()=>{ const p=document.getElementById('custPortalLoginPanel'); if(p)p.style.display='none'; };
+window.closeCustPortal=()=>{
+    const sc=document.getElementById('custPortalScreen'); if(sc)sc.style.display='none';
+    if(window._portalRef){try{window._portalRef.off();}catch(e){} window._portalRef=null;}
+};
+window.custPortalLogin=async()=>{
+    const ph=window._normPhone(document.getElementById('custPortalPhone')?.value);
+    const err=document.getElementById('custPortalErr');
+    const showErr=(m)=>{if(err){err.textContent=m;err.style.display='block';}};
+    if(!ph||ph.length<8)return showErr('أدخل رقم هاتف صحيح');
+    if(err)err.style.display='none';
+    try{
+        window._portalMode=true;
+        if(!firebase.auth().currentUser)await firebase.auth().signInAnonymously();
+        const ref=firebase.database().ref('goldpro/portal/'+ph);
+        const snap=await ref.once('value');
+        const d=snap.val();
+        if(!d||!d.name)return showErr('لا يوجد حساب مرتبط بهذا الرقم — راجع المحل');
+        window._portalRef=ref;
+        ref.on('value',s2=>{const v=s2.val();if(v)window._renderCustPortal(v);});
+        window._renderCustPortal(d);
+        closeCustPortalLogin();
+        document.getElementById('custPortalScreen').style.display='block';
+    }catch(e){
+        showErr('تعذّر الاتصال — تأكد من الإنترنت'+(e&&e.code?` (${e.code})`:''));
+    }
+};
+window._portalInvCache={};
+window._renderCustPortal=(d)=>{
+    window._portalInvCache=d.inv||{};
+    document.getElementById('custPortalName').textContent='👋 '+d.name;
+    document.getElementById('custPortalUpd').textContent='آخر تحديث: '+new Date(d.upd||Date.now()).toLocaleString('fr-FR');
+    const dinEl=document.getElementById('custPortalDin');
+    const gEl=document.getElementById('custPortalGold');
+    const din=Number(d.din)||0,gold=Number(d.gold)||0;
+    dinEl.textContent=fmt(din,0)+' دج'; dinEl.style.color=din>=0?'#4ade80':'#f87171';
+    gEl.textContent=fmt(gold,2)+' غ'; gEl.style.color=gold>=0?'#4ade80':'#f87171';
+    const opsEl=document.getElementById('custPortalOps');
+    const list=Array.isArray(d.ops)?d.ops:Object.values(d.ops||{});
+    opsEl.innerHTML=list.length?list.map(o=>{
+        const inv=o.did?window._portalInvCache[o.did]:null;
+        const clickable=!!inv;
+        const unit=o.m==='دينار'?'دج':'غ';
+        let detail='';
+        if(inv&&Array.isArray(inv.items))detail=inv.items.map(it=>`<div style="font-size:.62rem;color:#9ca3af">🛍️ ${it.n} · ${fmt(it.w,2)}غ · عيار ${fmt(it.k,0)}${it.p?' · '+fmt(it.p,0)+' دج/غ':''}</div>`).join('');
+        if(inv&&inv.rot)detail+=`<div style="font-size:.62rem;color:#2dd4bf">♻️ روتور: ${fmt(inv.rot.w,2)}غ عيار ${fmt(inv.rot.k,0)}</div>`;
+        if(inv&&inv.cash)detail+=`<div style="font-size:.62rem;color:#60a5fa">💵 ${inv.isBuy?'أخذ':'دفع'} دينار: ${fmt(inv.cash,0)} دج</div>`;
+        if(inv&&inv.kass&&inv.kass.eq)detail+=`<div style="font-size:.62rem;color:#2dd4bf">⚱️ لاكاص: ${fmt(inv.kass.eq,2)} غ (705)</div>`;
+        return `<div onclick="${clickable?`window._viewPortalInv('${o.did}')`:''}"
+            style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:.6rem .75rem;margin-bottom:.45rem;${clickable?'cursor:pointer':''}">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+                <span style="font-weight:900;font-size:.78rem;color:#e5e7eb">${o.t||''}${clickable?' <span style="font-size:.58rem;color:#d4af37">👁 الفاتورة</span>':''}</span>
+                <span style="font-weight:900;font-size:.78rem;color:#d4af37" dir="ltr">${fmt(o.a||0,2)} ${unit}</span>
+            </div>
+            <div style="font-size:.6rem;color:#6b7280">${o.dt||''}</div>
+            ${detail}
+        </div>`;
+    }).join(''):'<div style="text-align:center;color:#6b7280;padding:1.5rem">لا توجد معاملات بعد</div>';
+};
+window._viewPortalInv=(did)=>{
+    const inv=window._portalInvCache[did]; if(!inv)return;
+    let html='';
+    try{html=buildDollHtml(inv);}catch(e){}
+    if(!html)return;
+    let m=document.getElementById('docViewModal');
+    if(!m){m=document.createElement('div');m.id='docViewModal';
+        m.style.cssText='position:fixed;inset:0;background:#fff;z-index:99999;overflow:auto;display:none';
+        document.body.appendChild(m);}
+    m.innerHTML=`<button onclick="document.getElementById('docViewModal').style.display='none'"
+        style="position:fixed;top:10px;left:10px;z-index:100000;width:40px;height:40px;border-radius:50%;border:none;background:#111;color:#fff;font-size:1.1rem;cursor:pointer">✕</button>
+        <div style="max-width:820px;margin:0 auto;padding:1rem">${html}</div>`;
+    m.style.display='block';
+};
+
 /* ── أسماء السلع (قائمة اختيار مُدارة من الإعدادات، تُزامَن عبر Firebase) ── */
 window._goodsNames=window._goodsNames||[];
 (function(){ try{ const v=JSON.parse(localStorage.getItem('gp12_goodsNames')||'[]'); if(Array.isArray(v))window._goodsNames=v; }catch(e){} })();
@@ -1852,6 +1988,9 @@ function opDetailLines(o){
     const t=o.t||'';
     if(t==='شراء سلعة'||t==='بيع سلعة'){
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
+        if(!inv||!Array.isArray(inv.items)){
+            lines.push(`⚖️ صافي المكافئ (705): ${f(o.a||0,2)} غ${o.fee?` · 💰 الأجرة: ${f(o.fee,0)} دج`:''}${o.rotW?` · ♻️ روتور ${f(o.rotW,2)} غ`:''}`);
+        }
         if(inv&&Array.isArray(inv.items)){
             inv.items.forEach(it=>{
                 const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));

@@ -25,6 +25,23 @@ window._sharedVisionKey='';
 window._saveSharedVisionKey=(v)=>{ try{return _db.ref('goldpro/_appcfg/visionKey').set(v||'');}catch(e){return Promise.reject(e);} };
 /* ── أسماء السلع المشتركة ── */
 window._saveGoodsNamesFb=(arr)=>{ try{return _db.ref('goldpro/_appcfg/goodsNames').set(Array.isArray(arr)?arr:[]);}catch(e){return Promise.reject(e);} };
+/* ── بوابة الزبائن ── */
+window._savePortalCustFb=(obj)=>{ try{return _db.ref('goldpro/_appcfg/custPhones').set(obj||{});}catch(e){return Promise.reject(e);} };
+window._savePortalDataFb=(ph,payload)=>{ try{return _db.ref('goldpro/portal/'+ph).set(payload);}catch(e){return Promise.reject(e);} };
+window._delPortalNodeFb=(ph)=>{ try{return _db.ref('goldpro/portal/'+ph).remove();}catch(e){return Promise.reject(e);} };
+_auth.onAuthStateChanged(u=>{
+    if(!u||u.isAnonymous||window._portalMode)return; /* جهاز الزبون لا يزامن خريطة الهواتف */
+    try{
+        _db.ref('goldpro/_appcfg/custPhones').on('value',sn=>{
+            const v=sn.val();
+            if(v&&typeof v==='object'){
+                window._portalCust=v;
+                try{localStorage.setItem('gp12_portalCust',JSON.stringify(v));}catch(e){}
+                if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
+            }
+        });
+    }catch(e){}
+});
 _auth.onAuthStateChanged(u=>{
     if(!u)return;
     try{
@@ -699,6 +716,8 @@ function _reproject(){
     dollInvoices=st.dollInvoices;
     goodsStock=st.goodsStock;
     if(typeof renderGoodsStock==='function')try{renderGoodsStock();}catch(e){}
+    /* 📱 نشر كشوف زبائن البوابة (من جهاز المحل فقط، وليس من جهاز الزبون) */
+    if(!window._portalMode&&window._publishPortalDebounced)try{window._publishPortalDebounced();}catch(e){}
     rafInvoices=st.rafInvoices;
     dubaiInvoices=st.dubaiInvoices;
 
