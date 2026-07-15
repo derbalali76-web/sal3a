@@ -936,7 +936,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v90';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v91';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1020,6 +1020,8 @@ function _persistPortalCust(){
     if(window._publishPortalDebounced)window._publishPortalDebounced();
 }
 window._normPhone=(p)=>String(p||'').replace(/[^0-9]/g,'');
+/* 🏪 هوية المحل في مسار البوابة = اسم المستخدم (يطابق بريد المصادقة فتفرضه القواعد) */
+window._shopId=()=>String(_currentUser||'').toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
 window.addPortalCust=()=>{
     const n=(document.getElementById('portalCustName')?.value||'').trim();
     const ph=window._normPhone(document.getElementById('portalCustPhone')?.value);
@@ -1036,8 +1038,10 @@ window.addPortalCust=()=>{
 window.delPortalCust=(ph)=>{
     const _e=window._portalCust[ph];
     if(!confirm(`إلغاء وصول ${_e&&_e.n?_e.n:_e} (${ph})؟`))return;
+    const _pin=_e&&_e.pin?_e.pin:null;
     delete window._portalCust[ph];
-    if(window._delPortalNodeFb)try{window._delPortalNodeFb(ph);}catch(e){}
+    /* نحذف عقدة محلّنا فقط — لا نمسّ كشوف المحلات الأخرى لنفس الرقم */
+    if(_pin&&window._delPortalNodeFb)try{window._delPortalNodeFb(ph,_pin,window._shopId());}catch(e){}
     _persistPortalCust();
 };
 window.renderPortalCustList=()=>{
@@ -1071,18 +1075,19 @@ window._publishPortal=()=>{
         const inv={};
         (dollInvoices||[]).filter(v=>v.c===name).slice(0,100).forEach(v=>{inv[v.id]=v;});
         const payload={
-            name, upd:Date.now(),
+            name, shop:_currentUser||'', upd:Date.now(),
             din:Math.round(getCustBal(name,'دينار')*100)/100,
             gold:Math.round(getCustBal(name,'دولار')*1000)/1000,
             ops:myOps, inv
         };
-        try{window._savePortalDataFb(ph,pin,payload);}catch(e){}
+        try{window._savePortalDataFb(ph,pin,window._shopId(),payload);}catch(e){}
     });
 };
 window._publishPortalDebounced=(function(){let t=null;return function(){clearTimeout(t);t=setTimeout(()=>{try{window._publishPortal();}catch(e){}},2500);};})();
 
 /* ── جهة الزبون ── */
 window.closeCustPortal=()=>{
+    const pk=document.getElementById('portalShopPicker'); if(pk)pk.remove();
     const sc=document.getElementById('custPortalScreen'); if(sc)sc.style.display='none';
     if(window._portalRef){try{window._portalRef.off();}catch(e){} window._portalRef=null;}
     window._portalMode=false;
@@ -1099,16 +1104,56 @@ window._tryCustomerPortal=async(phoneDigits,pin)=>{
     try{
         window._portalMode=true;
         if(!firebase.auth().currentUser)await firebase.auth().signInAnonymously();
-        const ref=firebase.database().ref('goldpro/portal/'+ph+'/'+cleanPin);
-        const snap=await ref.once('value');
+        const base=firebase.database().ref('goldpro/portal/'+ph+'/'+cleanPin);
+        const snap=await base.once('value');
         const d=snap.val();
-        if(!d||!d.name){ window._portalMode=false; return false; }
-        window._portalRef=ref;
-        ref.on('value',s2=>{const v=s2.val();if(v)window._renderCustPortal(v);});
-        window._renderCustPortal(d);
+        if(!d){ window._portalMode=false; return false; }
+
+        /* 🏪 قد يكون الزبون مرتبطاً بأكثر من محل بنفس الرقم وكلمة السر */
+        let shops=[];
+        if(d.name){                       /* صيغة قديمة: كشف واحد مباشرةً */
+            shops=[{key:null,data:d}];
+        }else{
+            shops=Object.keys(d).filter(k=>d[k]&&d[k].name).map(k=>({key:k,data:d[k]}));
+        }
+        if(!shops.length){ window._portalMode=false; return false; }
+
+        const _open=(entry)=>{
+            const ref=entry.key?base.child(entry.key):base;
+            if(window._portalRef){try{window._portalRef.off();}catch(_){}}
+            window._portalRef=ref;
+            ref.on('value',s2=>{const v=s2.val();if(v&&v.name)window._renderCustPortal(v);});
+            window._renderCustPortal(entry.data);
+            const ov=document.getElementById('loginOverlay');
+            if(ov)ov.style.display='none';
+            document.getElementById('custPortalScreen').style.display='block';
+        };
+
+        if(shops.length===1){ _open(shops[0]); return true; }
+
+        /* أكثر من محل → دع الزبون يختار */
+        window._portalShops=shops;
+        window._pickPortalShop=(i)=>{
+            const pk=document.getElementById('portalShopPicker');
+            if(pk)pk.remove();
+            _open(window._portalShops[i]);
+        };
         const ov=document.getElementById('loginOverlay');
+        const pick=document.createElement('div');
+        pick.id='portalShopPicker';
+        pick.style.cssText='position:fixed;inset:0;z-index:10003;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1c2438 0%,#0a0f1e 100%);font-family:Tajawal,sans-serif;direction:rtl;padding:1rem';
+        pick.innerHTML=`<div style="max-width:360px;width:100%;background:linear-gradient(160deg,rgba(30,39,62,.95),rgba(15,21,38,.96));border-radius:22px;padding:1.2rem;box-shadow:0 0 0 1.5px rgba(212,175,55,.5),0 20px 50px rgba(0,0,0,.6)">
+            <div style="text-align:center;font-size:1.6rem">🏪</div>
+            <div style="text-align:center;font-weight:900;color:#d4af37;font-size:1.05rem;margin:.3rem 0">اختر المحل</div>
+            <div style="text-align:center;font-size:.72rem;color:#9ca3af;margin-bottom:.8rem">رقمك مسجَّل لدى ${shops.length} محلات</div>
+            ${shops.map((sh,i)=>`<button onclick="_pickPortalShop(${i})" style="width:100%;margin-bottom:.5rem;padding:.8rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.45);background:rgba(255,255,255,.05);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.9rem;cursor:pointer;text-align:right">
+                🏪 ${sh.data.shop||sh.key||'محل'}
+                <div style="font-size:.62rem;color:#9ca3af;font-weight:700;margin-top:.15rem">${sh.data.name||''} · آخر تحديث ${sh.data.upd?new Date(sh.data.upd).toLocaleDateString('fr-FR'):'—'}</div>
+            </button>`).join('')}
+            <button onclick="document.getElementById('portalShopPicker').remove();window._portalMode=false" style="width:100%;padding:.55rem;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#ccc;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">← رجوع</button>
+        </div>`;
+        document.body.appendChild(pick);
         if(ov)ov.style.display='none';
-        document.getElementById('custPortalScreen').style.display='block';
         return true;
     }catch(e){
         window._portalMode=false;
@@ -1118,7 +1163,7 @@ window._tryCustomerPortal=async(phoneDigits,pin)=>{
 window._portalInvCache={};
 window._renderCustPortal=(d)=>{
     window._portalInvCache=d.inv||{};
-    document.getElementById('custPortalName').textContent='👋 '+d.name;
+    document.getElementById('custPortalName').textContent='👋 '+d.name+(d.shop?' — 🏪 '+d.shop:'');
     document.getElementById('custPortalUpd').textContent='آخر تحديث: '+new Date(d.upd||Date.now()).toLocaleString('fr-FR');
     const dinEl=document.getElementById('custPortalDin');
     const gEl=document.getElementById('custPortalGold');

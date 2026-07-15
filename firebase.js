@@ -29,8 +29,10 @@ window._cfgRef=null; /* يُضبط عند الدخول من auth.js */
 window._saveGoodsNamesFb=(arr)=>{ try{return window._cfgRef?window._cfgRef.child('goodsNames').set(Array.isArray(arr)?arr:[]):Promise.resolve();}catch(e){return Promise.reject(e);} };
 /* ── بوابة الزبائن ── */
 window._savePortalCustFb=(obj)=>{ try{return window._cfgRef?window._cfgRef.child('custPhones').set(obj||{}):Promise.resolve();}catch(e){return Promise.reject(e);} };
-window._savePortalDataFb=(ph,pin,payload)=>{ try{return _db.ref('goldpro/portal/'+ph+'/'+pin).set(payload);}catch(e){return Promise.reject(e);} };
-window._delPortalNodeFb=(ph)=>{ try{return _db.ref('goldpro/portal/'+ph).remove();}catch(e){return Promise.reject(e);} };
+/* 🏪 المسار يتضمّن هوية المحل: portal/{هاتف}/{كلمة السر}/{المحل}
+   بدونها كان محلّان لهما نفس الزبون بنفس كلمة السر يمسحان بيانات بعضهما! */
+window._savePortalDataFb=(ph,pin,shop,payload)=>{ try{return _db.ref('goldpro/portal/'+ph+'/'+pin+'/'+shop).set(payload);}catch(e){return Promise.reject(e);} };
+window._delPortalNodeFb=(ph,pin,shop)=>{ try{return _db.ref('goldpro/portal/'+ph+'/'+pin+'/'+shop).remove();}catch(e){return Promise.reject(e);} };
 /* يُستدعى من auth.js بعد الدخول لربط مستمعي إعدادات هذا المستخدم */
 window._attachUserCfg=()=>{
     if(!window._cfgRef)return;
@@ -349,6 +351,25 @@ function _applyEvt(st,evt){
                 const sign=r.dir==='لنا'?1:-1;
                 stUpdDebt(r.c,r.type,sign*r.amt);
             });
+            /* ═══ 💼 رأس المال = ما أدخلته في الافتتاحية (بالتعريف) ═══
+               ذهب: السلعة الافتتاحية + ديون السلعة · دينار: الدينار الافتتاحي + ديون الدينار */
+            {
+                let _capG=0,_capD=Number(d.dinar)||0;
+                if(Array.isArray(d.goodsItems)&&d.goodsItems.length){
+                    d.goodsItems.forEach(it=>{ _capG+=(Number(it.w)||0)*(Number(it.k)||0)/705; });
+                }else if(d.dollar&&!isNaN(d.dollar)) _capG+=Number(d.dollar);
+                (d.debtRows||[]).forEach(r=>{
+                    const sign=r.dir==='لنا'?1:-1;
+                    const v=sign*(Number(r.amt)||0);
+                    if(r.type==='دينار')_capD+=v;
+                    else if(r.type==='دولار')_capG+=v;                 /* ديون السلعة (705) */
+                    else if(r.type==='ذهب 24')_capG+=v*(1000/705);      /* محوّلة لمكافئ 705 */
+                    else if(r.type==='ذهب 730')_capG+=v*(730/705);
+                });
+                st.capGold705+=Math.round(_capG*1000)/1000;
+                st.capDin+=Math.round(_capD*100)/100;
+                if((evt.ts||0)>st.capTs){ st.capTs=evt.ts||0; st.capPrice=Number(d.goldPrice)||st.capPrice||0; }
+            }
             break;
         }
 
@@ -704,9 +725,17 @@ function _applyEvt(st,evt){
 
         case 'LOAN':{
             applyBars();
-            const lm=d.bt==='24'?'ذهب 24':'ذهب 730';
             if(d.loanEntry)st.loans.push(d.loanEntry);
-            stUpdDebt(d.c,lm,(d.eq730!=null?d.eq730:d.w)); /* الجديد بمكافئ 730؛ القديم كما سُجّل */
+            /* 🥇 سلف الذهب يُسجَّل في عمود «ذهب 705» (النوع الداخلي 'دولار')
+               سبائك 24 تبقى في عمودها. توافق: الأحداث القديمة سجّلت eq730 → تُحوَّل ×730/705 */
+            if(d.bt==='24'){
+                stUpdDebt(d.c,'ذهب 24',(d.eq705!=null?d.eq705:(d.eq730!=null?d.eq730:d.w)));
+            }else{
+                const v=(d.eq705!=null)?d.eq705
+                       :(d.eq730!=null)?d.eq730*(730/705)
+                       :(Number(d.w)||0);
+                stUpdDebt(d.c,'دولار',v);
+            }
             break;
         }
 
@@ -790,6 +819,7 @@ function _reproject(){
         B:{دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0,vg730:0,vg24:0},
         g730:[],g24:[],debts:[],loans:[],goodsStock:[],
         custKind:{},  /* {اسم الزبون: 'market'|'workshop'} — market=أبيع له · workshop=أشتري منه */
+        capGold705:0, capDin:0, capTs:0, capPrice:0, /* 💼 رأس المال — يُشتق من الرصيد الافتتاحي */
         cashiBuyW:0,cashiBuyDin:0,   /* كاصي بالدينار مقبوض: لاكاص يجب شراؤه + الدينار المقبوض */
         cashiSoldW:0,cashiSoldDin:0, /* أجرة بالكاصي: لاكاص اشتُري فعلاً (يُنقص) + قيمته */
         ops:[],invoices:[],dollInvoices:[],rafInvoices:[],dubaiInvoices:[]
@@ -805,6 +835,7 @@ function _reproject(){
     goodsStock=st.goodsStock;
     window._cashiTracker={buyW:st.cashiBuyW||0,buyDin:st.cashiBuyDin||0,soldW:st.cashiSoldW||0,soldDin:st.cashiSoldDin||0};
     window._custKind=st.custKind||{};
+    window._capital={gold705:st.capGold705||0,din:st.capDin||0,ts:st.capTs||0,price:st.capPrice||0};
     if(typeof renderGoodsStock==='function')try{renderGoodsStock();}catch(e){}
     /* 📱 نشر كشوف زبائن البوابة (من جهاز المحل فقط، وليس من جهاز الزبون) */
     if(!window._portalMode&&window._publishPortalDebounced)try{window._publishPortalDebounced();}catch(e){}
