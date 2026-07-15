@@ -42,7 +42,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=95">
+    <link rel="stylesheet" href="./style.css?v=97">
 </head>
 <body>
 <datalist id="customersDatalist"></datalist>
@@ -399,7 +399,7 @@
         <button class="ni"        id="nav-log"       onclick="switchPage('log')">     <i class="fas fa-history"></i>  <span>السجل</span></button>
         <button class="ni"        id="nav-archive"   onclick="switchPage('archive')"> <i class="fas fa-folder"></i>   <span>الأرشيف</span></button>
         <button class="ni"        id="nav-debts"     onclick="switchPage('debts')">   <i class="fas fa-book"></i>     <span>الديون</span></button>
-        <button class="ni"        id="nav-profit"    onclick="switchPage('profit')">  <i class="fas fa-briefcase"></i><span>الأرباح</span></button>
+
     </div>
 </div>
 
@@ -766,16 +766,6 @@
         <label><i class="fas fa-crown" style="color:var(--g400)"></i> سعر الذهب (دج/غ)</label>
         <input type="number" id="settingGoldPrice" step="any" min="1">
     </div>
-    <div id="serialAdminBox" style="display:none;border:1.5px solid var(--g500);border-radius:10px;padding:.6rem;margin:.6rem 0;background:rgba(212,175,55,.05)">
-        <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">🔑 توليد رمز تفعيل لزبون جديد</p>
-        <div style="display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap">
-            <input type="text" id="snGenCode" placeholder="الرمز (مثال: GP-7K2M-9XQP)" dir="ltr" style="flex:1.4 1 45%;margin:0;text-align:right">
-            <input type="text" id="snGenSite" placeholder="اسم الزبون (للتذكير)" dir="ltr" style="flex:1 1 30%;margin:0;text-align:right">
-            <button onclick="genSerial()" style="padding:.4rem .9rem;border:none;border-radius:8px;background:var(--g600);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">🔑 ولّد</button>
-        </div>
-        <button onclick="genRandomSerial()" style="width:100%;padding:.4rem;border:1.5px dashed var(--g500);border-radius:8px;background:transparent;color:var(--g500);font-weight:800;font-family:Tajawal,sans-serif;font-size:.72rem;cursor:pointer;margin-bottom:.4rem">🎲 رمز عشوائي قوي</button>
-        <div id="snGenOut" style="display:none;font-size:.68rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.5rem;line-height:1.7"></div>
-    </div>
     <button id="pwaInstallSettingsBtn" onclick="window._installPWA()"
         style="width:100%;padding:.65rem;margin:.4rem 0;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0a0800;font-weight:900;font-family:Tajawal,sans-serif;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem">
         📲 تثبيت التطبيق على الهاتف
@@ -861,13 +851,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=95"></script>
-<script src="./app.js?v=95"></script>
-<script src="./assistant.js?v=95"></script>
-<script src="./inventory.js?v=95"></script>
-<script src="./invoice.js?v=95"></script>
-<script src="./raffinage.js?v=95"></script>
-<script src="./auth.js?v=95"></script>
+<script src="./firebase.js?v=97"></script>
+<script src="./app.js?v=97"></script>
+<script src="./assistant.js?v=97"></script>
+<script src="./inventory.js?v=97"></script>
+<script src="./invoice.js?v=97"></script>
+<script src="./raffinage.js?v=97"></script>
+<script src="./auth.js?v=97"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
@@ -882,6 +872,30 @@
             onkeydown="if(event.key==='Enter'){event.stopPropagation();activateSerial()}">
         <button class="login-btn" onclick="activateSerial()">🔓 تفعيل</button>
         <p id="serialErr" style="display:none;color:#ff6b6b;font-size:.78rem;text-align:center;margin-top:.5rem;animation:shake .4s"></p>
+        <!-- 👤 الزبون ليس معه رمز تفعيل — له مدخله الخاص -->
+        <div style="border-top:1px dashed rgba(212,175,55,.3);margin-top:.9rem;padding-top:.8rem">
+            <p style="font-size:.7rem;color:#9ca3af;text-align:center;margin-bottom:.5rem">أنت زبون عند محل ولست صاحب التطبيق؟</p>
+            <button onclick="openCustGate()" style="width:100%;padding:.7rem;border:1.5px solid rgba(212,175,55,.45);border-radius:12px;background:transparent;color:#d4af37;font-weight:900;font-family:Tajawal,sans-serif;font-size:.85rem;cursor:pointer">
+                👤 كشف حسابي — بالهاتف وكلمة السر
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 👤 بوابة الزبون: تعمل بلا رمز تفعيل إطلاقاً -->
+<div id="custGate" style="display:none;position:fixed;inset:0;z-index:10004;align-items:center;justify-content:center;background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(212,175,55,.14) 0%,rgba(212,175,55,0) 62%),radial-gradient(ellipse at center,#1c2438 0%,#131a2c 45%,#0a0f1e 100%);font-family:Tajawal,sans-serif;direction:rtl;padding:1rem">
+    <div class="login-box" style="max-width:360px">
+        <div class="login-logo" style="font-size:2.2rem">👤</div>
+        <h2 class="login-title" style="font-size:1.2rem">كشف حسابي</h2>
+        <p class="login-sub" style="font-size:.75rem">أدخل رقم هاتفك وكلمة السر التي أعطاك إياها المحل</p>
+        <input type="tel" id="cgPhone" placeholder="📱 06XXXXXXXX" dir="ltr" maxlength="15"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.05rem;text-align:center;letter-spacing:.1em;outline:none;margin-bottom:.5rem">
+        <input type="password" id="cgPin" placeholder="🔑 كلمة السر" dir="ltr" maxlength="20"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.05rem;text-align:center;letter-spacing:.12em;outline:none;margin-bottom:.5rem"
+            onkeydown="if(event.key==='Enter'){event.stopPropagation();custGateGo()}">
+        <button class="login-btn" onclick="custGateGo()">عرض حسابي →</button>
+        <p id="cgErr" style="display:none;color:#ff6b6b;font-size:.76rem;text-align:center;margin-top:.5rem"></p>
+        <button onclick="closeCustGate()" style="width:100%;margin-top:.6rem;padding:.55rem;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#ccc;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">← رجوع</button>
     </div>
 </div>
 <!-- سكريبت متزامن: يُظهر شاشة السيريال فوراً إذا لم يكن مُفعَّلاً في هذا الجهاز -->

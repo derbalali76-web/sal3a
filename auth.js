@@ -303,11 +303,25 @@ async function _checkAuth(){
 
 /* ═══════════ SERIAL NUMBER (حماية النسخة) ═══════════ */
 const _SN_LS='gp12_sn';
-/* 🔒 سريالات احتياطية مدمجة (تعمل بلا إنترنت وبلا Console) — تبقى صالحة دائماً */
+/* 🔒 السريالات مدمجة في التطبيق — تعمل بلا إنترنت وبلا أي عمل في Console.
+   القيمة = اسم المحل للعرض. الهاش SHA-256 لا يكشف الرمز.
+   الربط بالمالك (سريال واحد = محل واحد) يُحفظ في Firebase تلقائياً أول تفعيل. */
 const _SERIALS={
+    /* سريالاتك القديمة — تبقى صالحة */
     'aff63724d67973681f4b2274fd723fd270b69bdd655c65700e4797429b99744d':'',
     'a4378c41b30faff270e9bb853650168a56aa9110bf00a35fb10072314659c5ad':'S2',
     '88b10f66cf0b46016ff518d0335b9ff969c55de520a92c8e5d8192c1f0fff336':'S3',
+    /* ═══ 10 سريالات للتوزيع ═══ */
+    '61f5d9e15a15337d79363cb53e23da624ad7d07575e9724ee7c4c3b90915f311':'محل 1',
+    'a7dafdccb9793339ec3e4af429e4a08342f70f567a5632f266483862085e816a':'محل 2',
+    'ff0abc4fb360b6c734f3bb09ee10926d15582aeee4af7f7a9bc7366c9d5825a5':'محل 3',
+    'c896a5e703f4cfb452a0058173d14a656ec46c8de1d2e32237bdeae412a0d542':'محل 4',
+    '2ca1024cb2ec68aebf2df05eb720d305d95d332ab032d245b7df109e504cdcc9':'محل 5',
+    '90418bba315f4c83421b8c4645c7d40a6413fc075003b18906e7d14839e3a88e':'محل 6',
+    'fac4b291957a5da306ee8ca6d64b52b861f1b03ecd39301f3516d8e494ce8357':'محل 7',
+    'b47b612f7332e6041f20eac2ac57b3c2bb7d1bb341c10a56eca3ad4deeccc4b6':'محل 8',
+    'f2b47d01f87d2d496397e167895e78b7c1846d919bc680de33b6b82f48c1dcc6':'محل 9',
+    '329709f726a3213e9ea62a00ec376cc95a068e8002902fb5d682f7551863e6aa':'محل 10',
 };
 /* 🌐 سريالات Firebase: goldpro/_serials/{sha256} = {site, name, active}
    لا يمكن سردها — تُقرأ بالهاش فقط (من يعرف السريال فقط يصل لعقدته). */
@@ -419,7 +433,14 @@ async function activateSerial(){
     const h=await _snHash(entered);
     let site,_owner='',_label='';
     if(h in _SERIALS){
-        site=_SERIALS[h];                               /* سريال مدمج — بلا ربط */
+        /* سريال مدمج: صالح فوراً بلا إنترنت · نقرأ مالكه من السحابة إن وُجد */
+        site='';
+        _label=_SERIALS[h]||'';
+        _showSerialError('⏳ جارٍ التحقق…');
+        const r=await _fetchSerial(h);
+        if(r&&r.owner)_owner=r.owner;                   /* مطالَب به سابقاً */
+        if(r&&r.name)_label=r.name;
+        if(r&&r.revoked)return _showSerialError('❌ رمز التفعيل موقوف — تواصل مع المزوّد');
     }else{
         _showSerialError('⏳ جارٍ التحقق…');
         const r=await _fetchSerial(h);                  /* سريال من Firebase */

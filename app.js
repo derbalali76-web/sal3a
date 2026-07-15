@@ -538,8 +538,6 @@ function openSettings(){
     try{ const vi=document.getElementById('visionKeyInput'); if(vi)vi.value=_getVisionKey(); }catch(e){}
     renderGoodsNamesList();
     renderPortalCustList();
-    const _sab=document.getElementById('serialAdminBox');
-    if(_sab)_sab.style.display=(typeof _usersCache!=='undefined'&&_usersCache[_currentUser]&&_usersCache[_currentUser].isAdmin)?'block':'none';
     document.getElementById('settingsModal').classList.add('active');
     setTimeout(()=>document.getElementById('settingGoldPrice').focus(),320);
 }
@@ -938,7 +936,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v95';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v97';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1048,35 +1046,6 @@ window.delPortalCust=(ph)=>{
     if(_pin&&window._delPortalNodeFb)try{window._delPortalNodeFb(ph,_pin,window._shopId());}catch(e){}
     _persistPortalCust();
 };
-/* ═══ 🔑 أداة الأدمن: توليد رمز تفعيل + هاشه للصقه في Console ═══ */
-window.genRandomSerial=()=>{
-    const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; /* بلا أحرف ملتبسة */
-    const grp=()=>Array.from({length:4},()=>A[Math.floor(Math.random()*A.length)]).join('');
-    document.getElementById('snGenCode').value=`GP-${grp()}-${grp()}-${grp()}`;
-    genSerial();
-};
-window.genSerial=async()=>{
-    const code=(document.getElementById('snGenCode')?.value||'').trim().toUpperCase();
-    const label=(document.getElementById('snGenSite')?.value||'').trim();
-    const out=document.getElementById('snGenOut');
-    if(!code)return toast('أدخل الرمز أو ولّد رمزاً عشوائياً','error');
-    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));
-    const h=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    const path=`goldpro/_serials/${h}`;
-    const val=JSON.stringify({name:label||'زبون',active:true},null,2); /* بلا owner — الزبون يطالب به أول تفعيل */
-    out.style.display='block';
-    out.innerHTML=`<div style="font-weight:900;color:var(--g500);margin-bottom:.3rem">📋 الصق هذا في Firebase Console</div>
-        <div style="color:var(--t2)">المسار:</div>
-        <div dir="ltr" style="word-break:break-all;background:var(--bg);padding:.3rem;border-radius:5px;margin:.2rem 0;font-family:monospace;font-size:.6rem">${path}</div>
-        <div style="color:var(--t2)">القيمة:</div>
-        <pre dir="ltr" style="background:var(--bg);padding:.3rem;border-radius:5px;margin:.2rem 0;font-size:.6rem;overflow-x:auto">${val}</pre>
-        <div style="border-top:1px dashed var(--border);margin:.4rem 0;padding-top:.3rem">
-            <div style="font-weight:900;color:var(--gr)">🎫 الرمز للزبون: <span dir="ltr" style="font-family:monospace">${code}</span></div>
-            <div style="color:var(--t3);font-size:.62rem">احتفظ به — لا يمكن استرجاعه من الهاش</div>
-            <div style="color:var(--g500);font-size:.62rem;margin-top:.2rem">🔒 الزبون يختار اسم محله أول تفعيل ثم يُقفل الرمز عليه</div>
-        </div>
-        <button onclick="navigator.clipboard.writeText('${path}').then(()=>toast('📋 نُسخ المسار'))" style="width:100%;margin-top:.35rem;padding:.35rem;border:none;border-radius:6px;background:var(--g600);color:#fff;font-weight:800;font-family:Tajawal,sans-serif;font-size:.68rem;cursor:pointer">📋 نسخ المسار</button>`;
-};
 window.renderPortalCustList=()=>{
     const el=document.getElementById('portalCustList'); if(!el)return;
     const keys=Object.keys(window._portalCust);
@@ -1119,11 +1088,39 @@ window._publishPortal=()=>{
 window._publishPortalDebounced=(function(){let t=null;return function(){clearTimeout(t);t=setTimeout(()=>{try{window._publishPortal();}catch(e){}},2500);};})();
 
 /* ── جهة الزبون ── */
+/* 👤 بوابة الزبون من شاشة التفعيل — بلا رمز تفعيل */
+window.openCustGate=()=>{
+    const g=document.getElementById('custGate'); if(g)g.style.display='flex';
+    const e=document.getElementById('cgErr'); if(e)e.style.display='none';
+    setTimeout(()=>{const p=document.getElementById('cgPhone');if(p)p.focus();},250);
+};
+window.closeCustGate=()=>{ const g=document.getElementById('custGate'); if(g)g.style.display='none'; };
+window.custGateGo=async()=>{
+    const ph=(document.getElementById('cgPhone')?.value||'').trim();
+    const pin=(document.getElementById('cgPin')?.value||'').trim();
+    const err=document.getElementById('cgErr');
+    const show=(m)=>{if(err){err.textContent=m;err.style.display='block';}};
+    if(!ph)return show('أدخل رقم هاتفك');
+    if(!pin)return show('أدخل كلمة السر');
+    show('⏳ جارٍ البحث…');
+    const ok=await window._tryCustomerPortal(ph,pin);
+    if(ok){
+        closeCustGate();
+        const so=document.getElementById('serialOverlay'); if(so)so.style.display='none';
+    }else{
+        show('الرقم أو كلمة السر غير صحيحة — راجع المحل');
+    }
+};
 window.closeCustPortal=()=>{
     const pk=document.getElementById('portalShopPicker'); if(pk)pk.remove();
     const sc=document.getElementById('custPortalScreen'); if(sc)sc.style.display='none';
     if(window._portalRef){try{window._portalRef.off();}catch(e){} window._portalRef=null;}
     window._portalMode=false;
+    /* غير مفعَّل على هذا الجهاز → ارجع لشاشة التفعيل (الزبون ليس معه رمز) */
+    if(!localStorage.getItem('gp12_sn')){
+        const so=document.getElementById('serialOverlay');
+        if(so){so.style.display='flex';return;}
+    }
     const ov=document.getElementById('loginOverlay');
     if(ov){ov.style.display='';ov.classList.remove('fade-out');}
     const pu=document.getElementById('loginUser'),pp=document.getElementById('loginPw');
