@@ -538,6 +538,8 @@ function openSettings(){
     try{ const vi=document.getElementById('visionKeyInput'); if(vi)vi.value=_getVisionKey(); }catch(e){}
     renderGoodsNamesList();
     renderPortalCustList();
+    const _sab=document.getElementById('serialAdminBox');
+    if(_sab)_sab.style.display=(typeof _usersCache!=='undefined'&&_usersCache[_currentUser]&&_usersCache[_currentUser].isAdmin)?'block':'none';
     document.getElementById('settingsModal').classList.add('active');
     setTimeout(()=>document.getElementById('settingGoldPrice').focus(),320);
 }
@@ -936,7 +938,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v91';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v92';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1021,7 +1023,12 @@ function _persistPortalCust(){
 }
 window._normPhone=(p)=>String(p||'').replace(/[^0-9]/g,'');
 /* 🏪 هوية المحل في مسار البوابة = اسم المستخدم (يطابق بريد المصادقة فتفرضه القواعد) */
-window._shopId=()=>String(_currentUser||'').toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
+window._shopId=()=>{
+    /* يطابق بادئة بريد المصادقة تماماً ({site}_{user}) فتفرضه قاعدة البوابة،
+       ويمنع أيضاً تصادم محلّين لهما نفس اسم المستخدم */
+    const site=(typeof _SITE!=='undefined'&&_SITE)?String(_SITE).toLowerCase()+'_':'';
+    return (site+String(_currentUser||'').toLowerCase()).replace(/[.$#\[\]\/\s]/g,'_');
+};
 window.addPortalCust=()=>{
     const n=(document.getElementById('portalCustName')?.value||'').trim();
     const ph=window._normPhone(document.getElementById('portalCustPhone')?.value);
@@ -1043,6 +1050,36 @@ window.delPortalCust=(ph)=>{
     /* نحذف عقدة محلّنا فقط — لا نمسّ كشوف المحلات الأخرى لنفس الرقم */
     if(_pin&&window._delPortalNodeFb)try{window._delPortalNodeFb(ph,_pin,window._shopId());}catch(e){}
     _persistPortalCust();
+};
+/* ═══ 🔑 أداة الأدمن: توليد رمز تفعيل + هاشه للصقه في Console ═══ */
+window.genRandomSerial=()=>{
+    const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; /* بلا أحرف ملتبسة */
+    const grp=()=>Array.from({length:4},()=>A[Math.floor(Math.random()*A.length)]).join('');
+    document.getElementById('snGenCode').value=`GP-${grp()}-${grp()}-${grp()}`;
+    genSerial();
+};
+window.genSerial=async()=>{
+    const code=(document.getElementById('snGenCode')?.value||'').trim().toUpperCase();
+    const site=(document.getElementById('snGenSite')?.value||'').trim();
+    const out=document.getElementById('snGenOut');
+    if(!code)return toast('أدخل الرمز أو ولّد رمزاً عشوائياً','error');
+    if(!site)return toast('أدخل اسم الموقع (مثل S4) — لا تتركه فارغاً','error');
+    if(!/^[A-Za-z0-9_-]+$/.test(site))return toast('اسم الموقع: حروف لاتينية وأرقام فقط','error');
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));
+    const h=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const path=`goldpro/_serials/${h}`;
+    const val=JSON.stringify({site,name:'محل '+site,active:true},null,2);
+    out.style.display='block';
+    out.innerHTML=`<div style="font-weight:900;color:var(--g500);margin-bottom:.3rem">📋 الصق هذا في Firebase Console</div>
+        <div style="color:var(--t2)">المسار:</div>
+        <div dir="ltr" style="word-break:break-all;background:var(--bg);padding:.3rem;border-radius:5px;margin:.2rem 0;font-family:monospace;font-size:.6rem">${path}</div>
+        <div style="color:var(--t2)">القيمة:</div>
+        <pre dir="ltr" style="background:var(--bg);padding:.3rem;border-radius:5px;margin:.2rem 0;font-size:.6rem;overflow-x:auto">${val}</pre>
+        <div style="border-top:1px dashed var(--border);margin:.4rem 0;padding-top:.3rem">
+            <div style="font-weight:900;color:var(--gr)">🎫 الرمز للزبون: <span dir="ltr" style="font-family:monospace">${code}</span></div>
+            <div style="color:var(--t3);font-size:.62rem">احتفظ به — لا يمكن استرجاعه من الهاش</div>
+        </div>
+        <button onclick="navigator.clipboard.writeText('${path}').then(()=>toast('📋 نُسخ المسار'))" style="width:100%;margin-top:.35rem;padding:.35rem;border:none;border-radius:6px;background:var(--g600);color:#fff;font-weight:800;font-family:Tajawal,sans-serif;font-size:.68rem;cursor:pointer">📋 نسخ المسار</button>`;
 };
 window.renderPortalCustList=()=>{
     const el=document.getElementById('portalCustList'); if(!el)return;

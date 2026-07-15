@@ -6,13 +6,20 @@ let _usersCache={};
    كل مستخدم يحصل على بريد افتراضي: username@goldpro.local
    هذا يضمن نفس الـ UID على كل الأجهزة بدل Anonymous الذي يعطي UID مختلف لكل جهاز */
 const _FB_DOMAIN='@goldpro.local';
+/* 🔑 بريد المصادقة يتضمّن الموقع: محلّان لهما مستخدم «ali» صارا حسابين منفصلين.
+   الموقع الافتراضي (فارغ) يبقى بلا بادئة حفاظاً على الحسابات القائمة. */
+function _authEmail(uname){
+    const site=(typeof _SITE!=='undefined'&&_SITE)?String(_SITE).toLowerCase()+'_':'';
+    return site+String(uname||'').toLowerCase()+_FB_DOMAIN;
+}
+window._authEmail=_authEmail;
 /* Firebase يشترط كلمة مرور ≥6 أحرف؛ نوسّع كلمة مرور المستخدم بلاحقة ثابتة لـ Firebase فقط.
    الأمان يبقى في كلمة المرور الأصلية (المهاجم يحتاجها أصلاً). كلمتك القصيرة تبقى كما هي في الدخول. */
 const _FB_PW_SUFFIX='__GoldPro$ok';
 const _fbPw=(pw)=>String(pw||'')+_FB_PW_SUFFIX;
 
 async function _fbSignInEmail(uname,pw,allowCreate){
-    const email=uname+_FB_DOMAIN;
+    const email=_authEmail(uname);
     try{
         await firebase.auth().signInWithEmailAndPassword(email,_fbPw(pw));
         return true;
@@ -28,7 +35,7 @@ async function _fbSignInEmail(uname,pw,allowCreate){
 }
 
 async function _fbCreateAuthUser(uname,pw){
-    try{await firebase.auth().createUserWithEmailAndPassword(uname+_FB_DOMAIN,_fbPw(pw));}catch(e){}
+    try{await firebase.auth().createUserWithEmailAndPassword(_authEmail(uname),_fbPw(pw));}catch(e){}
 }
 
 async function _hashPw(pw){
@@ -174,10 +181,10 @@ async function changePw(){
     if(!_cu)return toast('سجّل الدخول أولاً','error');
     /* تحقّق من كلمة المرور الحالية عبر Firebase (لا بصمة مخزّنة) */
     try{
-        const cred=firebase.auth.EmailAuthProvider.credential(_currentUser+_FB_DOMAIN,_fbPw(old));
+        const cred=firebase.auth.EmailAuthProvider.credential(_authEmail(_currentUser),_fbPw(old));
         await _cu.reauthenticateWithCredential(cred);
     }catch(e){
-        try{ const c2=firebase.auth.EmailAuthProvider.credential(_currentUser+_FB_DOMAIN,old); await _cu.reauthenticateWithCredential(c2); }
+        try{ const c2=firebase.auth.EmailAuthProvider.credential(_authEmail(_currentUser),old); await _cu.reauthenticateWithCredential(c2); }
         catch(_){ return toast('كلمة المرور الحالية خاطئة','error'); }
     }
     try{ await _cu.updatePassword(_fbPw(n1)); }
@@ -260,11 +267,26 @@ async function _checkAuth(){
 
 /* ═══════════ SERIAL NUMBER (حماية النسخة) ═══════════ */
 const _SN_LS='gp12_sn';
+/* 🔒 سريالات احتياطية مدمجة (تعمل بلا إنترنت وبلا Console) — تبقى صالحة دائماً */
 const _SERIALS={
     'aff63724d67973681f4b2274fd723fd270b69bdd655c65700e4797429b99744d':'',
     'a4378c41b30faff270e9bb853650168a56aa9110bf00a35fb10072314659c5ad':'S2',
     '88b10f66cf0b46016ff518d0335b9ff969c55de520a92c8e5d8192c1f0fff336':'S3',
 };
+/* 🌐 سريالات Firebase: goldpro/_serials/{sha256} = {site, name, active}
+   لا يمكن سردها — تُقرأ بالهاش فقط (من يعرف السريال فقط يصل لعقدته). */
+async function _fetchSerial(hash){
+    try{
+        const snap=await Promise.race([
+            firebase.database().ref('goldpro/_serials/'+hash).once('value'),
+            new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),6000))
+        ]);
+        const v=snap.val();
+        if(!v)return null;
+        if(v.active===false)return {revoked:true};
+        return {site:v.site||'',name:v.name||''};
+    }catch(e){ return undefined; } /* undefined = تعذّر الوصول (لا نُبطل) */
+}
 
 async function _snHash(s){
     const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
@@ -280,15 +302,29 @@ async function _checkSerial(){
         const sep=stored.lastIndexOf(':');
         const hash=stored.slice(0,sep);
         const site=stored.slice(sep+1);
-        if(hash in _SERIALS && _SERIALS[hash]===(site||'')){
+        /* ① مدمج → صالح فوراً */
+        const builtinOk=(hash in _SERIALS && _SERIALS[hash]===(site||''));
+        if(builtinOk){
             _applySite(site);
-            /* السيريال صالح — أزل الـ overlay (أو أخفه إن كان مخفياً أصلاً) */
             const ov=document.getElementById('serialOverlay');
             if(ov)ov.remove();
             _checkAuth();return;
         }
-        /* هاش مخزّن لكنه غير صالح — احذفه وأظهر الشاشة */
-        localStorage.removeItem(_SN_LS);
+        /* ② مفعَّل سابقاً من Firebase → نثق بالكاش فوراً (يعمل أوفلاين)
+              ثم نتحقّق في الخلفية: إن أُلغي السريال نُخرج المستخدم */
+        _applySite(site);
+        const ov=document.getElementById('serialOverlay');
+        if(ov)ov.remove();
+        _checkAuth();
+        _fetchSerial(hash).then(r=>{
+            if(r===undefined)return;                    /* لا إنترنت — لا نُبطل */
+            if(!r||r.revoked||(r.site||'')!==(site||'')){
+                localStorage.removeItem(_SN_LS);
+                alert('⚠️ رمز التفعيل لم يعد صالحاً — تواصل مع المزوّد');
+                location.reload();
+            }
+        });
+        return;
     }
     /* لا سيريال مخزّن — أظهر الشاشة وانتظر الإدخال */
     const ov=document.getElementById('serialOverlay');
@@ -306,8 +342,17 @@ async function activateSerial(){
     if(!entered)return _showSerialError('❌ أدخل رمز التفعيل');
     document.getElementById('serialErr').style.display='none';
     const h=await _snHash(entered);
-    if(!(h in _SERIALS))return _showSerialError('❌ رمز التفعيل غير صحيح');
-    const site=_SERIALS[h];
+    let site;
+    if(h in _SERIALS){
+        site=_SERIALS[h];                               /* سريال مدمج */
+    }else{
+        _showSerialError('⏳ جارٍ التحقق…');
+        const r=await _fetchSerial(h);                  /* سريال من Firebase */
+        if(r===undefined)return _showSerialError('❌ تعذّر التحقق — تأكد من الإنترنت');
+        if(!r)return _showSerialError('❌ رمز التفعيل غير صحيح');
+        if(r.revoked)return _showSerialError('❌ رمز التفعيل موقوف — تواصل مع المزوّد');
+        site=r.site||'';
+    }
     localStorage.setItem(_SN_LS, h+':'+(site||''));
     sessionStorage.removeItem('gp12_auth');localStorage.removeItem('gp12_auth');
     sessionStorage.removeItem('gp12_user');localStorage.removeItem('gp12_user');
