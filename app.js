@@ -938,7 +938,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v92';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v95';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1023,12 +1023,9 @@ function _persistPortalCust(){
 }
 window._normPhone=(p)=>String(p||'').replace(/[^0-9]/g,'');
 /* 🏪 هوية المحل في مسار البوابة = اسم المستخدم (يطابق بريد المصادقة فتفرضه القواعد) */
-window._shopId=()=>{
-    /* يطابق بادئة بريد المصادقة تماماً ({site}_{user}) فتفرضه قاعدة البوابة،
-       ويمنع أيضاً تصادم محلّين لهما نفس اسم المستخدم */
-    const site=(typeof _SITE!=='undefined'&&_SITE)?String(_SITE).toLowerCase()+'_':'';
-    return (site+String(_currentUser||'').toLowerCase()).replace(/[.$#\[\]\/\s]/g,'_');
-};
+/* هوية المحل = اسم المستخدم (مطابق لبريد المصادقة فتفرضه قاعدة البوابة).
+   الأسماء فريدة عالمياً فلا تصادم بين محلّين. */
+window._shopId=()=>String(_currentUser||'').toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
 window.addPortalCust=()=>{
     const n=(document.getElementById('portalCustName')?.value||'').trim();
     const ph=window._normPhone(document.getElementById('portalCustPhone')?.value);
@@ -1060,15 +1057,13 @@ window.genRandomSerial=()=>{
 };
 window.genSerial=async()=>{
     const code=(document.getElementById('snGenCode')?.value||'').trim().toUpperCase();
-    const site=(document.getElementById('snGenSite')?.value||'').trim();
+    const label=(document.getElementById('snGenSite')?.value||'').trim();
     const out=document.getElementById('snGenOut');
     if(!code)return toast('أدخل الرمز أو ولّد رمزاً عشوائياً','error');
-    if(!site)return toast('أدخل اسم الموقع (مثل S4) — لا تتركه فارغاً','error');
-    if(!/^[A-Za-z0-9_-]+$/.test(site))return toast('اسم الموقع: حروف لاتينية وأرقام فقط','error');
     const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));
     const h=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     const path=`goldpro/_serials/${h}`;
-    const val=JSON.stringify({site,name:'محل '+site,active:true},null,2);
+    const val=JSON.stringify({name:label||'زبون',active:true},null,2); /* بلا owner — الزبون يطالب به أول تفعيل */
     out.style.display='block';
     out.innerHTML=`<div style="font-weight:900;color:var(--g500);margin-bottom:.3rem">📋 الصق هذا في Firebase Console</div>
         <div style="color:var(--t2)">المسار:</div>
@@ -1078,6 +1073,7 @@ window.genSerial=async()=>{
         <div style="border-top:1px dashed var(--border);margin:.4rem 0;padding-top:.3rem">
             <div style="font-weight:900;color:var(--gr)">🎫 الرمز للزبون: <span dir="ltr" style="font-family:monospace">${code}</span></div>
             <div style="color:var(--t3);font-size:.62rem">احتفظ به — لا يمكن استرجاعه من الهاش</div>
+            <div style="color:var(--g500);font-size:.62rem;margin-top:.2rem">🔒 الزبون يختار اسم محله أول تفعيل ثم يُقفل الرمز عليه</div>
         </div>
         <button onclick="navigator.clipboard.writeText('${path}').then(()=>toast('📋 نُسخ المسار'))" style="width:100%;margin-top:.35rem;padding:.35rem;border:none;border-radius:6px;background:var(--g600);color:#fff;font-weight:800;font-family:Tajawal,sans-serif;font-size:.68rem;cursor:pointer">📋 نسخ المسار</button>`;
 };
@@ -1112,7 +1108,7 @@ window._publishPortal=()=>{
         const inv={};
         (dollInvoices||[]).filter(v=>v.c===name).slice(0,100).forEach(v=>{inv[v.id]=v;});
         const payload={
-            name, shop:_currentUser||'', upd:Date.now(),
+            name, shop:(window._snName||_currentUser||''), upd:Date.now(),  /* اسم المحل الودّي من السريال */
             din:Math.round(getCustBal(name,'دينار')*100)/100,
             gold:Math.round(getCustBal(name,'دولار')*1000)/1000,
             ops:myOps, inv

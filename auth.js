@@ -6,11 +6,11 @@ let _usersCache={};
    كل مستخدم يحصل على بريد افتراضي: username@goldpro.local
    هذا يضمن نفس الـ UID على كل الأجهزة بدل Anonymous الذي يعطي UID مختلف لكل جهاز */
 const _FB_DOMAIN='@goldpro.local';
-/* 🔑 بريد المصادقة يتضمّن الموقع: محلّان لهما مستخدم «ali» صارا حسابين منفصلين.
-   الموقع الافتراضي (فارغ) يبقى بلا بادئة حفاظاً على الحسابات القائمة. */
+/* 🔑 كل مستخدم = محل مستقل بذاته (هو أدمن نفسه وله زبائنه).
+   لا طبقة «موقع» في المسارات — اسم المستخدم فريد عالمياً بحكم Firebase Auth،
+   فلا تصادم ممكن: من يسجّل الاسم أولاً يملكه. */
 function _authEmail(uname){
-    const site=(typeof _SITE!=='undefined'&&_SITE)?String(_SITE).toLowerCase()+'_':'';
-    return site+String(uname||'').toLowerCase()+_FB_DOMAIN;
+    return String(uname||'').toLowerCase()+_FB_DOMAIN;
 }
 window._authEmail=_authEmail;
 /* Firebase يشترط كلمة مرور ≥6 أحرف؛ نوسّع كلمة مرور المستخدم بلاحقة ثابتة لـ Firebase فقط.
@@ -56,9 +56,10 @@ function _loadUsers(){
     });
 }
 
-async function _saveUser(uname,isAdmin=false){
-    await _db.ref(`${_USERS_PATH}/${uname}`).set({isAdmin});
-    _usersCache[uname]={isAdmin};
+async function _saveUser(uname,isAdmin=true){
+    /* كل مستخدم أدمن على مساحته الخاصة */
+    await _db.ref(`${_USERS_PATH}/${uname}`).set({isAdmin:true});
+    _usersCache[uname]={isAdmin:true};
 }
 
 /* تهيئة التطبيق بعد الدخول */
@@ -119,7 +120,7 @@ async function doLogin(){
     if(btn){btn.disabled=false;btn.textContent=origTxt;}
     if(!_ok)return _showLoginErr('كلمة المرور خاطئة');
     /* نظّف أي بصمة قديمة متبقّية في _users */
-    try{ if(user.pwHash!==undefined) _saveUser(uname,!!user.isAdmin); }catch(e){}
+    try{ if(user.pwHash!==undefined) _saveUser(uname,true); }catch(e){}
 
     _encKey=pw;
     localStorage.setItem('gp12_ek',pw);
@@ -129,8 +130,8 @@ async function doLogin(){
     _currentUser=uname;
     _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+uname;
     _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+uname;
-    _baseRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+uname+'/data');
-    window._cfgRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+uname+'/cfg');
+    _baseRef=_db.ref('goldpro/'+uname+'/data');
+    window._cfgRef=_db.ref('goldpro/'+uname+'/cfg');
     if(window._attachUserCfg)window._attachUserCfg();
     localStorage.setItem('gp12_auth','1');localStorage.setItem('gp12_user',uname);
     const ud=document.getElementById('currentUserDisplay');if(ud)ud.textContent=uname;
@@ -147,13 +148,42 @@ async function setupFirstUser(){
     if(!/^[a-z0-9_]+$/.test(uname))return toast('أحرف لاتينية وأرقام فقط بدون مسافة','error');
     if(pw.length<4)return toast('كلمة المرور قصيرة (4 أحرف على الأقل)','error');
     if(pw!==pw2)return toast('كلمتا المرور لا تتطابقان','error');
+
+    /* 🔒 سريال مربوط بمحل آخر؟ */
+    if(window._snOwner&&window._snOwner!==uname)
+        return toast(`🚫 هذا الرمز مربوط بمحل «${window._snOwner}» — ادخل بكلمة مروره`,'error');
+
+    /* الاسم محجوز عالمياً؟ (Firebase Auth يفرض التفرّد) */
+    let created=false;
+    try{
+        await firebase.auth().createUserWithEmailAndPassword(_authEmail(uname),_fbPw(pw));
+        created=true;
+    }catch(e){
+        if(e&&e.code==='auth/email-already-in-use')
+            return toast(`🚫 الاسم «${uname}» محجوز — اختر اسماً آخر`,'error');
+        return toast('تعذّر إنشاء الحساب — تأكد من الإنترنت','error');
+    }
+
+    /* 🔐 مطالبة السريال: تُكتب مرة واحدة فقط (القاعدة تمنع تغييرها لاحقاً) */
+    if(window._snHashCur&&!window._snOwner){
+        try{
+            await firebase.database().ref('goldpro/_serials/'+window._snHashCur+'/owner').set(uname);
+            window._snOwner=uname;
+            try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:window._snHashCur,owner:uname,name:window._snName||''}));}catch(_){}
+        }catch(e){
+            /* سبقه غيره للمطالبة */
+            const r=await _fetchSerial(window._snHashCur);
+            if(r&&r.owner)return toast(`🚫 هذا الرمز صار مربوطاً بمحل «${r.owner}»`,'error');
+            return toast('تعذّر ربط الرمز — حاول ثانيةً','error');
+        }
+    }
+
     await _saveUser(uname,true);
-    _fbCreateAuthUser(uname,pw);
     document.getElementById('loginSetupPanel').style.display='none';
     document.getElementById('loginMainPanel').style.display='block';
     document.getElementById('loginUser').value=uname;
     document.getElementById('loginPw').value=pw;
-    toast('✅ تم إنشاء الحساب — سيتم الدخول تلقائياً','success');
+    toast('✅ تم إنشاء محلك — سيتم الدخول تلقائياً','success');
     setTimeout(doLogin,600);
 }
 
@@ -189,7 +219,7 @@ async function changePw(){
     }
     try{ await _cu.updatePassword(_fbPw(n1)); }
     catch(e){ return toast('تعذّر تغيير كلمة المرور: '+(e.code||''),'error'); }
-    await _saveUser(_currentUser,!!user.isAdmin);
+    await _saveUser(_currentUser,true);
     _encKey=n1;
     localStorage.setItem('gp12_ek',n1);
     save();
@@ -235,8 +265,8 @@ async function _checkAuth(){
         _currentUser=savedUser;
         _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+savedUser;
         _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+savedUser;
-        _baseRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+savedUser+'/data');
-        window._cfgRef=_db.ref((_SITE?`goldpro/${_SITE}/`:'goldpro/')+savedUser+'/cfg');
+        _baseRef=_db.ref('goldpro/'+savedUser+'/data');
+        window._cfgRef=_db.ref('goldpro/'+savedUser+'/cfg');
         if(window._attachUserCfg)window._attachUserCfg();
         const ud=document.getElementById('currentUserDisplay');if(ud)ud.textContent=savedUser;
         document.getElementById('loginOverlay').remove();
@@ -247,6 +277,12 @@ async function _checkAuth(){
     }
     /* لا جلسة محفوظة → أظهر شاشة الدخول (كانت مخفية لمنع الوميض) */
     const _ov=document.getElementById('loginOverlay'); if(_ov)_ov.classList.add('show');
+    /* 🔒 السريال يقرر: مالك موجود → دخول بكلمة المرور · بلا مالك → إنشاء محل */
+    if(window._snHashCur){
+        try{await _loadUsers();}catch(e){}
+        if(window._applySerialLock)window._applySerialLock();
+        return;
+    }
     let users;
     try{users=await _loadUsers();}catch(e){users={};}
     if(Object.keys(users).length===0){
@@ -284,7 +320,7 @@ async function _fetchSerial(hash){
         const v=snap.val();
         if(!v)return null;
         if(v.active===false)return {revoked:true};
-        return {site:v.site||'',name:v.name||''};
+        return {site:v.site||'',name:v.name||'',owner:v.owner||''};
     }catch(e){ return undefined; } /* undefined = تعذّر الوصول (لا نُبطل) */
 }
 
@@ -294,7 +330,7 @@ async function _snHash(s){
 }
 function _applySite(site){
     _SITE=site||'';
-    _USERS_PATH=_SITE?`goldpro/${_SITE}/_users`:'goldpro/_users';
+    _USERS_PATH='goldpro/_users'; /* سجل أسماء عالمي — العزل بالمستخدم لا بالموقع */
 }
 async function _checkSerial(){
     const stored=localStorage.getItem(_SN_LS);
@@ -312,6 +348,8 @@ async function _checkSerial(){
         }
         /* ② مفعَّل سابقاً من Firebase → نثق بالكاش فوراً (يعمل أوفلاين)
               ثم نتحقّق في الخلفية: إن أُلغي السريال نُخرج المستخدم */
+        try{const o=JSON.parse(localStorage.getItem('gp12_sn_own')||'null');
+            if(o&&o.h===hash){window._snHashCur=o.h;window._snOwner=o.owner||'';window._snName=o.name||'';}}catch(e){}
         _applySite(site);
         const ov=document.getElementById('serialOverlay');
         if(ov)ov.remove();
@@ -320,8 +358,14 @@ async function _checkSerial(){
             if(r===undefined)return;                    /* لا إنترنت — لا نُبطل */
             if(!r||r.revoked||(r.site||'')!==(site||'')){
                 localStorage.removeItem(_SN_LS);
+                try{localStorage.removeItem('gp12_sn_own');}catch(e){}
                 alert('⚠️ رمز التفعيل لم يعد صالحاً — تواصل مع المزوّد');
                 location.reload();
+            }else{
+                /* حدّث المالك (قد يكون طُولب من جهاز آخر) */
+                window._snOwner=r.owner||''; window._snName=r.name||'';
+                try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:hash,owner:window._snOwner,name:window._snName}));}catch(e){}
+                if(window._applySerialLock)window._applySerialLock();
             }
         });
         return;
@@ -331,6 +375,37 @@ async function _checkSerial(){
     if(ov)ov.style.display='flex';
     setTimeout(()=>{const e=document.getElementById('serialInput');if(e)e.focus();},200);
 }
+/* 🔒 سريال واحد = محل واحد: بعد المطالبة يُقفل اسم الحساب على المالك */
+window._applySerialLock=()=>{
+    const owner=window._snOwner||'';
+    const setupP=document.getElementById('loginSetupPanel');
+    const mainP=document.getElementById('loginMainPanel');
+    const uEl=document.getElementById('loginUser');
+    const hint=document.getElementById('loginShopHint');
+    if(owner){
+        /* مطالَب به → الدخول باسم المالك فقط (كلمة المرور وحدها) */
+        if(setupP)setupP.style.display='none';
+        if(mainP)mainP.style.display='block';
+        if(uEl){
+            uEl.value=owner; uEl.readOnly=true;
+            uEl.style.opacity='.75'; uEl.style.cursor='not-allowed';
+        }
+        if(hint){
+            hint.innerHTML=`🏪 <strong>${window._snName||owner}</strong> — أدخل كلمة المرور`;
+            hint.style.display='block';
+        }
+        const pEl=document.getElementById('loginPw'); if(pEl)setTimeout(()=>pEl.focus(),250);
+    }else if(window._snHashCur){
+        /* سريال جديد بلا مالك → أول تفعيل: اختر اسم المحل */
+        if(setupP)setupP.style.display='block';
+        if(mainP)mainP.style.display='none';
+        const sh=document.getElementById('setupShopHint');
+        if(sh){
+            sh.innerHTML=`🎉 أول تفعيل${window._snName?` لـ <strong>${window._snName}</strong>`:''} — اختر اسم محلك وكلمة مرورك<br><small style="color:#f59e0b">⚠️ الاسم يُقفل نهائياً بعد الحفظ</small>`;
+            sh.style.display='block';
+        }
+    }
+};
 function _showSerialError(msg){
     const el=document.getElementById('serialErr');
     if(!el)return;
@@ -342,18 +417,22 @@ async function activateSerial(){
     if(!entered)return _showSerialError('❌ أدخل رمز التفعيل');
     document.getElementById('serialErr').style.display='none';
     const h=await _snHash(entered);
-    let site;
+    let site,_owner='',_label='';
     if(h in _SERIALS){
-        site=_SERIALS[h];                               /* سريال مدمج */
+        site=_SERIALS[h];                               /* سريال مدمج — بلا ربط */
     }else{
         _showSerialError('⏳ جارٍ التحقق…');
         const r=await _fetchSerial(h);                  /* سريال من Firebase */
         if(r===undefined)return _showSerialError('❌ تعذّر التحقق — تأكد من الإنترنت');
         if(!r)return _showSerialError('❌ رمز التفعيل غير صحيح');
         if(r.revoked)return _showSerialError('❌ رمز التفعيل موقوف — تواصل مع المزوّد');
-        site=r.site||'';
+        site=r.site||''; _owner=r.owner||''; _label=r.name||'';
     }
     localStorage.setItem(_SN_LS, h+':'+(site||''));
+    window._snHashCur=h;
+    window._snOwner=_owner||'';
+    window._snName=_label||'';
+    try{localStorage.setItem('gp12_sn_own',JSON.stringify({h,owner:window._snOwner,name:window._snName}));}catch(e){}
     sessionStorage.removeItem('gp12_auth');localStorage.removeItem('gp12_auth');
     sessionStorage.removeItem('gp12_user');localStorage.removeItem('gp12_user');
     if(window._cfgRef){try{window._cfgRef.child('goodsNames').off();window._cfgRef.child('custPhones').off();}catch(e){} window._cfgRef=null;}
@@ -362,7 +441,7 @@ async function activateSerial(){
     _applySite(site);
     const ov=document.getElementById('serialOverlay');
     ov.classList.add('fade-out');
-    setTimeout(()=>{ov.remove();_checkAuth();},520);
+    setTimeout(()=>{ov.remove();_checkAuth();if(window._applySerialLock)window._applySerialLock();},520);
 }
 
 window._changeSN=function(){
