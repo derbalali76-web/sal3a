@@ -42,7 +42,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=97">
+    <link rel="stylesheet" href="./style.css?v=98">
 </head>
 <body>
 <datalist id="customersDatalist"></datalist>
@@ -766,10 +766,6 @@
         <label><i class="fas fa-crown" style="color:var(--g400)"></i> سعر الذهب (دج/غ)</label>
         <input type="number" id="settingGoldPrice" step="any" min="1">
     </div>
-    <button id="pwaInstallSettingsBtn" onclick="window._installPWA()"
-        style="width:100%;padding:.65rem;margin:.4rem 0;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0a0800;font-weight:900;font-family:Tajawal,sans-serif;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem">
-        📲 تثبيت التطبيق على الهاتف
-    </button>
     <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
         <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">🛍️ أسماء السلع (تظهر كاختيار في الشراء والبيع)</p>
         <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
@@ -811,12 +807,6 @@
         🔓 فتح فاتورة مقفلة (gpdf)
     </button>
     <input type="file" id="gpdfFile" accept=".gpdf,application/octet-stream,application/json" style="display:none" onchange="openLockedPdf(event)">
-    <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border)">
-        <label style="display:block;font-size:.72rem;color:var(--t2);margin-bottom:.3rem">🔑 مفتاح Google Vision (للتصوير) — يُحفظ بجهازك فقط</label>
-        <input type="text" id="visionKeyInput" placeholder="AIza..." autocomplete="off"
-            style="width:100%;box-sizing:border-box;padding:.55rem;border:1.5px solid var(--border);border-radius:8px;font-family:monospace;font-size:.78rem;background:var(--card);color:var(--t)">
-        <button onclick="saveVisionKey()" style="width:100%;margin-top:.4rem;padding:.5rem;border-radius:8px;border:none;background:#0ea5e9;color:#fff;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem">حفظ المفتاح</button>
-    </div>
     <button onclick="resetAllData()" style="width:100%;padding:.6rem;border-radius:8px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
         🗑️ مسح جميع البيانات (إعادة ضبط المصنع)
     </button>
@@ -851,13 +841,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=97"></script>
-<script src="./app.js?v=97"></script>
-<script src="./assistant.js?v=97"></script>
-<script src="./inventory.js?v=97"></script>
-<script src="./invoice.js?v=97"></script>
-<script src="./raffinage.js?v=97"></script>
-<script src="./auth.js?v=97"></script>
+<script src="./firebase.js?v=98"></script>
+<script src="./app.js?v=98"></script>
+<script src="./assistant.js?v=98"></script>
+<script src="./inventory.js?v=98"></script>
+<script src="./invoice.js?v=98"></script>
+<script src="./raffinage.js?v=98"></script>
+<script src="./auth.js?v=98"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

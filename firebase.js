@@ -458,31 +458,38 @@ function _applyEvt(st,evt){
                         st.cashiSoldW-=Number(d.cashiFee.eq)||0;
                         st.cashiSoldDin-=Number(d.cashiFee.din)||0;
                         d.cashiFee.items.forEach(it=>{
-                            let needEq730=(Number(it.w)||0)*((Number(it.k)||705)/730);
-                            for(let bi=0;bi<st.g730.length&&needEq730>0.0000005;bi++){
-                                const bar=st.g730[bi];
-                                const barEq730=(Number(bar.w)||0)*((Number(bar.k)||730)/730);
-                                if(barEq730<=needEq730+0.0000005){needEq730=Math.round((needEq730-barEq730)*1e6)/1e6;st.g730.splice(bi,1);bi--;}
-                                else{const takeW=needEq730*730/(Number(bar.k)||730);bar.w=Math.round((bar.w-takeW)*1e6)/1e6;needEq730=0;}
+                            const k=Number(it.k)||705;
+                            const pool=(k>=999)?st.g24:st.g730;
+                            const base=(k>=999)?1000:730;
+                            let need=(Number(it.w)||0)*(k/base);
+                            for(let bi=0;bi<pool.length&&need>0.0000005;bi++){
+                                const bar=pool[bi];
+                                const bk=Number(bar.k)||base;
+                                const barEq=(Number(bar.w)||0)*(bk/base);
+                                if(barEq<=need+0.0000005){need=Math.round((need-barEq)*1e6)/1e6;pool.splice(bi,1);bi--;}
+                                else{const takeW=need*base/bk;bar.w=Math.round((bar.w-takeW)*1e6)/1e6;need=0;}
                             }
                         });
                     }
-                    /* ⚱️ دفع لاكاص عند الشراء: سبيكة بعيارها تخرج من مخزون 705 (بالتجزئة حسب المكافئ)، وينقص دينه بالمكافئ */
+                    /* ⚱️ دفع لاكاص عند الشراء: عيار 1000 → يخرج من مخزون 24 · غيره → من مخزون 705
+                       الدين دائماً في عمود «ذهب 705» بالمكافئ */
                     if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){
                         d.kass.items.forEach(it=>{
-                            /* نخرج ما يعادل وزن×عيار من قطع 705 (الأقدم أولاً)، بالمكافئ 730 الداخلي */
-                            let needEq730=(Number(it.w)||0)*((Number(it.k)||705)/730);
-                            for(let bi=0;bi<st.g730.length&&needEq730>0.0000005;bi++){
-                                const bar=st.g730[bi];
-                                const barEq730=(Number(bar.w)||0)*((Number(bar.k)||730)/730);
-                                if(barEq730<=needEq730+0.0000005){
-                                    needEq730=Math.round((needEq730-barEq730)*1e6)/1e6;
-                                    st.g730.splice(bi,1); bi--;
+                            const k=Number(it.k)||705;
+                            const pool=(k>=999)?st.g24:st.g730;
+                            const base=(k>=999)?1000:730;              /* وحدة المكافئ الداخلية للمخزن */
+                            let need=(Number(it.w)||0)*(k/base);
+                            for(let bi=0;bi<pool.length&&need>0.0000005;bi++){
+                                const bar=pool[bi];
+                                const bk=Number(bar.k)||base;
+                                const barEq=(Number(bar.w)||0)*(bk/base);
+                                if(barEq<=need+0.0000005){
+                                    need=Math.round((need-barEq)*1e6)/1e6;
+                                    pool.splice(bi,1); bi--;
                                 }else{
-                                    /* خصم جزئي: نقلّل وزن القطعة بما يعادل needEq730 بعيار القطعة */
-                                    const takeW=needEq730*730/(Number(bar.k)||730);
+                                    const takeW=need*base/bk;
                                     bar.w=Math.round((bar.w-takeW)*1e6)/1e6;
-                                    needEq730=0;
+                                    need=0;
                                 }
                             }
                         });
@@ -525,23 +532,28 @@ function _applyEvt(st,evt){
                         st.cashiSoldW+=Number(d.cashiFee.eq)||0;
                         st.cashiSoldDin+=Number(d.cashiFee.din)||0;
                         d.cashiFee.items.forEach((it,i)=>{
-                            st.g730.push({
+                            const k=Number(it.k)||705;
+                            const bar={
                                 id:(evt.id||'')+'_cf'+i,
-                                w:Number(it.w)||0, k:Number(it.k)||705,
+                                w:Number(it.w)||0, k,
                                 desc:'أجرة كاصي', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
                                 src:d.c||'', _ts:evt.ts||0
-                            });
+                            };
+                            if(k>=999)st.g24.push(bar); else st.g730.push(bar);
                         });
                     }
-                    /* ⚱️ لاكاص من الزبون عند البيع: سبيكة بعيارها تدخل مخزون 705، وينقص دينه بالمكافئ */
+                    /* ⚱️ لاكاص من الزبون عند البيع: عيار 1000 → مخزون 24 · غيره → مخزون 705
+                       الدين دائماً في عمود «ذهب 705» بالمكافئ (عمود 24 للرافيناج فقط) */
                     if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){
                         d.kass.items.forEach((it,i)=>{
-                            st.g730.push({
+                            const k=Number(it.k)||705;
+                            const bar={
                                 id:(evt.id||'')+'_ks'+i,
-                                w:Number(it.w)||0, k:Number(it.k)||705,
+                                w:Number(it.w)||0, k,
                                 desc:'لاكاص', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
                                 src:d.c||'', _ts:evt.ts||0
-                            });
+                            };
+                            if(k>=999)st.g24.push(bar); else st.g730.push(bar);
                         });
                         stUpdDebt(d.c,'دولار',-Number(d.kass.eq));
                     }
@@ -1131,7 +1143,11 @@ function importData(e){
 
 /* ═══════════ AUTO BACKUP ═══════════ */
 const _BACKUP_KEY='gp12_lastBackup';
+window._startAutoBackup=_startAutoBackup;
 function _startAutoBackup(){
+    if(window._bkStarted)return; window._bkStarted=true;
+    /* الأدمن فقط */
+    if(typeof _usersCache!=='undefined'&&_usersCache[_currentUser]&&_usersCache[_currentUser].isAdmin===false)return;
     setTimeout(()=>{
         const last=parseInt(localStorage.getItem(_BACKUP_KEY+'_'+_currentUser)||'0',10);
         if(Date.now()-last>12*3600*1000||!last)_doAutoBackup();

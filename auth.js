@@ -138,6 +138,8 @@ async function doLogin(){
     const ov=document.getElementById('loginOverlay');
     ov.classList.add('fade-out');setTimeout(()=>ov.remove(),520);
     _fbInitialLoad();_afterLogin();
+    /* 💾 نسخة احتياطية تلقائية كل 12 ساعة (للأدمن — وكل مستخدم أدمن مساحته) */
+    try{ if(window._startAutoBackup)window._startAutoBackup(); }catch(e){}
 }
 
 async function setupFirstUser(){

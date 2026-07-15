@@ -1,4 +1,20 @@
 /* ═══════════ STATE ═══════════ */
+/* 👆 إغلاق أي نافذة منبثقة بلمس الخلفية خارجها */
+if(!window._modalOutsideBound){
+    window._modalOutsideBound=true;
+    document.addEventListener('DOMContentLoaded',()=>{
+        document.querySelectorAll('.modal-overlay').forEach(ov=>{
+            ov.addEventListener('pointerdown',(e)=>{
+                if(e.target!==ov)return;              /* اللمس داخل النافذة → تجاهل */
+                ov._outsideStart=true;
+            });
+            ov.addEventListener('pointerup',(e)=>{
+                if(e.target===ov&&ov._outsideStart)closeModal(ov.id);
+                ov._outsideStart=false;
+            });
+        });
+    });
+}
 /* عند التركيز على حقل داخل نافذة، مرّره للمنتصف كي لا يغطّيه كيبورد الهاتف */
 if(!window._focusScrollBound){
     window._focusScrollBound=true;
@@ -535,7 +551,6 @@ function openSettings(){
     const ap=document.getElementById('adminPanel');
     if(ap)ap.style.display=isAdmin?'block':'none';
     if(isAdmin)renderUsersList();
-    try{ const vi=document.getElementById('visionKeyInput'); if(vi)vi.value=_getVisionKey(); }catch(e){}
     renderGoodsNamesList();
     renderPortalCustList();
     document.getElementById('settingsModal').classList.add('active');
@@ -738,7 +753,9 @@ function _netBuckets(){
     */
     const inv705    = B.دولار;                                   /* السلعة */
     const stock705  = (B['ذهب 730']+(B.vg730||0)) * (730/705);   /* مخزون 705 */
-    const stock24_705 = (B['ذهب 24']+(B.vg24||0)) * (1000/705);  /* مخزون 24 كمكافئ 705 */
+    /* مخزون 24 كمكافئ 705 — بعيار كل سبيكة (لا افتراض 1000 للجميع) */
+    const stock24_705 = (typeof g24!=='undefined'?g24:[]).reduce((s,b)=>s+(b.w||0)*((b.k||1000)/705),0)
+                      + (B.vg24||0)*(1000/705);
     const debtGoods705 = d_dol;                                  /* صافي ديون السلعة */
     const debt24_705   = d_24 * (1000/705);                      /* صافي ديون 24 كمكافئ 705 */
     /* ديون 705/730 القديمة (إن وُجدت) بمكافئ 705 */
@@ -936,7 +953,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v97';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v98';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1520,13 +1537,27 @@ window.saveDollar=()=>{
     const cashiCash=_readCashiCash();
     const cashiFee=_readCashiFee();
     if(!items.length&&!rot&&!cash&&!kass.eq&&!cashiCash&&!cashiFee.eq)return toast('أدخل سطراً مكتملاً واحداً على الأقل','error');
+    /* المتاح بمكافئ 705 من كل مخزن (عيار 1000 يستعمل مخزون 24) */
+    const _av705=()=>(g730||[]).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
+    const _av24 =()=>(g24 ||[]).reduce((s,b)=>s+(b.w||0)*((b.k||1000)/705),0);
+    /* يفصل بنود الدفع حسب المخزن المستهدف */
+    const _needByPool=(its)=>{
+        let n705=0,n24=0;
+        (its||[]).forEach(it=>{
+            const k=Number(it.k)||705, e=(Number(it.w)||0)*k/705;
+            if(k>=999)n24+=e; else n705+=e;
+        });
+        return {n705:Math.round(n705*1000)/1000,n24:Math.round(n24*1000)/1000};
+    };
     /* الشراء: أخذ الدينار يخرج من السيولة — تحقق من الكفاية */
     if(isBuy&&cash>0&&B.دينار<cash-0.001)return toast('⚠️ السيولة (الدينار) غير كافية لهذا الأخذ','error');
     /* دفع أجرة بالكاصي عند الشراء: السبيكة تخرج من مخزون 705 — تحقق من الكفاية */
     if(isBuy&&cashiFee.eq>0){
-        const avail705=(g730||[]).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
-        if(cashiFee.eq>avail705+0.001)
-            return toast(`⚠️ مخزون 705 غير كافٍ لأجرة الكاصي — متاح ${fmt(avail705,2)} غ (705) والمطلوب ${fmt(cashiFee.eq,2)} غ`,'error');
+        const nd=_needByPool(cashiFee.items);
+        if(nd.n705>_av705()+0.001)
+            return toast(`⚠️ مخزون 705 غير كافٍ لأجرة الكاصي — متاح ${fmt(_av705(),2)} غ (705) والمطلوب ${fmt(nd.n705,2)}`,'error');
+        if(nd.n24>_av24()+0.001)
+            return toast(`⚠️ مخزون 24 غير كافٍ لأجرة الكاصي — متاح ${fmt(_av24(),2)} غ (بمكافئ 705) والمطلوب ${fmt(nd.n24,2)}`,'error');
     }
     /* الشراء مع روتور: أنت تُرجع الروتور للزبون — يجب أن يكفي مخزون «روتور» */
     if(isBuy&&rot){
@@ -1536,9 +1567,11 @@ window.saveDollar=()=>{
     }
     /* الشراء مع لاكاص: السبيكة تخرج من مخزون 705 — يجب أن يكفي المخزون بالمكافئ */
     if(isBuy&&kass.eq>0){
-        const avail705=(g730||[]).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
-        if(kass.eq>avail705+0.001)
-            return toast(`⚠️ مخزون 705 غير كافٍ للاكاص — متاح ${fmt(avail705,2)} غ (705) والمطلوب ${fmt(kass.eq,2)} غ`,'error');
+        const nd=_needByPool(kass.items);
+        if(nd.n705>_av705()+0.001)
+            return toast(`⚠️ مخزون 705 غير كافٍ للاكاص — متاح ${fmt(_av705(),2)} غ (705) والمطلوب ${fmt(nd.n705,2)}`,'error');
+        if(nd.n24>_av24()+0.001)
+            return toast(`⚠️ مخزون 24 غير كافٍ للاكاص — متاح ${fmt(_av24(),2)} غ (بمكافئ 705) والمطلوب ${fmt(nd.n24,2)}`,'error');
     }
     const equiv=Math.round(items.reduce((s,it)=>s+it.eq,0)*1000)/1000;
     const fee=items.reduce((s,it)=>s+it.fv,0);
