@@ -935,7 +935,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v85';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v87';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1121,11 +1121,32 @@ window._renderCustPortal=(d)=>{
     document.getElementById('custPortalUpd').textContent='آخر تحديث: '+new Date(d.upd||Date.now()).toLocaleString('fr-FR');
     const dinEl=document.getElementById('custPortalDin');
     const gEl=document.getElementById('custPortalGold');
-    const din=Number(d.din)||0,gold=Number(d.gold)||0;
+    /* ⚠️ الأرقام تُنشر باصطلاح المحل (موجب = الزبون مدين للمحل).
+       من منظور الزبون تُعكس: ما يسالُه المحل يصير سالباً عليه، وما له عند المحل يصير موجباً. */
+    const din=-(Number(d.din)||0)||0, gold=-(Number(d.gold)||0)||0; /* ||0 يمنع ظهور -0 */
     dinEl.textContent=fmt(din,0)+' دج'; dinEl.style.color=din>=0?'#4ade80':'#f87171';
     gEl.textContent=fmt(gold,2)+' غ'; gEl.style.color=gold>=0?'#4ade80':'#f87171';
+    /* توضيح نصي تحت كل بطاقة */
+    const dinNote=document.getElementById('custPortalDinNote');
+    const goldNote=document.getElementById('custPortalGoldNote');
+    if(dinNote)dinNote.textContent=Math.abs(din)<0.5?'مُصفّى':(din>0?'لك عند المحل':'عليك للمحل');
+    if(goldNote)goldNote.textContent=Math.abs(gold)<0.005?'مُصفّى':(gold>0?'لك عند المحل':'عليك للمحل');
     const opsEl=document.getElementById('custPortalOps');
     const list=Array.isArray(d.ops)?d.ops:Object.values(d.ops||{});
+    /* 🔄 عكس تسميات العمليات: ما هو «شراء» عند المحل هو «بيع» عند الزبون */
+    const _flipT=(t)=>({
+        'شراء سلعة':'🛍️ بعت سلعة للمحل',
+        'بيع سلعة':'🛍️ اشتريت سلعة من المحل',
+        'شراء':'📋 بعت للمحل',
+        'بيع':'📋 اشتريت من المحل',
+        'أعطيت':'📥 استلمت من المحل',
+        'استلمت':'📤 سلّمت للمحل',
+        'تسليم':'📥 استلمت من المحل',
+        'استلام':'📤 سلّمت للمحل',
+        'سلف':'💰 سلفة',
+        'رافيناج':'🔥 رافيناج',
+        'تصفية':'✅ تصفية'
+    }[t]||t||'');
     opsEl.innerHTML=list.length?list.map(o=>{
         const inv=o.did?window._portalInvCache[o.did]:null;
         const clickable=!!inv;
@@ -1133,12 +1154,15 @@ window._renderCustPortal=(d)=>{
         let detail='';
         if(inv&&Array.isArray(inv.items))detail=inv.items.map(it=>`<div style="font-size:.62rem;color:#9ca3af">🛍️ ${it.n} · ${fmt(it.w,2)}غ · عيار ${fmt(it.k,0)}${it.p?' · '+fmt(it.p,0)+' دج/غ':''}</div>`).join('');
         if(inv&&inv.rot)detail+=`<div style="font-size:.62rem;color:#2dd4bf">♻️ روتور: ${fmt(inv.rot.w,2)}غ عيار ${fmt(inv.rot.k,0)}</div>`;
-        if(inv&&inv.cash)detail+=`<div style="font-size:.62rem;color:#60a5fa">💵 ${inv.isBuy?'أخذ':'دفع'} دينار: ${fmt(inv.cash,0)} دج</div>`;
-        if(inv&&inv.kass&&inv.kass.eq)detail+=`<div style="font-size:.62rem;color:#2dd4bf">⚱️ لاكاص: ${fmt(inv.kass.eq,2)} غ (705)</div>`;
+        /* الاتجاهات معكوسة من منظور الزبون */
+        if(inv&&inv.cash)detail+=`<div style="font-size:.62rem;color:#60a5fa">💵 ${inv.isBuy?'دفعت':'أخذت'} دينار: ${fmt(inv.cash,0)} دج</div>`;
+        if(inv&&inv.kass&&inv.kass.eq)detail+=`<div style="font-size:.62rem;color:#2dd4bf">⚱️ ${inv.isBuy?'أخذت لاكاص':'دفعت لاكاص'}: ${fmt(inv.kass.eq,2)} غ (705)</div>`;
+        if(inv&&inv.cashiCash)detail+=`<div style="font-size:.62rem;color:#fbbf24">💵 ${inv.isBuy?'أخذت':'دفعت'} كاصي: ${fmt(inv.cashiCash.amt,0)} دج</div>`;
+        if(inv&&inv.cashiFee&&inv.cashiFee.din)detail+=`<div style="font-size:.62rem;color:#c4b5fd">⚱️ ${inv.isBuy?'أخذت':'دفعت'} أجرة بالكاصي: ${fmt(inv.cashiFee.din,0)} دج</div>`;
         return `<div onclick="${clickable?`window._viewPortalInv('${o.did}')`:''}"
             style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:.6rem .75rem;margin-bottom:.45rem;${clickable?'cursor:pointer':''}">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
-                <span style="font-weight:900;font-size:.78rem;color:#e5e7eb">${o.t||''}${clickable?' <span style="font-size:.58rem;color:#d4af37">👁 الفاتورة</span>':''}</span>
+                <span style="font-weight:900;font-size:.78rem;color:#e5e7eb">${_flipT(o.t)}${clickable?' <span style="font-size:.58rem;color:#d4af37">👁 الفاتورة</span>':''}</span>
                 <span style="font-weight:900;font-size:.78rem;color:#d4af37" dir="ltr">${fmt(o.a||0,2)} ${unit}</span>
             </div>
             <div style="font-size:.6rem;color:#6b7280">${o.dt||''}</div>
@@ -1149,7 +1173,7 @@ window._renderCustPortal=(d)=>{
 window._viewPortalInv=(did)=>{
     const inv=window._portalInvCache[did]; if(!inv)return;
     let html='';
-    try{html=buildDollHtml(inv);}catch(e){}
+    try{html=buildDollHtml(inv,true);}catch(e){}  /* true = منظور الزبون */
     if(!html)return;
     let m=document.getElementById('docViewModal');
     if(!m){m=document.createElement('div');m.id='docViewModal';
@@ -1239,7 +1263,7 @@ window.openDollar=(t)=>{
     const _cl=document.getElementById('goodsCashLbl');
     if(_cl)_cl.textContent=t==='buy'?'💵 أخذ دينار':'💵 دفع دينار';
     const _kl=document.getElementById('kassLbl');
-    if(_kl)_kl.textContent=t==='buy'?'⚱️ دفع لاكاص (تدفعه للزبون)':'⚱️ لاكاص (يدفعه لك الزبون)';
+    if(_kl)_kl.textContent=t==='buy'?'⚱️ دفع لاكاص (تدفعه للزبون)':'⚱️ أخذ لاكاص (تأخذه من الزبون)';
     const _kb=document.getElementById('kassRows');
     if(_kb){_kb.innerHTML='';window._addKassRow();}
     ['cashiAmt','cashiRate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1382,6 +1406,8 @@ function _readRotor(){
 /* الوزن المتاح في المخزون لاسم سلعة معيّن */
 function _stockAvail(name){ return goodsStock.filter(g=>g.n===name).reduce((s,g)=>s+(g.w||0),0); }
 function _updGoodsTotal(){
+    const _tt=document.getElementById('dollarTitle');
+    const isBuyNow=!!(_tt&&_tt.textContent.includes('شراء'));
     const items=_readGoodsRows(true); /* المجاميع تحسب كل سطر رقمي حتى قبل اختيار الاسم */
     const rot=_readRotor();
     const w=items.reduce((s,it)=>s+it.w,0);
@@ -1397,7 +1423,7 @@ function _updGoodsTotal(){
     if(_ce)_ce.textContent=cashiCash?('= '+fmt(cashiCash.eq,2)+' غ (705)'):'';
     let txt=`🛍️ ${fmt(w,2)} غ · مكافئ 705: ${fmt(eq,2)} غ · أجرة ${fmt(fee,0)} دج`;
     if(rot)txt+=` − ♻️ روتور ${fmt(rot.eq,2)} غ (705) · ${fmt(rot.fv,0)} دج`;
-    if(kass.eq>0)txt+=` − ⚱️ لاكاص ${fmt(kass.eq,2)} غ (705)`;
+    if(kass.eq>0)txt+=` − ⚱️ ${isBuyNow?'دفع':'أخذ'} لاكاص ${fmt(kass.eq,2)} غ (705)`;
     if(cash>0)txt+=` − 💵 ${fmt(cash,0)} دج`;
     const netEq=eq-(rot?rot.eq:0)-kass.eq;
     const netFee=fee-(rot?rot.fv:0)-cash;
@@ -2166,7 +2192,7 @@ function opDetailLines(o){
                 lines.push(`${it.n==='روتور'?'♻️':'🛍️'} ${it.n} — ${f(it.w,2)}غ عيار ${f(it.k,0)}${it.p?` × ${f(it.p,0)} دج/غ = ${f(fv,0)} دج`:''}`);
             });
             if(inv.rot)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
-            if(inv.kass&&inv.kass.eq)lines.push(`⚱️ لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
+            if(inv.kass&&inv.kass.eq)lines.push(`⚱️ ${t==='شراء سلعة'?'دفع':'أخذ'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
             if(inv.cash)lines.push(`💵 ${t==='شراء سلعة'?'أخذ':'دفع'} دينار: ${f(inv.cash,0)} دج (${t==='شراء سلعة'?'خرج من':'دخل إلى'} السيولة)`);
             if(inv.cashiCash)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705) · ${t==='شراء سلعة'?'دخل السيولة':'خرج من السيولة'}`);
             if(inv.cashiFee&&inv.cashiFee.items)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج · سبيكة ${t==='شراء سلعة'?'خرجت من':'دخلت'} مخزون 705`);
@@ -3308,7 +3334,7 @@ function renderArchive(){
                     :''}
                 ${d.rot?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">♻️ روتور (مرتجع): ⚖️ ${fmt(d.rot.w,2)} غ · 🏷️ ${fmt(d.rot.k,0)}${d.rot.p?' · 💰 '+fmt(d.rot.p,0)+' دج/غ = '+fmt(d.rot.fv||0,0)+' دج':''}</small>`:''}
                 ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'أخذ':'دفع'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
-                ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
+                ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ ${d.isBuy?'دفع':'أخذ'} لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
                 ${d.cashiCash?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالدينار: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
                 ${d.cashiFee&&d.cashiFee.items?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
                 ${(d.rot||d.cash||(d.kass&&d.kass.eq))?`<small style="color:var(--g600);display:block;font-size:.62rem;font-weight:900">= الصافي: ${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0),2)} غ (705) · ${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0),0)} دج</small>`:''}
@@ -3635,9 +3661,13 @@ window.printInv=(id)=>{
 
 
 /* ═══ PDF الدولار ═══ */
-function buildDollHtml(d){
-    const lbl=d.isBuy?'شراء سلعة':'بيع سلعة';
+function buildDollHtml(d,custView){
+    /* custView=true → الفاتورة من منظور الزبون (كل الاتجاهات معكوسة) */
+    const lbl=custView?(d.isBuy?'بعت للمحل':'اشتريت من المحل'):(d.isBuy?'شراء سلعة':'بيع سلعة');
     const col=d.isBuy?'#16a34a':'#0369a1';
+    /* لاكاص: المحل يأخذه عند البيع ويدفعه عند الشراء — والزبون بالعكس */
+    const kassLbl=custView?(d.isBuy?'أخذ لاكاص':'دفع لاكاص'):(d.isBuy?'دفع لاكاص':'أخذ لاكاص');
+    const cashLbl=custView?(d.isBuy?'دفع دينار':'أخذ دينار'):(d.isBuy?'أخذ دينار':'دفع دينار');
     const items=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c,w:d.gw||0,k:d.gk||0,p:d.a||0}];
     const rows=items.map(it=>{
         const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));
@@ -3672,8 +3702,8 @@ function buildDollHtml(d){
             </tr></thead>
             <tbody>${rows}</tbody>
         </table>
-        ${d.kass&&d.kass.eq?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:5px;color:#0d9488;font-weight:800"><span>⚱️ لاكاص:</span><span>− ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</span></div>`:''}
-        ${d.cash?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:3px;color:#0369a1;font-weight:800"><span>💵 ${d.isBuy?'أخذ':'دفع'} دينار:</span><span>− ${fmt(d.cash,0)} دج</span></div>`:''}
+        ${d.kass&&d.kass.eq?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:5px;color:#0d9488;font-weight:800"><span>⚱️ ${kassLbl}:</span><span>− ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</span></div>`:''}
+        ${d.cash?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:3px;color:#0369a1;font-weight:800"><span>💵 ${cashLbl}:</span><span>− ${fmt(d.cash,0)} دج</span></div>`:''}
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:900;font-size:16px;border-top:2px solid ${col};padding-top:6px">
             <span>صافي المكافئ (705):</span><span>${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0),2)} غ</span>
         </div>
