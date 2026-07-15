@@ -72,10 +72,11 @@ window.confirmLoan=()=>{
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     const bt=targetBarType;
     targetBar=null;targetBarType=null;
-    const eq730=bt==='24'?realA:parseFloat((realA*((loanEntry.k||730)/730)).toFixed(4)); /* دين السلف بمكافئ 730 موحّد */
+    /* 🥇 دين السلف بمكافئ 705 موحّد (سبائك 24 تبقى في عمودها) */
+    const eq705=bt==='24'?realA:parseFloat((realA*((loanEntry.k||705)/705)).toFixed(4));
     emitEvent('LOAN',
-        {c,bt,w:realA,eq730,loanEntry,barsRemove,barUpdates},
-        {op:{c,t:'سلف',m:bt==='24'?'ذهب 24':'ذهب 730',a:bt==='24'?realA:eq730,realW:bt==='24'?undefined:realA,realK:bt==='24'?undefined:(loanEntry.k||730),_ts:Date.now(),dt:nowStr}}
+        {c,bt,w:realA,eq705,loanEntry,barsRemove,barUpdates},
+        {op:{c,t:'سلف',m:bt==='24'?'ذهب 24':'ذهب 705',a:bt==='24'?realA:eq705,realW:bt==='24'?undefined:realA,realK:bt==='24'?undefined:(loanEntry.k||705),_ts:Date.now(),dt:nowStr}}
     );
     closeModal('loanModal');
     toast('🤝 تم التسليف بنجاح');
@@ -83,8 +84,9 @@ window.confirmLoan=()=>{
 window.showLoanBalance=()=>{
     const c=document.getElementById('loanCustomer').value.trim(),box=document.getElementById('loanBalBox');
     if(!c){box.style.display='none';return}
-    const m=targetBarType==='24'?'ذهب 24':'ذهب 730',b=getCustBal(c,m);
-    box.innerHTML=`👤 رصيد ${m}: <strong>${fmt(b,2)} غ</strong>`;box.style.display='block';
+    const m=targetBarType==='24'?'ذهب 24':'دولار'; /* 'دولار' = عمود ذهب 705 */
+    const b=getCustBal(c,m);
+    box.innerHTML=`👤 رصيد ${targetBarType==='24'?'ذهب 24':'ذهب 705'}: <strong>${fmt(b,2)} غ</strong>`;box.style.display='block';
 };
 
 /* ═══════════ SELL FROM INVENTORY ═══════════ */
@@ -103,15 +105,36 @@ window.startSell=(type,id)=>{
     const bars=type==='24'?g24:g730;targetBar=bars.find(b=>b.id===id);targetBarType=type;
     if(!targetBar)return;
     const k=targetBar.k||0;
-    document.getElementById('sellInfo').innerHTML=`📦 ${targetBar.desc||'قطعة'} | الوزن: <strong>${fmt(targetBar.w,2)} غ</strong> | العيار: <strong>${fmt(k,1)}</strong>`;
+    document.getElementById('sellInfo').innerHTML=`📦 ${targetBar.desc||'قطعة'} | الوزن: <strong>${fmt(targetBar.w,2)} غ</strong> | العيار: <strong>${fmt(k,1)}</strong>
+        <br><small style="color:var(--t3)">يمكنك بيع جزء منها — غيّر الكمية والباقي يبقى في الكوفر</small>`;
     document.getElementById('sellCustomer').value='';
     document.getElementById('sellAmount').value=targetBar.w;
+    document.getElementById('sellAmount').max=targetBar.w;
     document.getElementById('sellPrice').value=goldPrice;
-    document.getElementById('sellTotal').textContent=fmt(targetBar.w*k/730*goldPrice,0)+' DZD';
     setSellPaid(true);
+    _calcSell();
     document.getElementById('sellModal').classList.add('active');
     closeModal('invModal');
     setTimeout(()=>document.getElementById('sellCustomer').focus(),350);
+};
+/* حساب حي: المكافئ 705 والمجموع والباقي في الكوفر */
+window._calcSell=()=>{
+    if(!targetBar)return;
+    const k=targetBar.k||0;
+    const a=parseFloat(document.getElementById('sellAmount').value)||0;
+    const p=parseFloat(document.getElementById('sellPrice').value)||0;
+    const realA=Math.min(Math.max(a,0),targetBar.w);
+    const eq705=realA*k/705;
+    const total=Math.round(eq705*p);
+    const rest=targetBar.w-realA;
+    const el=document.getElementById('sellTotal');
+    if(el)el.textContent=fmt(total,0)+' DZD';
+    const eqEl=document.getElementById('sellEqBox');
+    if(eqEl){
+        eqEl.innerHTML=`⚖️ المكافئ 705: <strong>${fmt(eq705,3)} غ</strong> (${fmt(realA,2)}×${fmt(k,1)}÷705)`
+            +(rest>0.001?` · 📦 يبقى في الكوفر: <strong>${fmt(rest,2)} غ</strong>`:` · <span style="color:var(--rd)">تخرج السبيكة كاملة</span>`)
+            +(a>targetBar.w+0.001?` <span style="color:var(--rd);font-weight:900">⚠️ أكبر من وزن السبيكة!</span>`:'');
+    }
 };
 window.confirmSell=()=>{
     if(!targetBar)return;
@@ -122,7 +145,7 @@ window.confirmSell=()=>{
     if(isNaN(a)||a<=0||a>targetBar.w+0.001)return toast('كمية غير صالحة','error');
     if(isNaN(p)||p<=0)return toast('السعر غير صالح','error');
     const k=targetBar.k||0,realA=Math.min(a,targetBar.w);
-    const eq730=realA*k/730,total=Math.round(eq730*p),is1000=k>=999;
+    const eq730=realA*k/705,total=Math.round(eq730*p),is1000=k>=999; /* eq730: الاسم للتوافق — القيمة مكافئ 705 */
     const paid=_sellPaid;
     /* حساب حركة السبيكة */
     let barsRemove=[],barUpdates=[];

@@ -313,12 +313,34 @@ window.saveInvoice=()=>{
         if(_old&&_old.t==='sell')(_old.items||[]).forEach(it=>{ if(it.is1000)_restore24+=(+it.w||0); else _restore730+=(+it.w||0); });
     }
     if(t==='sell'){
-        const need24=newItems.filter(i=>i.is1000&&!i.sbid).reduce((s,i)=>s+i.w,0);
-        const need730=newItems.filter(i=>!i.is1000&&!i.sbid).reduce((s,i)=>s+i.w,0);
-        const avail24=g24.reduce((s,b)=>s+(b.w||0),0)+_restore24;
-        const avail730=g730.reduce((s,b)=>s+(b.w||0),0)+_restore730;
-        if(need24>avail24+0.001)return toast(`⚠️ مخزون سبائك 24 غير كافٍ (متاح: ${fmt(avail24,2)} غ)`,'error');
-        if(need730>avail730+0.001)return toast(`⚠️ مخزون 730 غير كافٍ (متاح: ${fmt(avail730,2)} غ)`,'error');
+        /* ═══ 🛡️ حارس الكوفر: لا تبع ذهباً ليس عندك — الفحص بالعيار لا بالوزن الإجمالي فقط ═══
+           (الوزن الإجمالي وحده كان يسمح ببيع عيار 999 وأنت تملك عيار 700!) */
+        const _kKey=(pool,k)=>pool+'|'+Math.round((Number(k)||0)*10);
+        const availByK={};
+        g730.forEach(b=>{const key=_kKey('730',b.k||730);availByK[key]=(availByK[key]||0)+(b.w||0);});
+        g24 .forEach(b=>{const key=_kKey('24', b.k||1000);availByK[key]=(availByK[key]||0)+(b.w||0);});
+        /* وضع التعديل: أعِد ما ستحرّره الفاتورة القديمة (بعياره) */
+        if(_isEdit){
+            const _o=invoices.find(x=>x.id===_editingInvId);
+            if(_o&&_o.t==='sell')(_o.items||[]).forEach(it=>{
+                const key=_kKey(it.is1000?'24':'730',it.k);
+                availByK[key]=(availByK[key]||0)+(Number(it.w)||0);
+            });
+        }
+        for(let idx=0;idx<newItems.length;idx++){
+            const it=newItems[idx];
+            if(it.sbid)continue;                       /* المختارة من الكوفر لها فحصها الخاص أدناه */
+            const pool=it.is1000?'24':'730';
+            const key=_kKey(pool,it.k);
+            const have=Math.round((availByK[key]||0)*1000)/1000;
+            if(it.w>have+0.001){
+                const _lbl=pool==='24'?'سبائك 24':'ذهب 705';
+                return toast(have<=0
+                    ?`🚫 السطر ${idx+1}: لا يوجد ${_lbl} بعيار ${fmt(it.k,1)} في الكوفر إطلاقاً — لا يمكن بيعه`
+                    :`🚫 السطر ${idx+1}: عيار ${fmt(it.k,1)} — المتاح في الكوفر ${fmt(have,2)} غ فقط والمطلوب ${fmt(it.w,2)} غ`,'error');
+            }
+            availByK[key]=have-it.w;
+        }
         /* فحص السبائك المحدّدة (المختارة من الكوفر): يجب أن تكون موجودة فعلاً */
         const _oldSbids=new Set();
         if(_isEdit){ const _o=invoices.find(x=>x.id===_editingInvId); if(_o&&_o.t==='sell')(_o.items||[]).forEach(it=>{ if(it.sbid)_oldSbids.add(it.sbid); }); }
@@ -361,10 +383,13 @@ window.saveInvoice=()=>{
         /* محاكاة إزالة المخزون على نسخة مستنسخة لتفادي التكرار */
         let g730Clone=g730.map(b=>({...b}));
         let g24Clone=g24.map(b=>({...b}));
-        function pickAndRemove(pool,w){
+        /* 🛡️ الاستهلاك من سبائك نفس العيار فقط — لا نأكل سبيكة عيار آخر */
+        function pickAndRemove(pool,w,k){
             const bars=pool==='24'?g24Clone:g730Clone;
+            const same=(b)=>Math.abs((Number(b.k)||0)-(Number(k)||0))<0.05;
             let rem=w;
             for(let i=bars.length-1;i>=0&&rem>0.001;i--){
+                if(k!=null&&!same(bars[i]))continue;
                 if(bars[i].w<=rem+0.001){
                     barsRemove.push(bars[i].id);rem-=bars[i].w;bars.splice(i,1);
                 }else{
@@ -383,7 +408,7 @@ window.saveInvoice=()=>{
                     else{barUpdates.push({id:ex.id,pool,newW:parseFloat((ex.w-item.w).toFixed(4))});ex.w-=item.w;}
                 }
             }else{
-                pickAndRemove(item.is1000?'24':'730',item.w);
+                pickAndRemove(item.is1000?'24':'730',item.w,item.k);
             }
         });
     }

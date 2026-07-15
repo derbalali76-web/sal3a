@@ -10,7 +10,7 @@ if(!window._focusScrollBound){
     });
 }
 
-window._tDisp=(t)=>t==='دولار'?'سلعة':t;
+window._tDisp=(t)=>t==='دولار'?'ذهب 705':t;
 
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
 let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
@@ -700,7 +700,7 @@ window.confirmLiqEdit=()=>{
         dispBars[bid]={desc:'رصيد افتتاحي',dt,src:'افتتاحي'};
     });
     emitEvent('OPENING',
-        {dinar,dollar,g730v,debtRows,barsAdd,goodsItems},
+        {dinar,dollar,g730v,debtRows,barsAdd,goodsItems,goldPrice},
         {
             bars:Object.keys(dispBars).length?dispBars:undefined,
             op:{c:'النظام',t:'رصيد افتتاحي',m:'متعدد',a:dinar||dollar||g730v,
@@ -830,6 +830,7 @@ function updAll(){
     if(act==='page-log') renderLog();
     else if(act==='page-archive') renderArchive();
     else if(act==='page-debts') renderDebts();
+    else if(act==='page-profit') renderProfit();
     /* الصفحات غير النشطة تُرسَم عند التبديل إليها عبر switchPage — فلا داعي لرسمها هنا */
 }
 function updDL(){
@@ -935,7 +936,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v87';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v90';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -2571,6 +2572,62 @@ window.setDebtFilter=(f)=>{
     });
     renderDebts();
 };
+window.renderProfit=()=>{
+    const el=document.getElementById('profitContent'); if(!el)return;
+    const cap=window._capital||{gold705:0,din:0,ts:0,price:0};
+    const bk=_netBuckets();
+    const curG=bk.gold705Total||0, curD=bk.cashValue||0;
+    const hasCap=Math.abs(cap.gold705)>0.001||Math.abs(cap.din)>0.5;
+    if(!hasCap){
+        el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;text-align:center">
+            <div style="font-size:2rem">💼</div>
+            <div style="font-weight:900;margin:.4rem 0">لم تُدخل رأس المال بعد</div>
+            <div style="font-size:.78rem;color:var(--t2);line-height:1.7">رأس مالك هو <strong>الأرصدة الافتتاحية</strong> — ما تملكه لحظة البداية.<br>افتحها من ⚙ الإعدادات وأدخل: الدينار + السلعة بالتفصيل + ديون الزبائن.<br>بعدها تُحسب أرباحك تلقائياً هنا.</div>
+        </div>`;
+        return;
+    }
+    const pG=Math.round((curG-cap.gold705)*1000)/1000;   /* ربح الذهب بالغرام (705) */
+    const pD=Math.round(curD-cap.din);                    /* ربح الدينار */
+    const pGval=pG*goldPrice;                             /* ربح الذهب مقوّماً بالسعر الحالي */
+    const total=pGval+pD;
+    const capValNow=cap.gold705*goldPrice+cap.din;        /* رأس المال بأسعار اليوم */
+    const capValThen=cap.price?(cap.gold705*cap.price+cap.din):0;
+    const pct=capValNow>0?(total/capValNow*100):0;
+    const C=(v)=>v>=0?'var(--gr)':'var(--rd)';
+    const S=(v)=>v>0?'+':'';
+    const box=(title,rows)=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.8rem;margin-bottom:.6rem">
+        <div style="font-weight:900;font-size:.82rem;color:var(--g500);margin-bottom:.5rem">${title}</div>${rows}</div>`;
+    const row=(l,v,c)=>`<div style="display:flex;justify-content:space-between;padding:.25rem 0;font-size:.82rem">
+        <span style="color:var(--t2)">${l}</span><strong style="color:${c||'var(--t)'}" dir="ltr">${v}</strong></div>`;
+
+    el.innerHTML=
+    /* الربح الكلي */
+    `<div style="background:linear-gradient(135deg,${total>=0?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)'},var(--card));border:2px solid ${C(total)};border-radius:16px;padding:1rem;margin-bottom:.7rem;text-align:center">
+        <div style="font-size:.75rem;color:var(--t2);font-weight:800">${total>=0?'📈 صافي الربح':'📉 صافي الخسارة'}</div>
+        <div style="font-size:1.6rem;font-weight:900;color:${C(total)};margin:.2rem 0" dir="ltr">${S(total)}${fmt(total,0)} دج</div>
+        <div style="font-size:.7rem;color:var(--t2)" dir="ltr">${S(pct)}${fmt(pct,1)}% من رأس المال</div>
+    </div>`
+    +box('💼 رأس المال (من الأرصدة الافتتاحية)',
+        row('🥇 ذهب (705)',fmt(cap.gold705,2)+' غ')+
+        row('💵 دينار',fmt(cap.din,0)+' دج')+
+        (capValThen?row('القيمة وقتها (سعر '+fmt(cap.price,0)+')',fmt(capValThen,0)+' دج','var(--t2)'):'')+
+        row('القيمة بسعر اليوم',fmt(capValNow,0)+' دج','var(--g500)')+
+        (cap.ts?`<div style="font-size:.62rem;color:var(--t3);text-align:left;margin-top:.3rem">${new Date(cap.ts).toLocaleDateString('fr-FR')}</div>`:''))
+    +box('📊 الوضع الحالي',
+        row('🥇 ذهب (705)',fmt(curG,2)+' غ')+
+        row('💵 دينار',fmt(curD,0)+' دج')+
+        row('القيمة الإجمالية',fmt(bk.goldValue+bk.cashValue,0)+' دج','var(--g500)'))
+    +box('📈 الربح الحقيقي (بلا أثر تقلّب السعر)',
+        row('🥇 ربح الذهب',S(pG)+fmt(pG,2)+' غ (705)',C(pG))+
+        row('💵 ربح الدينار',S(pD)+fmt(pD,0)+' دج',C(pD))+
+        `<div style="border-top:1px dashed var(--border);margin:.4rem 0"></div>`+
+        row('قيمة ربح الذهب اليوم',S(pGval)+fmt(pGval,0)+' دج',C(pGval))+
+        row('الصافي بالدينار',S(total)+fmt(total,0)+' دج',C(total)))
+    +`<div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:.6rem;font-size:.68rem;color:var(--t2);line-height:1.6">
+        ℹ️ <strong>لماذا الربح مفصول؟</strong> لو ارتفع سعر الذهب فقيمة أصولك ترتفع دون أن تربح غراماً واحداً.
+        <strong>ربح الذهب بالغرام</strong> هو ربحك الحقيقي من التجارة، وقيمته بالدينار تتغيّر مع السعر.
+    </div>`;
+};
 function renderDebts(){
     const tb=document.getElementById('debtsBody');
     const tf=document.getElementById('debtsFoot');
@@ -2641,7 +2698,7 @@ window.exportDebtsPdf=function(){
                 <tr style="background:#1a1a1a;color:#fff;font-weight:800;text-align:center">
                     <th style="padding:7px;border:1px solid #555">الزبون</th>
                     <th style="padding:7px;border:1px solid #555">💵 دينار (Da)</th>
-                    <th style="padding:7px;border:1px solid #555">🛍️ سلعة (غ)</th>
+                    <th style="padding:7px;border:1px solid #555">🥇 ذهب 705 (غ)</th>
                     <th style="padding:7px;border:1px solid #555">💎 ذهب 24 (غ)</th>
                 </tr>
             </thead>
@@ -2674,7 +2731,7 @@ function _renderSettleRows(){
     const rows=document.getElementById('settleRows');
     const cd={دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0};
     debts.filter(d=>d.c===_settleCustomer).forEach(d=>{cd[d.type]=(cd[d.type]||0)+(d.a||0)});
-    const icons={دينار:'💵',دولار:'🛍️','ذهب 730':'👑','ذهب 24':'💎'};
+    const icons={دينار:'💵',دولار:'🥇','ذهب 730':'👑','ذهب 24':'💎'};
     const units={دينار:'دج',دولار:'غ','ذهب 730':'غ','ذهب 24':'غ'};
     const decs={دينار:0,دولار:2,'ذهب 730':2,'ذهب 24':2};
     const active=Object.entries(cd).filter(([,v])=>Math.abs(v)>0.001);
@@ -3780,6 +3837,7 @@ window.switchPage=(p)=>{
     if(p==='log')renderLog();
     if(p==='archive')renderArchive();
     if(p==='debts')renderDebts();
+    if(p==='profit')renderProfit();
     /* كرة السعر: تظهر في الواجهة الرئيسية فقط */
     const _ball=document.getElementById('hdrCenterWrap');
     if(_ball){

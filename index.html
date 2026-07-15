@@ -42,7 +42,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=64">
+    <link rel="stylesheet" href="./style.css?v=90">
 </head>
 <body>
 <datalist id="customersDatalist"></datalist>
@@ -373,10 +373,15 @@
             </div>
             <div class="tbl"><div class="tbl-scroll">
                 <table><thead><tr>
-                    <th>الزبون</th><th>💵 دينار</th><th>🛍️ سلعة</th><th>💎 24</th><th>إجراء</th>
+                    <th>الزبون</th><th>💵 دينار</th><th>🥇 ذهب 705</th><th>💎 24</th><th>إجراء</th>
                 </tr></thead><tbody id="debtsBody"></tbody>
                 <tfoot id="debtsFoot"></tfoot></table>
             </div></div>
+        </div>
+        <!-- ═══ صفحة الأرباح ═══ -->
+        <div class="page" id="page-profit">
+            <div class="stitle"><span>💼 رأس المال والأرباح</span></div>
+            <div id="profitContent" style="padding-bottom:1rem"></div>
         </div>
     </div>
 
@@ -394,6 +399,7 @@
         <button class="ni"        id="nav-log"       onclick="switchPage('log')">     <i class="fas fa-history"></i>  <span>السجل</span></button>
         <button class="ni"        id="nav-archive"   onclick="switchPage('archive')"> <i class="fas fa-folder"></i>   <span>الأرشيف</span></button>
         <button class="ni"        id="nav-debts"     onclick="switchPage('debts')">   <i class="fas fa-book"></i>     <span>الديون</span></button>
+        <button class="ni"        id="nav-profit"    onclick="switchPage('profit')">  <i class="fas fa-briefcase"></i><span>الأرباح</span></button>
     </div>
 </div>
 
@@ -446,14 +452,15 @@
         onkeydown="if(event.key==='Enter'){document.getElementById('sellAmount').focus();event.preventDefault()}">
     <div style="display:flex;gap:.4rem;margin-bottom:.35rem">
         <div class="fg" style="margin:0"><label>الكمية (غ)</label>
-            <input type="number" id="sellAmount" step="any" min="0.01"
+            <input type="number" id="sellAmount" step="any" min="0.01" oninput="_calcSell()"
                 onkeydown="if(event.key==='Enter'){document.getElementById('sellPrice').focus();event.preventDefault()}">
         </div>
         <div class="fg" style="margin:0"><label>سعر الغرام (دج)</label>
-            <input type="number" id="sellPrice" step="any" min="0"
+            <input type="number" id="sellPrice" step="any" min="0" oninput="_calcSell()"
                 onkeydown="if(event.key==='Enter'){confirmSell();event.preventDefault()}">
         </div>
     </div>
+    <div id="sellEqBox" class="infobox" style="font-size:.72rem;background:rgba(212,175,55,.08);border-color:rgba(212,175,55,.3);margin-bottom:.35rem"></div>
     <div style="display:flex;gap:.4rem;margin-bottom:.35rem">
         <label style="font-size:.72rem;font-weight:800;color:var(--t2);align-self:center">حالة الدفع:</label>
         <button id="sellPaidBtn" onclick="setSellPaid(true)"
@@ -844,13 +851,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=64"></script>
-<script src="./app.js?v=64"></script>
-<script src="./assistant.js?v=64"></script>
-<script src="./inventory.js?v=64"></script>
-<script src="./invoice.js?v=64"></script>
-<script src="./raffinage.js?v=64"></script>
-<script src="./auth.js?v=64"></script>
+<script src="./firebase.js?v=90"></script>
+<script src="./app.js?v=90"></script>
+<script src="./assistant.js?v=90"></script>
+<script src="./inventory.js?v=90"></script>
+<script src="./invoice.js?v=90"></script>
+<script src="./raffinage.js?v=90"></script>
+<script src="./auth.js?v=90"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
