@@ -1132,9 +1132,15 @@ function resetAllData(){
     if(!confirm('⚠️ سيتم حذف جميع البيانات نهائياً — المخزون، السجل، الديون، الرصيد. هل أنت متأكد؟'))return;
     if(!confirm('⚠️ تأكيد أخير: لا يمكن التراجع. هل تريد المتابعة؟'))return;
     try{if(_baseRef){_baseRef.off();_baseRef.remove().catch(()=>{});}_fbListening=false;}catch(e){}
+    /* ملاحظة: المفاتيح مغلَّفة بنطاق التطبيق (@ns:) — localStorage.key() يُرجع المفتاح الخام،
+       لذا نجرّد البادئة قبل المطابقة ثم نحذف بالاسم المنطقي (الغلاف يعيد إضافة البادئة). */
+    const _NS=window.__GP_NS||'';
     const toDel=[];
     for(let i=0;i<localStorage.length;i++){
-        const k=localStorage.key(i);
+        const raw=localStorage.key(i);
+        if(!raw)continue;
+        if(_NS&&!raw.startsWith(_NS))continue;              /* ليس مفتاح هذا التطبيق */
+        const k=_NS?raw.slice(_NS.length):raw;              /* الاسم المنطقي */
         if(k&&(k.startsWith('gp12_')||k.startsWith('gp_ev_')||k.startsWith('gp_settings_')))toDel.push(k);
     }
     toDel.forEach(k=>localStorage.removeItem(k));

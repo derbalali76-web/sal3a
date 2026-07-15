@@ -1,5 +1,15 @@
 /* sw.js — Network-First مع Cache offline */
-const CACHE = 'goldpro-v84';
+/* عزل الكاش لكل تطبيق على نفس النطاق (كان يحذف كاش التطبيقات الأخرى) */
+const NS = (() => { try {
+  let seg = self.location.pathname.replace(/\/[^/]*$/,'').split('/').filter(Boolean).pop() || 'root';
+  try { seg = decodeURIComponent(seg); } catch(e){}
+  /* ⚠️ المسار قد يكون عربياً — الحذف الأعمى لغير ASCII يجعل النطاق فارغاً ومشتركاً بين التطبيقات */
+  const safe = String(seg).toLowerCase().replace(/[^\p{L}\p{N}_-]/gu,'-');
+  let h = 0; for (let i=0;i<seg.length;i++){ h = ((h<<5)-h+seg.charCodeAt(i))|0; }
+  return (safe || 'root') + '#' + (h>>>0).toString(36);
+} catch(e){ return 'root'; } })();
+const CACHE_PREFIX = 'goldpro@' + NS + '-';
+const CACHE = CACHE_PREFIX + 'v85';
 const ASSETS = [
   './',
   './index.html',
@@ -32,7 +42,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+        keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -53,6 +63,6 @@ self.addEventListener('fetch', e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() => caches.open(CACHE).then(c => c.match(e.request)))
   );
 });

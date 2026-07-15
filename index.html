@@ -2,6 +2,26 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+<script>
+/* ═══ عزل التخزين بين التطبيقات على نفس النطاق (github.io يتشارك localStorage!) ═══
+   يُشتق نطاق فرعي من مسار التطبيق، فيُعزل هذا التطبيق عن أي تطبيق آخر على نفس الحساب.
+   يُغلَّف فقط مفاتيح هذا التطبيق — مفاتيح Firebase (firebase:) تمرّ كما هي. */
+(function(){try{
+    var seg=(location.pathname||'').replace(/\/+$/,'').split('/').filter(Boolean).pop()||'root';
+    try{ seg=decodeURIComponent(seg); }catch(e){}
+    /* ⚠️ المسارات قد تكون عربية — لا نحذف غير ASCII وإلا صار النطاق فارغاً ومشتركاً!
+       نحتفظ بالحروف/الأرقام (عربية أو لاتينية) ونستبدل الفواصل، ثم بصمة احتياطية تضمن التفرّد. */
+    var safe=String(seg).toLowerCase().replace(/[^\p{L}\p{N}_-]/gu,'-');
+    var h=0; for(var i=0;i<seg.length;i++){ h=((h<<5)-h+seg.charCodeAt(i))|0; }
+    var NS='@'+(safe||'root')+'#'+(h>>>0).toString(36)+':';
+    var OURS=/^(gp12_|gp_|va_|dc_calc_vals_|tarbah_notes_)/;
+    var P=Storage.prototype, _g=P.getItem, _s=P.setItem, _r=P.removeItem;
+    P.getItem=function(k){ return _g.call(this, OURS.test(k)?NS+k:k); };
+    P.setItem=function(k,v){ return _s.call(this, OURS.test(k)?NS+k:k, v); };
+    P.removeItem=function(k){ return _r.call(this, OURS.test(k)?NS+k:k); };
+    window.__GP_NS=NS;
+}catch(e){}})();
+</script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
