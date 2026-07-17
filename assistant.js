@@ -317,7 +317,7 @@ window.VA = (() => {
         'روح الديون', 'روح الفاتوره', 'روح الرافيناج', 'روح الرئيسي',
         'حسابي', 'حساب فارس', 'عطيني حساب خالد',
         'عثمان دفع 5000 دينار', 'اعطيت خالد 2 لانقو',
-        'شحن 4000 سعر 3.1', 'بيع دولار طاهر 150000 سعر 24800',
+        'شحن 4000 سعر 3.1', 'بيع سلعة طاهر 150000 سعر 24800',
         'صفي فارس', 'فاتوره بيع لفارس', 'فاتوره شراء لاحمد',
         'احسبلي دبي شحن 3700 مصاريف 6000 دولار 24750',
         'عرض المخزون', 'مساعده',
@@ -706,7 +706,7 @@ window.VA = (() => {
         <div class="va-card-sub">حساب الزبون — موجب = يسالك</div>
         <div class="va-bal-grid">
             <div class="va-bal-cell"><span class="va-bal-lbl">💵 دينار</span>${_s(di,0,'DZD')}</div>
-            <div class="va-bal-cell"><span class="va-bal-lbl">💲 دولار</span>${_s(dol,2,'$')}</div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">🥇 سلعة</span>${_s(dol,2,'غ')}</div>
             <div class="va-bal-cell"><span class="va-bal-lbl">👑 ذهب 730</span>${_s(g7,2,'غ')}</div>
             <div class="va-bal-cell"><span class="va-bal-lbl">💎 ذهب 24</span>${_s(g2,2,'غ')}</div>
         </div>
@@ -1015,7 +1015,7 @@ window.VA = (() => {
         <div class="va-card-sub">موجب = يسالك | سالب = أنت تسال</div>
         <div class="va-bal-grid" style="margin-top:.6rem">
             <div class="va-bal-cell"><span class="va-bal-lbl">💵 دينار</span>${fmt2(totalDzd,'DZD')}</div>
-            <div class="va-bal-cell"><span class="va-bal-lbl">💲 دولار</span>${fmt2(totalDol,'$')}</div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">🥇 سلعة</span>${fmt2(totalDol,'غ')}</div>
             <div class="va-bal-cell"><span class="va-bal-lbl">👑 ذهب 730</span>${fmt2(totalG730,'غ')}</div>
             <div class="va-bal-cell"><span class="va-bal-lbl">💎 ذهب 24</span>${fmt2(totalG24,'غ')}</div>
             <div class="va-bal-cell"><span class="va-bal-lbl">👥 زبائن</span>
@@ -1165,7 +1165,7 @@ window.VA = (() => {
             <div class="va-help-row"><span class="va-help-icon">👤</span><div><b>حساب زبون</b><br>"عطيني حساب فارس" | "ما هو حساب خالد"</div></div>
             <div class="va-help-row"><span class="va-help-icon">🤝</span><div><b>تسليم / استلام</b><br>"عثمان دفع 5000 دينار" | "استلمت من خالد 3000"</div></div>
             <div class="va-help-row"><span class="va-help-icon">🚢</span><div><b>شحن</b><br>"شحن 4000 سعر 3.1 مكتب خليل"</div></div>
-            <div class="va-help-row"><span class="va-help-icon">💲</span><div><b>دولار</b><br>"بيع دولار طاهر 150000 سعر 24800"</div></div>
+            <div class="va-help-row"><span class="va-help-icon">🥇</span><div><b>سلعة</b><br>"بيع سلعة طاهر 150000 سعر 24800"</div></div>
             <div class="va-help-row"><span class="va-help-icon">📄</span><div><b>الفاتورة (من صفحتها)</b><br>"100 غ عيار 750 سعر 12000"</div></div>
             <div class="va-help-row"><span class="va-help-icon">🔥</span><div><b>الرافيناج (من صفحته)</b><br>"50 غ عيار 703"</div></div>
             <div class="va-help-row"><span class="va-help-icon">📦</span><div><b>المخزون</b><br>"عرض المخزون" | "انقل السبائك للرافيناج"</div></div>

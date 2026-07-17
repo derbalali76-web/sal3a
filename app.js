@@ -26,7 +26,17 @@ if(!window._focusScrollBound){
     });
 }
 
-window._tDisp=(t)=>t==='دولار'?'ذهب 705':t;
+/* 🏷️ اسم العرض: 'دولار' اسم تخزين قديم — يُعرض دائماً «سلعة»
+   ('ذهب 730' القديم يُعرض «ذهب 705» لأن الديون وُحّدت على 705) */
+window._tDisp=(t)=>t==='دولار'?'سلعة':(t==='ذهب 730'?'ذهب 705':t);
+/* 🏷️ أسماء العمليات القديمة كانت تستعمل «دولار» — تُعرض «سلعة» */
+window._tName=(t)=>({
+    'بيع دولار':'بيع سلعة',
+    'شراء دولار':'شراء سلعة',
+    'دولار وارد':'سلعة واردة',
+    'دولار صادر':'سلعة صادرة',
+    'دولار':'سلعة'
+}[t]||t||'');
 
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
 let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
@@ -948,12 +958,12 @@ window.showGTBalance=()=>{
     const box=document.getElementById('gtBalBox');
     if(!c){box.style.display='none';return}
     const b=getCustBal(c,m),unit=m==='دينار'?'دج':'غ';
-    box.innerHTML=`👤 رصيد ${m}: <strong style="color:${b>=0?'var(--gr)':'var(--rd)'}">${fmt(b,2)} ${unit}</strong>`;
+    box.innerHTML=`👤 رصيد ${_tDisp(m)}: <strong style="color:${b>=0?'var(--gr)':'var(--rd)'}">${fmt(b,2)} ${unit}</strong>`;
     box.style.display='block';
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v98';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v99';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1840,7 +1850,7 @@ window.saveExp=()=>{
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     if(cur==='دولار'){
         const cust=document.getElementById('expCustomer').value.trim();
-        if(!cust)return toast('أدخل اسم الزبون للمصاريف بالدولار','error');
+        if(!cust)return toast('أدخل اسم الزبون للمصاريف بالسلعة','error');
         emitEvent('EXPENSE',{cur,a,n,cust},{op:{c:cust,t:'مصاريف',m:'دولار',a,_ts:Date.now(),dt:nowStr,note:n}});
         closeModal('expModal');
         toast(`💸 مصاريف ${a.toLocaleString('fr-FR')}$ — مسجّلة لصالح ${cust} (علينا له)`);
@@ -2407,7 +2417,7 @@ function renderLog(){
             <div class="log-avatar" style="background:${bg};margin-top:.15rem">${(o.c||'?').substring(0,2)}</div>
             <span style="flex:1;min-width:0">
                 <strong style="font-size:.68rem">${o.c||''}</strong>
-                <br><small style="color:var(--t2)">${o.dt||''} · <span style="color:${bg};font-weight:700">${o.t||''}</span></small>${detailHtml}
+                <br><small style="color:var(--t2)">${o.dt||''} · <span style="color:${bg};font-weight:700">${_tName(o.t)}</span></small>${detailHtml}
             </span>
             <span style="color:${out?'var(--rd)':'var(--gr)'};font-weight:900;font-size:.7rem;white-space:nowrap;margin-top:.1rem">
                 ${out?'−':'+'}${fmt(o.a||0,2)} ${unit}
@@ -2472,8 +2482,8 @@ window.sendCustomerLog=()=>{
         return`<tr style="background:${i%2?'#f9f7f0':'#fff'}">
             <td style="color:#999;font-size:.75rem">${custOps.length-i}</td>
             <td style="font-size:.78rem">${o.dt||''}</td>
-            <td><span style="background:${clr};color:#fff;padding:.1rem .45rem;border-radius:4px;font-size:.72rem;white-space:nowrap">${o.t}</span></td>
-            <td style="font-size:.78rem">${o.m||''}</td>
+            <td><span style="background:${clr};color:#fff;padding:.1rem .45rem;border-radius:4px;font-size:.72rem;white-space:nowrap">${_tName(o.t)}</span></td>
+            <td style="font-size:.78rem">${_tDisp(o.m||'')}</td>
             <td style="font-weight:700;color:${clr};white-space:nowrap">${out?'−':'+'}${(o.a||0).toLocaleString('fr-FR',{maximumFractionDigits:2})} ${unit}</td>
             ${detailCell}
         </tr>`;
@@ -2535,6 +2545,39 @@ ${netBalHtml}
     else toast('فعّل النوافذ المنبثقة لطباعة السجل','error');
 };
 
+/* ═══ 👁 عرض سجل الزبون داخل التطبيق (بلا نوافذ منبثقة ولا طباعة) ═══ */
+window.viewCustomerLog=()=>{
+    const c=document.getElementById('sendLogCustomer').value.trim();
+    if(!c)return toast('اختر زبوناً أولاً','error');
+    let custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
+    /* احترام فلتر الفترة */
+    const days=document.getElementById('sendLogPeriod')?.value||'all';
+    if(days!=='all'){
+        const cut=Date.now()-parseInt(days,10)*86400000;
+        custOps=custOps.filter(o=>(o._ts||0)>=cut);
+    }
+    if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','error');
+    let html='';
+    try{ html=buildCustomerLogHtml(c,custOps); }catch(e){ return toast('تعذّر بناء السجل','error'); }
+    const ov=document.getElementById('logViewOverlay');
+    const fr=document.getElementById('logViewFrame');
+    if(!ov||!fr)return toast('العارض غير متاح','error');
+    document.getElementById('logViewTitle').textContent='📋 سجل '+c;
+    fr.srcdoc=html;
+    ov.style.display='flex';
+    closeModal('sendLogModal');
+};
+window.closeLogView=()=>{
+    const ov=document.getElementById('logViewOverlay');
+    if(ov)ov.style.display='none';
+    const fr=document.getElementById('logViewFrame');
+    if(fr)fr.srcdoc='';
+};
+window.printLogView=()=>{
+    const fr=document.getElementById('logViewFrame');
+    try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ toast('تعذّرت الطباعة','error'); }
+};
+
 /* ═══ واتساب — PDF عبر Web Share API (جوال) أو نافذة طباعة (كمبيوتر) ═══ */
 /* ══ بناء HTML سجل الزبون — يُستخدَم مع html2pdf مثل الفاتورة تماماً ══ */
 function buildCustomerLogHtml(c,custOps){
@@ -2561,7 +2604,7 @@ function buildCustomerLogHtml(c,custOps){
             return`<td style="width:${100/balances.length}%;padding:8px;background:${bg};
                 border:2px solid ${border};border-radius:6px;text-align:center;vertical-align:middle">
                 <div style="font-size:18px;font-weight:900;color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f(Math.abs(v),2)} ${_units[m]}</div>
-                <div style="font-size:11px;color:#555;margin-top:2px">${m}</div>
+                <div style="font-size:11px;color:#555;margin-top:2px">${_tDisp(m)}</div>
                 <div style="font-size:11px;font-weight:700;color:${col}">${lbl}</div>
             </td>`;}).join('')
         :`<td style="text-align:center;color:#6b7280;padding:10px;font-size:13px">
@@ -2582,7 +2625,7 @@ function buildCustomerLogHtml(c,custOps){
         return`<tr style="background:${bg}">
             <td style="padding:7px 5px;text-align:center;color:#9ca3af;font-size:12px;border-bottom:1px solid #e5e7eb">${custOps.length-i}</td>
             <td style="padding:7px 6px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">${o.dt||'—'}</td>
-            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${o.t||'—'}</td>
+            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_tName(o.t)||'—'}</td>
             <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(o.a,2)} ${unit}</td>
             <td style="padding:7px 6px;font-size:11px;border-bottom:1px solid #e5e7eb">${detailHtml}</td>
         </tr>`;}).join('');
@@ -3011,7 +3054,7 @@ function _cashSettlePrompt(type){
     }
     if(net<0){ /* أنت الدافع: تحقّق السيولة */
         if(type==='دينار'&&B.دينار<amt-0.001)return toast(`⚠️ رصيد الدينار غير كافٍ (متاح: ${fmt(B.دينار,0)} دج)`,'error'),false;
-        if(type==='دولار'&&B.دولار<amt-0.001)return toast('⚠️ رصيد الدولار غير كافٍ','error'),false;
+        if(type==='دولار'&&B.دولار<amt-0.001)return toast('⚠️ رصيد السلعة غير كافٍ','error'),false;
     }
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     emitEvent('SETTLE_CASH',
@@ -3026,7 +3069,7 @@ function _applySettle(type){
     if(type==='دينار'&&net<0&&B.دينار<Math.abs(net)-0.001)
         {toast(`⚠️ رصيد الدينار غير كافٍ للتصفية (متاح: ${fmt(B.دينار,0)} دج)`,'error');return false;}
     if(type==='دولار'&&net<0&&B.دولار<Math.abs(net)-0.001)
-        {toast('⚠️ رصيد الدولار غير كافٍ للتصفية','error');return false;}
+        {toast('⚠️ رصيد السلعة غير كافٍ للتصفية','error');return false;}
     if(type==='ذهب 730'&&net>0){const av=g730.reduce((s,b)=>s+(b.w||0),0);if(av<net-0.001){toast(`⚠️ مخزون 730 غير كافٍ للبيع (متاح: ${fmt(av,2)} غ)`,'error');return false;}}
     if(type==='ذهب 24' &&net>0){const av=g24.reduce((s,b)=>s+(b.w||0),0);if(av<net-0.001){toast(`⚠️ مخزون 24 غير كافٍ للبيع (متاح: ${fmt(av,2)} غ)`,'error');return false;}}
     let barsRemove=[],barUpdates=[];
@@ -3044,7 +3087,7 @@ window.settleOne=(type)=>{
     if(!_cashSettlePrompt(type))return;
     /* emitEvent داخل _applySettle يستدعي _reproject ← syncBal+updAll+save تلقائياً */
     _renderSettleRows();
-    toast(`✅ تم تصفية ${type} مع ${_settleCustomer}`);
+    toast(`✅ تم تصفية ${_tDisp(type)} مع ${_settleCustomer}`);
 };
 window.settleAll=()=>{
     const types=['دينار','دولار','ذهب 730','ذهب 24'];
@@ -3105,7 +3148,7 @@ function _openGoldSettleModal(type,forceBuy){
     const isBuy=forceBuy?true:(net<0);
     const icon=isBuy?'🛒':'💰';
     const action=isBuy?'شراء':'بيع';
-    document.getElementById('gsmTitle').textContent=`${icon} ${action} ${type} — ${_settleCustomer}`;
+    document.getElementById('gsmTitle').textContent=`${icon} ${action} ${_tDisp(type)} — ${_settleCustomer}`;
     document.getElementById('gsmQty').textContent=(forceBuy&&Math.abs(net)<0.001)?'شراء حر':fmt(Math.abs(net),3)+' غ';
     document.getElementById('gsmPartialW').value=(forceBuy&&Math.abs(net)<0.001)?'':Math.abs(net).toString().replace('.',',');
     document.getElementById('gsmPrice').value='';
@@ -3174,7 +3217,7 @@ window._gsmConfirm=function(){
     _renderSettleRows();
     const msg=remaining>0.001
         ?`✅ تم تصفية ${fmt(w,3)} غ — الباقي: ${fmt(remaining,3)} غ`
-        :`✅ تم تصفية ${type} مع ${c} وحفظ الفاتورة`;
+        :`✅ تم تصفية ${_tDisp(type)} مع ${c} وحفظ الفاتورة`;
     toast(msg);
     /* تنزيل تلقائي مُلغى */
 };
@@ -4199,7 +4242,7 @@ window.showMonthlyProfit=(mKey)=>{
           <div style="font-size:.64rem;color:var(--t3);margin-top:.35rem">${fmt(dubW,2)} غ × ${fmt(_shipSp,2)}$ × ${f0(_buyR/100)} (سعر شراء الدولار)</div>
         </div>
         <div style="font-size:.64rem;color:var(--t3);margin-top:.6rem;line-height:1.7">
-          الفائدة = القيمة الإجمالية لأصولك الآن (نقد + ذهب مخزون + دولار + ذهب دبي مقوّماً بسعر الذهب) + قيمة شحن الذهب الموجود حالياً في دبي. رقم لحظي يعكس صافي ثروتك.
+          الفائدة = القيمة الإجمالية لأصولك الآن (نقد + ذهب مخزون + سلعة مقوّمة بسعر الذهب) + قيمة شحن الذهب الموجود حالياً في دبي. رقم لحظي يعكس صافي ثروتك.
         </div>
       </div></div>`;
     m.classList.add('active');
@@ -4208,9 +4251,11 @@ window.showMonthlyProfit=(mKey)=>{
 
 /* ── أدوات الأدمين في ورقة التصفية: ضبط رصيد + إعادة تسمية ── */
 window._adminFixDebt=(c)=>{
-    const type=prompt('نوع الرصيد؟ اكتب أحد: دينار / دولار / ذهب 730 / ذهب 24');
-    if(!type||!['دينار','دولار','ذهب 730','ذهب 24'].includes(type.trim()))return toast('نوع غير صحيح','error');
-    const t=type.trim();
+    const _inp=prompt('نوع الرصيد؟ اكتب أحد: دينار / سلعة / ذهب 24');
+    let type=(_inp||'').trim();
+    if(type==='سلعة'||type==='ذهب 705')type='دولار';     /* اسم العرض → اسم التخزين */
+    if(!type||!['دينار','دولار','ذهب 730','ذهب 24'].includes(type))return toast('نوع غير صحيح — استعمل: دينار / سلعة / ذهب 24','error');
+    const t=type;
     const cur=debts.filter(x=>x.c===c&&x.type===t).reduce((s,x)=>s+(x.a||0),0);
     const v=prompt(`الرصيد الحالي لـ${c} (${t}) = ${fmt(cur,2)}\nأدخل القيمة الهدف (موجب = يسالك، سالب = تسالو):`);
     if(v===null)return;
