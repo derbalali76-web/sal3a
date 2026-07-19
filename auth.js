@@ -262,6 +262,19 @@ function renderUsersList(){
 
 async function _checkAuth(){
     const savedUser=localStorage.getItem('gp12_user')||sessionStorage.getItem('gp12_user');
+    /* 🔒 حارس أمني: الجلسة المحفوظة يجب أن تخصّ مالك السريال المفعَّل على هذا الجهاز.
+       لو نُسخت جلسة الأدمن ضمن التطبيق الموزَّع، أو اختلف المالك، تُمسح الجلسة فوراً
+       فلا يرى أي زبون بيانات مالك آخر ولو للحظة. */
+    const _owner=window._snOwner||'';
+    if(savedUser && _owner && savedUser.toLowerCase()!==_owner.toLowerCase()){
+        ['gp12_auth','gp12_user','gp12_ek','gp12_role'].forEach(k=>{
+            try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}
+        });
+        _currentUser='';_encKey='';
+        const _ov=document.getElementById('loginOverlay'); if(_ov)_ov.classList.add('show');
+        if(window._applySerialLock)window._applySerialLock();
+        return;
+    }
     if((localStorage.getItem('gp12_auth')==='1'||sessionStorage.getItem('gp12_auth')==='1')&&savedUser){
         _encKey=localStorage.getItem('gp12_ek')||sessionStorage.getItem('gp12_ek')||'';
         _currentUser=savedUser;
@@ -354,13 +367,28 @@ async function _checkSerial(){
         const sep=stored.lastIndexOf(':');
         const hash=stored.slice(0,sep);
         const site=stored.slice(sep+1);
-        /* ① مدمج → صالح فوراً */
+        /* ① مدمج → صالح فوراً · لكن اقرأ المالك أولاً كي يعمل حارس الجلسة */
         const builtinOk=(hash in _SERIALS && _SERIALS[hash]===(site||''));
         if(builtinOk){
+            /* استعد المالك من الكاش قبل _checkAuth (وإلا رأى الزبون جلسة أدمن أخرى) */
+            try{const o=JSON.parse(localStorage.getItem('gp12_sn_own')||'null');
+                if(o&&o.h===hash){window._snHashCur=o.h;window._snOwner=o.owner||'';window._snName=o.name||'';}
+                else{window._snHashCur=hash;}
+            }catch(e){window._snHashCur=hash;}
             _applySite(site);
             const ov=document.getElementById('serialOverlay');
             if(ov)ov.remove();
-            _checkAuth();return;
+            _checkAuth();
+            /* تحقّق من المالك في الخلفية (السريالات المدمجة تُطالَب أيضاً) */
+            _fetchSerial(hash).then(r=>{
+                if(r===undefined)return;
+                if(r.revoked){ localStorage.removeItem(_SN_LS);try{localStorage.removeItem('gp12_sn_own');}catch(e){}
+                    alert('⚠️ رمز التفعيل موقوف — تواصل مع المزوّد');location.reload();return; }
+                window._snOwner=r.owner||''; window._snName=r.name||_SERIALS[hash]||'';
+                try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:hash,owner:window._snOwner,name:window._snName}));}catch(e){}
+                if(window._applySerialLock)window._applySerialLock();
+            });
+            return;
         }
         /* ② مفعَّل سابقاً من Firebase → نثق بالكاش فوراً (يعمل أوفلاين)
               ثم نتحقّق في الخلفية: إن أُلغي السريال نُخرج المستخدم */
@@ -482,4 +510,19 @@ window.doLogin=doLogin;window.changePw=changePw;window.doLogout=doLogout;
 window.setupFirstUser=setupFirstUser;window.addUser=addUser;
 window.activateSerial=activateSerial;
 window.deleteUser=deleteUser;window.renderUsersList=renderUsersList;
+/* 🧹 حارس التوزيع: أي نسخة موزَّعة قد تحمل جلسة الأدمن (لو بُنيت وهو داخل).
+   عند أول تشغيل على جهاز جديد — قبل تفعيل أي سريال — نمسح أي جلسة موروثة
+   فلا يرى المشتري/الزبون بيانات المطوّر ولو للحظة. */
+(function _purgeInheritedSession(){
+    try{
+        const hasSerial=!!localStorage.getItem(_SN_LS);
+        const firstRunDone=localStorage.getItem('gp12_device_init')==='1';
+        if(!hasSerial && !firstRunDone){
+            ['gp12_auth','gp12_user','gp12_ek','gp12_role','gp12_sn_own'].forEach(k=>{
+                try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}
+            });
+            localStorage.setItem('gp12_device_init','1');
+        }
+    }catch(e){}
+})();
 window.onload=()=>{ _authReadyPromise.then(()=>_checkSerial()); };

@@ -963,7 +963,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v99';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v101';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -2826,49 +2826,118 @@ function renderDebts(){
 }
 window.exportDebtsPdf=function(){
     if(!debts.length){toast('لا توجد ديون للتصدير','info');return;}
+    if(typeof html2pdf==='undefined'){toast('مكتبة PDF غير محمّلة — أعد فتح التطبيق','error');return;}
+
+    /* تجميع الديون لكل زبون */
     const cd={};
     debts.forEach(d=>{
-        if(!cd[d.c])cd[d.c]={di:0,do:0,g7:0,g2:0};
-        cd[d.c][d.type==='دينار'?'di':d.type==='دولار'?'do':d.type==='ذهب 730'?'g7':'g2']+=(d.a||0);
+        if(!cd[d.c])cd[d.c]={di:0,do:0,g2:0};
+        if(d.type==='دينار')cd[d.c].di+=(d.a||0);
+        else if(d.type==='دولار')cd[d.c].do+=(d.a||0);
+        else if(d.type==='ذهب 24')cd[d.c].g2+=(d.a||0);
+        else if(d.type==='ذهب 730')cd[d.c].do+=(d.a||0)*(730/705); /* قديم → 705 */
     });
-    const rows=Object.entries(cd).sort((a,b)=>Math.abs(b[1].di)-Math.abs(a[1].di));
-    const fV=(v,d=0,unit='')=>{
-        if(!v||Math.abs(v)<0.001)return'<span style="color:#aaa">—</span>';
+    const rows=Object.entries(cd).filter(([,v])=>Math.abs(v.di)>0.001||Math.abs(v.do)>0.001||Math.abs(v.g2)>0.001)
+        .sort((a,b)=>Math.abs(b[1].di)-Math.abs(a[1].di));
+
+    /* مجاميع الأعمدة */
+    const tot={di:0,do:0,g2:0};
+    rows.forEach(([,v])=>{tot.di+=v.di;tot.do+=v.do;tot.g2+=v.g2;});
+
+    /* الفائدة الشهرية (قيمة الأصول + شحن دبي) — نفس منطق showMonthlyProfit */
+    const assets=net();
+    let dubW=0; const _offs=new Set();
+    (typeof dubaiInvoices!=='undefined'?dubaiInvoices:[]).forEach(i=>{ if(i.o)_offs.add(i.o); if(i.c)_offs.add(i.c); });
+    debts.forEach(d=>{ if(d.type==='ذهب 24'&&d.a>0.001&&_offs.has(d.c))dubW+=d.a; });
+    const _shipSp=(typeof _lastShipSp==='function')?_lastShipSp():0;
+    const _buyR=(dollarBuyRate>0?dollarBuyRate:dollarRate)||0;
+    const shipDubai=Math.round(dubW*_shipSp*_buyR/100);
+    const monthlyProfit=Math.round(assets)+shipDubai;
+
+    /* ذهب البيع المتبقي (الكاصي) وسعره */
+    const tr=window._cashiTracker||{buyW:0,buyDin:0,soldW:0,soldDin:0};
+    const netW=Math.round((tr.buyW-tr.soldW)*1000)/1000;
+    const netDin=Math.round(tr.buyDin-tr.soldDin);
+    let cashiLabel,cashiVal,cashiPrice;
+    if(Math.abs(netW)<0.001){ cashiLabel='لا يوجد كاصي معلّق'; cashiVal='—'; cashiPrice=''; }
+    else if(netW>0){ cashiLabel='🛒 لاكاص تشتريه'; cashiVal=fmt(netW,2)+' غ'; cashiPrice=fmt(Math.round(netDin/netW),0)+' دج/غ'; }
+    else { cashiLabel='🏷️ لاكاص تبيعه'; cashiVal=fmt(Math.abs(netW),2)+' غ'; cashiPrice=fmt(Math.round(Math.abs(netDin)/Math.abs(netW)),0)+' دج/غ'; }
+
+    const f0=n=>Math.round(n||0).toLocaleString('fr-FR');
+    const fV=(v,d=0)=>{
+        if(!v||Math.abs(v)<0.001)return'<span style="color:#bbb">—</span>';
         const col=v>0?'#16a34a':'#dc2626';
-        return`<span style="color:${col};font-weight:700">${v>0?'+':'−'}${fmt(Math.abs(v),d)} ${unit}</span>`;
+        return`<span style="color:${col};font-weight:700">${v>0?'+':'−'}${fmt(Math.abs(v),d)}</span>`;
     };
     const dt=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    const shopName=(document.getElementById('currentUserDisplay')?.textContent)||'';
+
+    /* بطاقة مجموع */
+    const card=(icon,label,value,sub,color)=>`
+        <div style="flex:1;min-width:120px;background:#fff;border:1.5px solid ${color};border-radius:10px;padding:8px 6px;text-align:center">
+            <div style="font-size:15px">${icon}</div>
+            <div style="font-size:9px;color:#666;margin:2px 0">${label}</div>
+            <div style="font-size:14px;font-weight:900;color:${color}">${value}</div>
+            ${sub?`<div style="font-size:8.5px;color:#888;margin-top:1px">${sub}</div>`:''}
+        </div>`;
+
     const html=`
-    <div style="padding:14px;font-family:Tajawal,sans-serif;direction:rtl;max-width:600px;margin:auto">
-        <div style="text-align:center;border-bottom:2px solid #1a1a1a;padding-bottom:10px;margin-bottom:12px">
-            <div style="font-size:20px;font-weight:900;color:#1a1a1a">📒 دفتر الديون</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">بتاريخ: ${dt} — إجمالي الزبائن: ${rows.length}</div>
+    <div style="padding:14px;font-family:Tajawal,sans-serif;direction:rtl;max-width:640px;margin:auto;color:#1a1a1a">
+        <div style="text-align:center;border-bottom:2px solid #1a1a1a;padding-bottom:9px;margin-bottom:11px">
+            <div style="font-size:20px;font-weight:900">📒 دفتر الديون${shopName?' — '+shopName:''}</div>
+            <div style="font-size:11px;color:#666;margin-top:3px">بتاريخ: ${dt} — عدد الزبائن: ${rows.length}</div>
         </div>
-        <table border="1" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px;border-color:#ccc">
+
+        <!-- بطاقات المجاميع -->
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+            ${card('💵','مجموع الدينار',f0(tot.di)+' دج','','#0369a1')}
+            ${card('🥇','مجموع ذهب 705',fmt(tot.do,2)+' غ','','#b45309')}
+            ${card('💎','مجموع ذهب 24',fmt(tot.g2,2)+' غ','','#7c3aed')}
+        </div>
+
+        <!-- الفائدة الشهرية + ذهب البيع -->
+        <div style="display:flex;gap:6px;margin-bottom:11px;flex-wrap:wrap">
+            ${card('📈','الفائدة الشهرية',f0(monthlyProfit)+' دج','قيمة الأصول + شحن دبي','#16a34a')}
+            ${card(netW>=0?'🛒':'🏷️',cashiLabel,cashiVal,cashiPrice?('السعر: '+cashiPrice):'','#d97706')}
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
-                <tr style="background:#1a1a1a;color:#fff;font-weight:800;text-align:center">
+                <tr style="background:#1a1a1a;color:#fff;text-align:center">
                     <th style="padding:7px;border:1px solid #555">الزبون</th>
-                    <th style="padding:7px;border:1px solid #555">💵 دينار (Da)</th>
+                    <th style="padding:7px;border:1px solid #555">💵 دينار</th>
                     <th style="padding:7px;border:1px solid #555">🥇 ذهب 705 (غ)</th>
                     <th style="padding:7px;border:1px solid #555">💎 ذهب 24 (غ)</th>
                 </tr>
             </thead>
             <tbody>
                 ${rows.map(([n,v],i)=>`
-                <tr style="text-align:center;background:${i%2===0?'#fff':'#f9f9f9'}">
+                <tr style="text-align:center;background:${i%2===0?'#fff':'#f7f7f7'}">
                     <td style="border:1px solid #ccc;padding:6px;font-weight:800;text-align:right">${n}</td>
-                    <td style="border:1px solid #ccc;padding:6px">${fV(v.di,0,'')}</td>
-                    <td style="border:1px solid #ccc;padding:6px">${fV(v.do,2,'')}</td>
-                    <td style="border:1px solid #ccc;padding:6px">${fV(v.g2,2,'')}</td>
+                    <td style="border:1px solid #ccc;padding:6px">${fV(v.di,0)}</td>
+                    <td style="border:1px solid #ccc;padding:6px">${fV(v.do,2)}</td>
+                    <td style="border:1px solid #ccc;padding:6px">${fV(v.g2,2)}</td>
                 </tr>`).join('')}
             </tbody>
+            <tfoot>
+                <tr style="background:#f0e6c8;font-weight:900;text-align:center">
+                    <td style="border:1.5px solid #999;padding:7px;text-align:right">الإجمالي</td>
+                    <td style="border:1.5px solid #999;padding:7px">${fV(tot.di,0)}</td>
+                    <td style="border:1.5px solid #999;padding:7px">${fV(tot.do,2)}</td>
+                    <td style="border:1.5px solid #999;padding:7px">${fV(tot.g2,2)}</td>
+                </tr>
+            </tfoot>
         </table>
-        <div style="margin-top:10px;font-size:10px;color:#888;text-align:center">
-            إيجابي = يسالك (مدين لك) &nbsp;|&nbsp; سالب = تسالو (أنت المدين)
+        <div style="margin-top:9px;font-size:9.5px;color:#888;text-align:center">
+            إيجابي (أخضر) = يسالك · سالب (أحمر) = تسالو &nbsp;|&nbsp; سعر الذهب: ${f0(goldPrice)} دج/غ
         </div>
     </div>`;
-    const opts={margin:6,filename:`ديون_${dt}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-    _makeLockedPdf(opts,html);
+
+    toast('📄 جاري توليد الملف...','info');
+    const opts={margin:6,filename:`ديون_${dt}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+    html2pdf().set(opts).from(html).save()
+        .then(()=>toast('✅ تم تنزيل دفتر الديون','success'))
+        .catch(e=>toast('❌ تعذّر توليد PDF','error'));
 };
 
 let _settleCustomer='';
