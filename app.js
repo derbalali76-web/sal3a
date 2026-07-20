@@ -1413,7 +1413,7 @@ window.openGoodsFor=(name)=>{
             <div style="display:flex;gap:.45rem">
                 <button onclick="document.getElementById('custCardOverlay').classList.remove('active');openSettle('${name.replace(/'/g,"\\'")}')"
                     style="flex:1;padding:.65rem;border:1.5px solid var(--g500);border-radius:12px;background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">✅ تصفية</button>
-                <button onclick="document.getElementById('custCardOverlay').classList.remove('active');openSendLog();setTimeout(()=>{var e=document.getElementById('sendLogCustomer');if(e){e.value='${name.replace(/'/g,"\\'")}';}},200)"
+                <button onclick="document.getElementById('custCardOverlay').classList.remove('active');viewCustomerLogDirect('${name.replace(/'/g,"\\'")}')"
                     style="flex:1;padding:.65rem;border:1.5px solid #7c3aed;border-radius:12px;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">📋 كشف الحساب</button>
             </div>
             <button onclick="document.getElementById('custCardOverlay').classList.remove('active')"
@@ -1423,9 +1423,15 @@ window.openGoodsFor=(name)=>{
     ov.classList.add('active');
 };
 window.openDollar=(t,prefillName)=>{
-    document.getElementById('dollarTitle').textContent=t==='buy'?'🛍️ شراء سلعة':'🛍️ بيع سلعة';
-    document.getElementById('goodsCustomer').value=prefillName||'';
-    document.getElementById('goodsCustomer').placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
+    const _title=document.getElementById('dollarTitle');
+    _title.textContent=t==='buy'?'🛍️ شراء سلعة':'🏷️ بيع سلعة';
+    /* رأس ملوّن: أخضر للشراء · أحمر للبيع */
+    const _grad=t==='buy'?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)';
+    _title.style.cssText='margin:-1rem -1rem .6rem;padding:.85rem 1rem;padding-top:calc(.85rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:18px 18px 0 0;font-size:1.05rem;font-weight:900;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15)';
+    const _gc=document.getElementById('goodsCustomer');
+    _gc.value=prefillName||'';
+    _gc.placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
+    _gc.style.borderColor=t==='buy'?'#16a34a':'#dc2626';
     document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
     _addGoodsRow();
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1499,6 +1505,23 @@ function _gRowsChanged(){
     const last=box.lastElementChild;
     /* إضافة تلقائية: بمجرد الكتابة في السطر الأخير يظهر سطر جديد */
     if(last&&(_rowVal(last,'.g-n')||_rowVal(last,'.g-w')||_rowVal(last,'.g-k')||_rowVal(last,'.g-p')))_addGoodsRow();
+    /* 💠 مجموع فوري لكل سطر: مكافئ 705 + الأجرة، داخل السطر (لا يكسر منطق الأسطر) */
+    box.querySelectorAll('.g-row').forEach(row=>{
+        const w=_rowNum(row,'.g-w'), k=_rowNum(row,'.g-k'), p=_rowNum(row,'.g-p');
+        let badge=row.querySelector('.g-eq');
+        if(w>0&&k>0){
+            const eq=Math.round(w*k/705*1000)/1000;
+            const fv=Math.round(w*(p>0?p:0));
+            if(!badge){
+                row.style.flexWrap='wrap';
+                badge=document.createElement('div');
+                badge.className='g-eq';
+                badge.style.cssText='flex-basis:100%;font-size:.6rem;font-weight:800;color:#0d9488;text-align:left;margin:.05rem .1rem 0;direction:ltr';
+                row.appendChild(badge);
+            }
+            badge.innerHTML=`= ${fmt(eq,3)} غ (705)${fv>0?' · أجرة '+fmt(fv,0)+' دج':''}`;
+        }else if(badge){badge.remove();}
+    });
     _updGoodsTotal();
 }
 function _readGoodsRows(loose){
@@ -2632,6 +2655,20 @@ ${netBalHtml}
 };
 
 /* ═══ 👁 عرض سجل الزبون داخل التطبيق (بلا نوافذ منبثقة ولا طباعة) ═══ */
+/* 📋 عرض سجل زبون مباشرة (من بطاقة الزبون) — منظور الأدمين، بلا نافذة إرسال */
+window.viewCustomerLogDirect=(c)=>{
+    if(!c)return;
+    const custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
+    if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','info');
+    let html='';
+    try{ html=buildCustomerLogHtml(c,custOps,false); }catch(e){ return toast('تعذّر بناء السجل','error'); }
+    const ov=document.getElementById('logViewOverlay');
+    const fr=document.getElementById('logViewFrame');
+    if(!ov||!fr)return toast('العارض غير متاح','error');
+    document.getElementById('logViewTitle').textContent='📋 سجل '+c;
+    fr.srcdoc=html;
+    ov.style.display='flex';
+};
 window.viewCustomerLog=()=>{
     const c=document.getElementById('sendLogCustomer').value.trim();
     if(!c)return toast('اختر زبوناً أولاً','error');
