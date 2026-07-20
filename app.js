@@ -1447,16 +1447,16 @@ window.openDollar=(t,prefillName)=>{
     _addGoodsRow();
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
-    if(_cl)_cl.textContent=t==='buy'?'💵 أخذ دينار':'💵 دفع دينار';
+    if(_cl)_cl.innerHTML=(t==='buy'?'<i class="fas fa-money-bill-wave" style="margin-left:.3rem"></i>أخذ دينار':'<i class="fas fa-money-bill-wave" style="margin-left:.3rem"></i>دفع دينار');
     const _kl=document.getElementById('kassLbl');
-    if(_kl)_kl.textContent=t==='buy'?'⚱️ دفع لاكاص (تدفعه للزبون)':'⚱️ أخذ لاكاص (تأخذه من الزبون)';
+    if(_kl)_kl.innerHTML=(t==='buy'?'<i class="fas fa-cube" style="margin-left:.3rem"></i>دفع لاكاص (تدفعه للزبون)':'<i class="fas fa-cube" style="margin-left:.3rem"></i>أخذ لاكاص (تأخذه من الزبون)');
     const _kb=document.getElementById('kassRows');
     if(_kb){_kb.innerHTML='';window._addKassRow();}
     ['cashiAmt','cashiRate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _ccl=document.getElementById('cashiLbl');
-    if(_ccl)_ccl.textContent=t==='buy'?'💵 دفع كاصي بالدينار (منه)':'💵 قبض كاصي بالدينار (له)';
+    if(_ccl)_ccl.innerHTML=(t==='buy'?'<i class="fas fa-coins" style="margin-left:.3rem"></i>دفع كاصي بالدينار (منه)':'<i class="fas fa-coins" style="margin-left:.3rem"></i>قبض كاصي بالدينار (له)');
     const _cfl=document.getElementById('cashiFeeLbl');
-    if(_cfl)_cfl.textContent=t==='buy'?'⚱️ دفع أجرة بالكاصي (منه)':'⚱️ أجرة بالكاصي (له)';
+    if(_cfl)_cfl.innerHTML=(t==='buy'?'<i class="fas fa-scale-balanced" style="margin-left:.3rem"></i>دفع أجرة بالكاصي (منه)':'<i class="fas fa-scale-balanced" style="margin-left:.3rem"></i>أجرة بالكاصي (له)');
     const _cfb=document.getElementById('cashiFeeRows');
     if(_cfb){_cfb.innerHTML='';window._addCashiFeeRow();}
     const _ce=document.getElementById('cashiEq'); if(_ce)_ce.textContent='';
@@ -1477,9 +1477,9 @@ function _addGoodsRow(vals){
         head.style.cssText='display:flex;gap:.35rem;padding:0 .1rem .15rem;font-size:.56rem;font-weight:800;color:var(--t3)';
         head.innerHTML=`
             <span style="flex:1.4;text-align:center">الصنف</span>
-            <span style="flex:1;text-align:center">⚖️ وزن</span>
-            <span style="flex:.85;text-align:center">🏷️ عيار</span>
-            <span style="flex:1.1;text-align:center">💰 أجرة/غ</span>
+            <span style="flex:1;text-align:center"><i class="fas fa-weight-hanging"></i> وزن</span>
+            <span style="flex:.85;text-align:center"><i class="fas fa-certificate"></i> عيار</span>
+            <span style="flex:1.1;text-align:center"><i class="fas fa-hand-holding-dollar"></i> أجرة/غ</span>
             <span style="width:26px"></span>`;
         box.parentNode.insertBefore(head,box);
     }
@@ -1488,9 +1488,9 @@ function _addGoodsRow(vals){
     div.style.cssText='display:flex;gap:.35rem;align-items:center';
     div.innerHTML=`
         <select class="g-n" style="flex:1.4;margin:0;min-width:0">${_goodsOptions(vals&&vals.n?String(vals.n):'')}</select>
-        <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:center">
-        <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:center">
-        <input type="text" inputmode="decimal" class="g-p" placeholder="💰" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-w" placeholder="الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-k" placeholder="العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-p" placeholder="الأجرة" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:center">
         <button type="button" class="g-del" style="width:26px;height:34px;flex-shrink:0;border:none;border-radius:8px;background:rgba(220,38,38,.1);color:#dc2626;font-size:.9rem;cursor:pointer;padding:0" title="حذف السطر">✕</button>`;
     div.querySelector('select.g-n').addEventListener('change',function(){_handleGoodsSelect(this);_gRowsChanged();});
     div.querySelectorAll('input').forEach(inp=>{
