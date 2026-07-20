@@ -158,12 +158,24 @@ async function setupFirstUser(){
     /* الاسم محجوز عالمياً؟ (Firebase Auth يفرض التفرّد) */
     let created=false;
     try{
+        /* فحص السريال قد يكون سجّل دخولاً مجهولاً — نُنهيه أولاً كي لا يعيق الإنشاء */
+        const _cu=firebase.auth().currentUser;
+        if(_cu&&_cu.isAnonymous){ try{await firebase.auth().signOut();}catch(_){} }
         await firebase.auth().createUserWithEmailAndPassword(_authEmail(uname),_fbPw(pw));
         created=true;
     }catch(e){
-        if(e&&e.code==='auth/email-already-in-use')
+        const code=(e&&e.code)||'';
+        if(code==='auth/email-already-in-use')
             return toast(`🚫 الاسم «${uname}» محجوز — اختر اسماً آخر`,'error');
-        return toast('تعذّر إنشاء الحساب — تأكد من الإنترنت','error');
+        if(code==='auth/operation-not-allowed')
+            return toast('⚠️ فعّل Email/Password في Firebase Console ← Authentication','error');
+        if(code==='auth/weak-password')
+            return toast('كلمة المرور ضعيفة — 6 أحرف على الأقل','error');
+        if(code==='auth/network-request-failed')
+            return toast('لا يوجد اتصال بالإنترنت — حاول ثانيةً','error');
+        if(code==='auth/invalid-email')
+            return toast('الاسم يحتوي رموزاً غير مقبولة — أحرف لاتينية وأرقام فقط','error');
+        return toast('تعذّر إنشاء الحساب: '+(code||e&&e.message||'خطأ غير معروف'),'error');
     }
 
     /* 🔐 مطالبة السريال: تُكتب مرة واحدة فقط (القاعدة تمنع تغييرها لاحقاً) */
