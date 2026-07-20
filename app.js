@@ -93,6 +93,16 @@ function fmt(n,d=2){
     const intFmt=int.replace(/\B(?=(\d{3})+(?!\d))/g,'\u202F');
     return (neg?'−':'')+intFmt+(d>0?','+dec:'');
 }
+/* 💵 تنسيق الدينار: يُقرّب لأقرب ألف (آخر 3 خانات = 000) بلا فواصل.
+   مثال: 31914893.62 → 31915000 */
+function fmtDin(n){
+    if(typeof n!=='number'||isNaN(n))return '0';
+    const neg=n<0;
+    const rounded=Math.round(Math.abs(n)/1000)*1000;
+    const intFmt=String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g,'\u202F');
+    return (neg?'−':'')+intFmt;
+}
+window.fmtDin=fmtDin;
 /* FIX: uid() غير قابل للاستخدام في onclick بدون quotes — نستخدم base36 نظيف */
 function uid(){return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36)}
 
@@ -796,7 +806,7 @@ function getCustBal(c,metal){return debts.filter(d=>d.c===c&&d.type===metal).red
 
 /* ═══════════ UI ═══════════ */
 function upd(){
-    document.getElementById('dinarBal').innerHTML=fmt(B.دينار,0)+'<small> DZD</small>';
+    document.getElementById('dinarBal').innerHTML=fmtDin(B.دينار)+'<small> DZD</small>';
     /* بطاقة 705: القيمة الداخلية مكافئ 730 — نعرضها مكافئ 705 (×730÷705) */
     document.getElementById('g730Bal').innerHTML=fmt((B['ذهب 730']+(B.vg730||0))*(730/705),2)+'<small> غ (705)</small>';
     document.getElementById('g24Bal').innerHTML=fmt(B['ذهب 24']+(B.vg24||0),2)+'<small> g</small>';
@@ -834,12 +844,12 @@ function upd(){
     }
     const _nv=net();
     const _nwEl=document.getElementById('netWorth');
-    _nwEl.textContent=fmt(_nv,0)+' DZD';
+    _nwEl.textContent=fmtDin(_nv)+' DZD';
     _nwEl.style.color=_nv<0?'var(--rd)':'var(--g400)';
     /* تفاصيل كل وعاء بالدينار */
     const _parts=[];
-    _parts.push(`🥇 الذهب (705): ${fmt(_bk.gold705Total,2)} غ = ${fmt(_bk.goldValue,0)} دج`);
-    _parts.push(`💵 السيولة+الديون: ${fmt(_bk.cashValue,0)} دج`);
+    _parts.push(`🥇 الذهب (705): ${fmt(_bk.gold705Total,2)} غ = ${fmtDin(_bk.goldValue)} دج`);
+    _parts.push(`💵 السيولة+الديون: ${fmtDin(_bk.cashValue)} دج`);
     document.getElementById('netWorthDetails').textContent=_parts.join(' | ');
     document.getElementById('goldPriceDisplay').textContent=fmt(goldPrice,0);
 }
@@ -1366,17 +1376,18 @@ window.openGoodsFor=(name)=>{
     const nOps=ops.filter(o=>(o.c||'').toLowerCase()===name.toLowerCase()&&o.t!=='شحن').length;
 
     const _f=(v,d)=>Math.abs(v).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
-    const _bal=(v,unit,d)=>{
+    const _bal=(v,unit,d,isDin)=>{
         if(Math.abs(v)<0.001)return'';
         const owed=v>0;
+        const shown=isDin?fmtDin(Math.abs(v)):_f(v,d);
         return`<div style="flex:1;min-width:88px;background:${owed?'rgba(220,38,38,.08)':'rgba(22,163,74,.08)'};
             border:1.5px solid ${owed?'rgba(220,38,38,.35)':'rgba(22,163,74,.35)'};border-radius:12px;padding:.55rem .4rem;text-align:center">
-            <div style="font-size:1.05rem;font-weight:900;color:${owed?'#dc2626':'#16a34a'};direction:ltr">${_f(v,d)}</div>
+            <div style="font-size:1.05rem;font-weight:900;color:${owed?'#dc2626':'#16a34a'};direction:ltr">${shown}</div>
             <div style="font-size:.58rem;color:var(--t3);font-weight:700;margin-top:.1rem">${unit}</div>
             <div style="font-size:.56rem;font-weight:800;color:${owed?'#dc2626':'#16a34a'}">${owed?'يسالك':'تسالو'}</div>
         </div>`;
     };
-    const balCards=[_bal(di,'دينار',0),_bal(dO,'ذهب 705 (غ)',2),_bal(g2,'ذهب 24 (غ)',2)].filter(Boolean).join('')
+    const balCards=[_bal(di,'دينار',0,true),_bal(dO,'ذهب 705 (غ)',2,false),_bal(g2,'ذهب 24 (غ)',2,false)].filter(Boolean).join('')
         ||`<div style="flex:1;text-align:center;padding:.7rem;color:#16a34a;font-weight:800;font-size:.85rem;background:rgba(22,163,74,.06);border-radius:12px">✅ الحساب صافٍ — لا ديون</div>`;
 
     const tagColor=isWorkshop?'#c2410c':'#0369a1';
@@ -1505,23 +1516,6 @@ function _gRowsChanged(){
     const last=box.lastElementChild;
     /* إضافة تلقائية: بمجرد الكتابة في السطر الأخير يظهر سطر جديد */
     if(last&&(_rowVal(last,'.g-n')||_rowVal(last,'.g-w')||_rowVal(last,'.g-k')||_rowVal(last,'.g-p')))_addGoodsRow();
-    /* 💠 مجموع فوري لكل سطر: مكافئ 705 + الأجرة، داخل السطر (لا يكسر منطق الأسطر) */
-    box.querySelectorAll('.g-row').forEach(row=>{
-        const w=_rowNum(row,'.g-w'), k=_rowNum(row,'.g-k'), p=_rowNum(row,'.g-p');
-        let badge=row.querySelector('.g-eq');
-        if(w>0&&k>0){
-            const eq=Math.round(w*k/705*1000)/1000;
-            const fv=Math.round(w*(p>0?p:0));
-            if(!badge){
-                row.style.flexWrap='wrap';
-                badge=document.createElement('div');
-                badge.className='g-eq';
-                badge.style.cssText='flex-basis:100%;font-size:.6rem;font-weight:800;color:#0d9488;text-align:left;margin:.05rem .1rem 0;direction:ltr';
-                row.appendChild(badge);
-            }
-            badge.innerHTML=`= ${fmt(eq,3)} غ (705)${fv>0?' · أجرة '+fmt(fv,0)+' دج':''}`;
-        }else if(badge){badge.remove();}
-    });
     _updGoodsTotal();
 }
 function _readGoodsRows(loose){
@@ -1709,9 +1703,21 @@ window.saveDollar=()=>{
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     /* gv:2 — دائماً غير خالص: الشراء يُسجّل ديناً بالأحمر (سلعة مكافئ 705 + الأجرة بالدينار)، والبيع بالعكس */
     const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined,cashiCash:cashiCash||undefined,cashiFee:cashiFee.eq>0?cashiFee:undefined};
+    /* 🏷️ اسم العملية يعكس ما حدث فعلاً — لا «بيع سلعة» على عملية دينار صرفة */
+    const _hasGoods=items.some(it=>(it.w||0)>0.001)||(kass.eq>0)||(cashiFee&&cashiFee.eq>0);
+    const _cashAmt=(cash||0)+((cashiCash&&cashiCash.amt)||0);
+    const _hasCash=_cashAmt>0.001;
+    let _opName=isBuy?'شراء سلعة':'بيع سلعة';
+    let _opM='دولار', _opA=Math.round((equiv-(rot?rot.eq:0))*1000)/1000;
+    if(!_hasGoods&&_hasCash){
+        /* دينار فقط بلا ذهب: المبلغ بالدينار، والاسم يعكس الاتجاه */
+        _opName=isBuy?'قبض دينار':'دفع دينار';
+        _opM='دينار';
+        _opA=_cashAmt;
+    }
     emitEvent('DOLLAR',
         {gv:2,c:cust,isBuy,items,equiv,fee,a:equiv,r:0,rot:rot||null,cash:cash||0,kass:kass.eq>0?kass:null,cashiCash:cashiCash||null,cashiFee:cashiFee.eq>0?cashiFee:null},
-        {dollInvoice:_di,op:{c:cust,t:isBuy?'شراء سلعة':'بيع سلعة',m:'دولار',a:Math.round((equiv-(rot?rot.eq:0))*1000)/1000,fee,_ts:Date.now(),dt:nowStr,did,gItems:items.length,rotW:rot?rot.w:0}}
+        {dollInvoice:_di,op:{c:cust,t:_opName,m:_opM,a:_opA,fee,_ts:Date.now(),dt:nowStr,did,gItems:items.length,rotW:rot?rot.w:0}}
     );
     window._editRestore=null;
     closeModal('dollarModal');
@@ -2410,24 +2416,34 @@ function opDetailLines(o,custView){
     const lines=[];
     const t=o.t||'';
     if(t==='شراء سلعة'||t==='بيع سلعة'){
+        const isBuy=t==='شراء سلعة';
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
         if(!inv||!Array.isArray(inv.items)){
-            lines.push(`⚖️ صافي المكافئ (705): ${f(o.a||0,2)} غ${o.fee?` · 💰 الأجرة: ${f(o.fee,0)} دج`:''}${o.rotW?` · ♻️ روتور ${f(o.rotW,2)} غ`:''}`);
-        }
-        if(inv&&Array.isArray(inv.items)){
-            inv.items.forEach(it=>{
+            /* لا فاتورة مفصّلة — سطر واحد موجز فقط إن كان فيه قيمة */
+            if(Math.abs(o.a||0)>0.001)lines.push(`⚖️ صافي المكافئ (705): ${f(o.a||0,2)} غ${o.fee?` · 💰 الأجرة: ${f(o.fee,0)} دج`:''}`);
+        }else{
+            /* 🎯 اعرض فقط الأقسام التي فيها قيمة فعلية — لا سطور صفرية */
+            const realItems=inv.items.filter(it=>(it.w||0)>0.001);
+            realItems.forEach(it=>{
                 const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));
                 lines.push(`${it.n==='روتور'?'♻️':'🛍️'} ${it.n} — ${f(it.w,2)}غ عيار ${f(it.k,0)}${it.p?` × ${f(it.p,0)} دج/غ = ${f(fv,0)} دج`:''}`);
             });
-            if(inv.rot)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
-            if(inv.kass&&inv.kass.eq)lines.push(`⚱️ ${t==='شراء سلعة'?'دفع':'أخذ'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
-            if(inv.cash)lines.push(`💵 ${t==='شراء سلعة'?'أخذ':'دفع'} دينار: ${f(inv.cash,0)} دج (${t==='شراء سلعة'?'خرج من':'دخل إلى'} السيولة)`);
-            if(inv.cashiCash)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705) · ${t==='شراء سلعة'?'دخل السيولة':'خرج من السيولة'}`);
-            if(inv.cashiFee&&inv.cashiFee.items)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج · سبيكة ${t==='شراء سلعة'?'خرجت من':'دخلت'} مخزون 705`);
-            const _nEq=(inv.a||0)-(inv.rot?inv.rot.eq||0:0)-(inv.kass?inv.kass.eq||0:0), _nFee=(inv.fee||0)-(inv.rot?inv.rot.fv||0:0)-(inv.cash||0);
-            lines.push(`⚖️ ${inv.rot?'صافي المكافئ':'المكافئ'} (705): ${f(_nEq,2)} غ${(_nFee||inv.fee)?` · 💰 ${inv.rot?'صافي الأجرة':'مجموع الأجرة'}: ${f(_nFee,0)} دج`:''}`);
-            lines.push(t==='شراء سلعة'?'🔴 دَين بالأحمر (بعد خصم الروتور إن وُجد)':'🟢 بالأخضر (بعد خصم الروتور إن وُجد)');
+            if(inv.rot&&(inv.rot.w||0)>0.001)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
+            if(inv.kass&&inv.kass.eq>0.001)lines.push(`⚱️ ${isBuy?'دفع':'أخذ'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
+            if(inv.cash>0.001)lines.push(`💵 ${isBuy?'أخذ':'دفع'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
+            if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705)`);
+            if(inv.cashiFee&&inv.cashiFee.items&&(inv.cashiFee.din||0)>0.001)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج`);
+            /* سطر المكافئ الإجمالي: فقط إن كان فيه ذهب فعلي (لا في عملية دينار صرفة) */
+            const _nEq=(inv.a||0)-(inv.rot?inv.rot.eq||0:0)-(inv.kass?inv.kass.eq||0:0);
+            const _nFee=(inv.fee||0)-(inv.rot?inv.rot.fv||0:0);
+            if(Math.abs(_nEq)>0.001){
+                lines.push(`⚖️ صافي المكافئ (705): ${f(_nEq,2)} غ${_nFee?` · 💰 الأجرة: ${f(_nFee,0)} دج`:''}`);
+            }
         }
+    } else if(t==='قبض دينار'||t==='دفع دينار'){
+        const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
+        const amt=inv?((inv.cash||0)+((inv.cashiCash&&inv.cashiCash.amt)||0)):(o.a||0);
+        lines.push(`💵 ${t==='قبض دينار'?'قبضت منه':'دفعت له'}: ${f(amt,0)} دج`);
     } else if((t==='شراء'||t==='بيع')&&o.iid){
         const inv=(typeof invoices!=='undefined'?invoices:[]).find(i=>i.id===o.iid);
         if(inv&&inv.items){
@@ -2512,7 +2528,7 @@ function renderLog(){
     if(f!=='all')fl=fl.filter(o=>o.t===f);
     const list=document.getElementById('logList');
     if(!fl.length){list.innerHTML='<div style="text-align:center;padding:2.5rem;color:var(--t3)"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>لا توجد عمليات</div>';return}
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار']);
     const colors={'سلف':'#f97316','رافيناج':'#ea580c','مصاريف':'#dc2626','شحن':'#8b5cf6','بيع دبي':'#14b8a6'};
     list.innerHTML=fl.map(o=>{
         const out=outTypes.has(o.t);
@@ -2574,7 +2590,7 @@ window.sendCustomerLog=()=>{
     const custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
     if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','error');
 
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار']);
     const typeColors={'أعطيت':'#ef4444','استلمت':'#22c55e','شراء':'#3b82f6','بيع':'#ef4444',
         'سلف':'#f97316','رافيناج':'#ea580c','مصاريف':'#dc2626','شحن':'#8b5cf6','تحويل لزبون':'#7c3aed'};
     const user=document.getElementById('currentUserDisplay').textContent||'';
@@ -2708,7 +2724,7 @@ function buildCustomerLogHtml(c,custOps,custView){
     const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
     const now=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
     const user=document.getElementById('currentUserDisplay')?.textContent||'';
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار']);
     const tColor={'أعطيت':'#dc2626','استلمت':'#16a34a','شراء':'#2563eb','بيع':'#dc2626',
         'سلف':'#ea580c','رافيناج':'#92400e','مصاريف':'#dc2626','شحن':'#7c3aed','بيع دبي':'#0d9488',
         'بيع دولار':'#dc2626','شراء دولار':'#2563eb','تحويل لزبون':'#7c3aed','تحويل وارد':'#16a34a','دولار وارد':'#16a34a','دولار صادر':'#dc2626'};
@@ -2716,6 +2732,7 @@ function buildCustomerLogHtml(c,custOps,custView){
     /* 🔄 عكس أسماء العمليات من منظور الزبون */
     const _flipName=(t)=>({
         'شراء سلعة':'بعت سلعة للمحل','بيع سلعة':'اشتريت سلعة من المحل',
+        'قبض دينار':'دفعت للمحل','دفع دينار':'قبضت من المحل',
         'شراء':'بعت للمحل','بيع':'اشتريت من المحل',
         'أعطيت':'استلمت من المحل','استلمت':'سلّمت للمحل',
         'تسليم':'استلمت من المحل','استلام':'سلّمت للمحل',
@@ -2906,7 +2923,7 @@ window.renderProfit=()=>{
     +box('📊 الوضع الحالي',
         row('🥇 ذهب (705)',fmt(curG,2)+' غ')+
         row('💵 دينار',fmt(curD,0)+' دج')+
-        row('القيمة الإجمالية',fmt(bk.goldValue+bk.cashValue,0)+' دج','var(--g500)'))
+        row('القيمة الإجمالية',fmtDin(bk.goldValue+bk.cashValue)+' دج','var(--g500)'))
     +box('📈 الربح الحقيقي (بلا أثر تقلّب السعر)',
         row('🥇 ربح الذهب',S(pG)+fmt(pG,2)+' غ (705)',C(pG))+
         row('💵 ربح الدينار',S(pD)+fmt(pD,0)+' دج',C(pD))+
@@ -2938,7 +2955,10 @@ function renderDebts(){
     ops.forEach(o=>{ if(o&&o.c){ const t=o._ts||0; if(t>(lastTx[o.c]||0)) lastTx[o.c]=t; } });
     const fD=(v,d=0,unit='')=>{
         if(!v||Math.abs(v)<0.001)return'—';
-        return`<span class="${v>0?'debt-pos':'debt-neg'}">${fmt(v,d)}</span>${unit?`<small style="font-size:.65rem;color:var(--t3);margin-right:.15rem"> ${unit}</small>`:''}`;
+        /* الدينار (Da) يُقرّب لأقرب ألف · الذهب يبقى بكسوره */
+        const isDin=unit==='Da'||unit==='دج';
+        const shown=isDin?fmtDin(v):fmt(v,d);
+        return`<span class="${v>0?'debt-pos':'debt-neg'}">${shown}</span>${unit?`<small style="font-size:.65rem;color:var(--t3);margin-right:.15rem"> ${unit}</small>`:''}`;
     };
     if(!entries.length){tb.innerHTML='<tr><td colspan="5" style="padding:2rem;color:var(--t3)">لا توجد ديون في هذا القسم</td></tr>';if(tf)tf.innerHTML='';return;}
     tb.innerHTML=entries
@@ -3029,7 +3049,7 @@ window.exportDebtsPdf=function(){
 
         <!-- بطاقات المجاميع -->
         <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-            ${card('💵','مجموع الدينار',f0(tot.di)+' دج','','#0369a1')}
+            ${card('💵','مجموع الدينار',fmtDin(tot.di)+' دج','','#0369a1')}
             ${card('🥇','مجموع ذهب 705',fmt(tot.do,2)+' غ','','#b45309')}
             ${card('💎','مجموع ذهب 24',fmt(tot.g2,2)+' غ','','#7c3aed')}
         </div>

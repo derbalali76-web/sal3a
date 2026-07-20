@@ -787,6 +787,16 @@
             .log-item small,.op-row small{font-weight:600}
             #invTable input,#rafTable input{font-size:1.02rem;font-weight:800}
             #invTable td,#rafTable td{font-size:1.02rem}
+            /* 🖥️ نافذتا شراء/بيع السلعة: خط أغلظ وأوضح على الحاسوب فقط */
+            #dollarModal h3{font-size:1.2rem;font-weight:900}
+            #dollarModal #goodsCustomer{font-size:1.2rem;font-weight:900}
+            #dollarModal .g-row select,#dollarModal .g-row input{font-size:1.05rem;font-weight:800}
+            #dollarModal #goodsColHead span{font-size:.8rem;font-weight:900}
+            #dollarModal .gtab span:last-child{font-size:.8rem;font-weight:900}
+            #dollarModal .gtab span:first-child{font-size:1.35rem}
+            #dollarModal .gsec input,#dollarModal .gsec span{font-size:1rem;font-weight:800}
+            #dollarModal #goodsTotal{font-size:1.05rem;font-weight:900}
+            #dollarModal label{font-weight:900}
         }
         @media(min-width:1400px){
             html,body{font-size:19px}
