@@ -42,7 +42,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=104">
+    <link rel="stylesheet" href="./style.css?v=108">
 </head>
 <body>
 <datalist id="customersDatalist"></datalist>
@@ -834,31 +834,23 @@
     <button onclick="changePw()" style="width:100%;padding:.5rem;border-radius:8px;border:none;background:var(--g400);color:#1a0a00;font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.6rem">
         🔑 تغيير كلمة المرور
     </button>
-    <!-- إدارة المستخدمين (أدمن فقط) -->
+    <!-- الحساب (كل حساب مستقل) -->
     <div id="adminPanel" style="display:none">
         <hr style="border:none;border-top:1px solid var(--brd);margin:.6rem 0">
-        <p style="font-size:.72rem;font-weight:800;color:var(--t2);margin:0 0 .4rem;text-align:right">👥 إدارة المستخدمين</p>
+        <p style="font-size:.72rem;font-weight:800;color:var(--t2);margin:0 0 .4rem;text-align:right">👤 حسابك</p>
         <div id="usersList" style="margin-bottom:.4rem"></div>
-        <input type="text" id="newUserName" placeholder="👤 اسم مستخدم جديد (لاتيني)" dir="ltr"
-            style="width:100%;padding:.45rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.3rem;text-align:center">
-        <input type="password" id="newUserPw" placeholder="🔒 كلمة مرور المستخدم الجديد"
-            style="width:100%;padding:.45rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.4rem;text-align:center;letter-spacing:.1em"
-            onkeydown="if(event.key==='Enter')addUser()">
-        <button onclick="addUser()" style="width:100%;padding:.5rem;border-radius:8px;border:1.5px solid var(--gr);background:transparent;color:var(--gr);font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
-            ➕ إضافة مستخدم
-        </button>
     </div>
 </div></div>
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=104"></script>
-<script src="./app.js?v=104"></script>
-<script src="./assistant.js?v=104"></script>
-<script src="./inventory.js?v=104"></script>
-<script src="./invoice.js?v=104"></script>
-<script src="./raffinage.js?v=104"></script>
-<script src="./auth.js?v=104"></script>
+<script src="./firebase.js?v=108"></script>
+<script src="./app.js?v=108"></script>
+<script src="./assistant.js?v=108"></script>
+<script src="./inventory.js?v=108"></script>
+<script src="./invoice.js?v=108"></script>
+<script src="./raffinage.js?v=108"></script>
+<script src="./auth.js?v=108"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

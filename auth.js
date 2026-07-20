@@ -1,5 +1,15 @@
 /* ═══════════ AUTH (متعدد المستخدمين) ═══════════ */
 let _USERS_PATH='goldpro/_users';
+/* 🏪 مساحة المحل = مالك السريال (الحساب الأول). موظفوه يُسجَّلون تحتها فقط،
+   فلا يرى محلٌّ مستخدمي محل آخر ولا يحذفهم. */
+function _shopSpace(){
+    const owner=(window._snOwner||'').toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
+    return owner||( (window._currentUser||_currentUser||'').toLowerCase().replace(/[.$#\[\]\/\s]/g,'_') );
+}
+function _usersPathFor(){
+    const sp=_shopSpace();
+    return sp?('goldpro/'+sp+'/_users'):'goldpro/_users';
+}
 let _usersCache={};
 
 /* ── Firebase Email/Password Auth ──
@@ -48,7 +58,7 @@ function _loadUsers(){
     if(Object.keys(_usersCache).length)return Promise.resolve(_usersCache);
     return new Promise(res=>{
         const t=setTimeout(()=>res(_usersCache),5000);
-        _db.ref(_USERS_PATH).once('value',snap=>{
+        _db.ref(_usersPathFor()).once('value',snap=>{
             clearTimeout(t);
             _usersCache=snap.val()||{};
             res(_usersCache);
@@ -129,6 +139,7 @@ async function doLogin(){
     if(!_isMobile&&document.documentElement.requestFullscreen&&!document.fullscreenElement)
         document.documentElement.requestFullscreen().catch(()=>{});
     _currentUser=uname;
+    _USERS_PATH=_usersPathFor();     /* 🔒 سجل موظفي هذا المحل فقط */
     _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+uname;
     _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+uname;
     _baseRef=_db.ref('goldpro/'+uname+'/data');
@@ -212,7 +223,8 @@ async function setupFirstUser(){
         }
     }
 
-    /* سجّل المستخدم — لا نُفشل الدخول لو تأخّرت القاعدة (يُعاد بعد الدخول) */
+    /* سجّل المستخدم في مساحة محله (المالك) — لا في السجل العالمي */
+    _USERS_PATH=_usersPathFor();
     try{ await _saveUser(uname,true); }
     catch(e){ _usersCache[uname]={isAdmin:true}; window._pendingUserWrite=uname; }
     document.getElementById('loginSetupPanel').style.display='none';
@@ -264,34 +276,26 @@ async function changePw(){
 }
 
 async function addUser(){
-    const uname=(document.getElementById('newUserName').value||'').trim().toLowerCase();
-    const pw=document.getElementById('newUserPw').value;
-    if(!uname||uname.length<3)return toast('اسم المستخدم ضعيف','error');
-    if(!/^[a-z0-9_]+$/.test(uname))return toast('أحرف لاتينية وأرقام فقط','error');
-    if(pw.length<4)return toast('كلمة المرور قصيرة','error');
-    if(_usersCache[uname])return toast('⚠️ المستخدم موجود مسبقاً','error');
-    await _saveUser(uname,false);
-    _fbCreateAuthUser(uname,pw);
-    document.getElementById('newUserName').value='';document.getElementById('newUserPw').value='';
-    toast('✅ تم إنشاء المستخدم: '+uname,'success');
-    renderUsersList();
+    /* مُعطَّل: كل حساب مستقل بذاته. الموظفون يستعملون نفس الرمز وكلمة المرور. */
+    toast('كل حساب مستقل — موظفوك يدخلون بنفس الرمز وكلمة المرور','info');
 }
 
 async function deleteUser(uname){
-    if(!confirm(`حذف المستخدم "${uname}"؟`))return;
-    await _db.ref(`${_USERS_PATH}/${uname}`).remove();
-    delete _usersCache[uname];
-    toast('✅ تم الحذف','success');renderUsersList();
+    /* لم يعد ممكناً — كل حساب مستقل ولا يحذف غيره */
+    toast('كل حساب مستقل — لا يمكن حذف حسابات أخرى','info');
 }
 
 function renderUsersList(){
     const ul=document.getElementById('usersList');if(!ul)return;
-    const isAdmin=_usersCache[_currentUser]?.isAdmin;
-    ul.innerHTML=Object.keys(_usersCache).map(u=>`
+    /* كل حساب مستقل تماماً — يعرض نفسه فقط، لا يرى ولا يحذف حسابات أخرى */
+    ul.innerHTML=`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .6rem;background:var(--card2);border-radius:8px;margin-bottom:.25rem;border:1px solid var(--border)">
-            <span style="font-size:.78rem;font-weight:800">${u}${_usersCache[u].isAdmin?' 👑':''}</span>
-            ${isAdmin&&u!==_currentUser?`<button onclick="deleteUser('${u}')" style="border:none;background:transparent;color:var(--rd);cursor:pointer;font-size:.82rem;padding:0">🗑️</button>`:''}
-        </div>`).join('');
+            <span style="font-size:.78rem;font-weight:800">${_currentUser} 👑</span>
+            <span style="font-size:.62rem;color:var(--t3)">حسابك</span>
+        </div>
+        <div style="font-size:.64rem;color:var(--t3);padding:.3rem .6rem;line-height:1.6">
+            🔒 حسابك مستقل تماماً. موظفوك يستعملون نفس الرمز وكلمة المرور على أجهزتهم.
+        </div>`;
 }
 
 async function _checkAuth(){
@@ -312,6 +316,7 @@ async function _checkAuth(){
     if((localStorage.getItem('gp12_auth')==='1'||sessionStorage.getItem('gp12_auth')==='1')&&savedUser){
         _encKey=localStorage.getItem('gp12_ek')||sessionStorage.getItem('gp12_ek')||'';
         _currentUser=savedUser;
+        _USERS_PATH=_usersPathFor();
         _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+savedUser;
         _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+savedUser;
         _baseRef=_db.ref('goldpro/'+savedUser+'/data');

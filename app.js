@@ -963,7 +963,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v104';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v108';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1356,9 +1356,15 @@ window._resetGoodsSecs=()=>{
     ['secRotor','secCash','secKass','secCashi','secCashiFee'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
     document.querySelectorAll('.gtab').forEach(b=>{const sec=b.getAttribute('data-sec');const c=_GTAB_COLORS[sec]||'#d4af37';b.style.background='transparent';b.style.color=c;});
 };
-window.openDollar=(t)=>{
+/* 🛍️ الضغط على زبون في الدفتر: ورشة → شراء سلعة · سوق → بيع سلعة (مع تعبئة اسمه) */
+window.openGoodsFor=(name)=>{
+    const kind=(window._custKind||{})[name]||'market';
+    const t=kind==='workshop'?'buy':'sell';
+    openDollar(t,name);
+};
+window.openDollar=(t,prefillName)=>{
     document.getElementById('dollarTitle').textContent=t==='buy'?'🛍️ شراء سلعة':'🛍️ بيع سلعة';
-    document.getElementById('goodsCustomer').value='';
+    document.getElementById('goodsCustomer').value=prefillName||'';
     document.getElementById('goodsCustomer').placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
     document.getElementById('goodsRows').innerHTML='';
     _addGoodsRow();
@@ -2296,7 +2302,7 @@ window.saveDubai=()=>{
 });
 
 /* ═══ تفاصيل العملية (helper مشترك بين السجل والفاتورة) ═══ */
-function opDetailLines(o){
+function opDetailLines(o,custView){
     const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
     const lines=[];
     const t=o.t||'';
@@ -2558,7 +2564,7 @@ window.viewCustomerLog=()=>{
     }
     if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','error');
     let html='';
-    try{ html=buildCustomerLogHtml(c,custOps); }catch(e){ return toast('تعذّر بناء السجل','error'); }
+    try{ html=buildCustomerLogHtml(c,custOps,false); }catch(e){ return toast('تعذّر بناء السجل','error'); } /* false = منظور الأدمين */
     const ov=document.getElementById('logViewOverlay');
     const fr=document.getElementById('logViewFrame');
     if(!ov||!fr)return toast('العارض غير متاح','error');
@@ -2580,7 +2586,8 @@ window.printLogView=()=>{
 
 /* ═══ واتساب — PDF عبر Web Share API (جوال) أو نافذة طباعة (كمبيوتر) ═══ */
 /* ══ بناء HTML سجل الزبون — يُستخدَم مع html2pdf مثل الفاتورة تماماً ══ */
-function buildCustomerLogHtml(c,custOps){
+function buildCustomerLogHtml(c,custOps,custView){
+    /* custView=true → السجل بمنظور الزبون (معكوس) · false/غياب → منظور المحل (الأدمين) */
     const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
     const now=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
     const user=document.getElementById('currentUserDisplay')?.textContent||'';
@@ -2589,18 +2596,32 @@ function buildCustomerLogHtml(c,custOps){
         'سلف':'#ea580c','رافيناج':'#92400e','مصاريف':'#dc2626','شحن':'#7c3aed','بيع دبي':'#0d9488',
         'بيع دولار':'#dc2626','شراء دولار':'#2563eb','تحويل لزبون':'#7c3aed','تحويل وارد':'#16a34a','دولار وارد':'#16a34a','دولار صادر':'#dc2626'};
 
+    /* 🔄 عكس أسماء العمليات من منظور الزبون */
+    const _flipName=(t)=>({
+        'شراء سلعة':'بعت سلعة للمحل','بيع سلعة':'اشتريت سلعة من المحل',
+        'شراء':'بعت للمحل','بيع':'اشتريت من المحل',
+        'أعطيت':'استلمت من المحل','استلمت':'سلّمت للمحل',
+        'تسليم':'استلمت من المحل','استلام':'سلّمت للمحل',
+        'دولار صادر':'سلعة استلمتها','دولار وارد':'سلعة سلّمتها',
+        'بيع دولار':'اشتريت سلعة من المحل','شراء دولار':'بعت سلعة للمحل',
+        'سلف':'سلفة','رافيناج':'رافيناج','تصفية':'تصفية','مصاريف':'مصاريف','شحن':'شحن'
+    }[t]||_tName(t)||t||'');
+    const _nameOf=(t)=>custView?_flipName(t):(_tName(t)||t||'—');
+
     /* أرصدة الزبون */
     const _modes=['دينار','دولار','ذهب 730','ذهب 24'];
     const _units={دينار:'DZD',دولار:'غ','ذهب 730':'g','ذهب 24':'g'};
     const balances=_modes.map(m=>({m,v:getCustBal(c,m)})).filter(x=>Math.abs(x.v)>0.001);
 
     const balHtml=balances.length
-        ?balances.map(({m,v})=>{
+        ?balances.map(({m,v0})=>{
+            const v=custView?-getCustBal(c,m):getCustBal(c,m); /* الزبون يرى العكس */
             const owed=v>0;
             const bg=owed?'#fef2f2':'#f0fdf4';
             const border=owed?'#fca5a5':'#86efac';
             const col=owed?'#b91c1c':'#15803d';
-            const lbl=owed?'يدين لنا':'ندين له';
+            /* منظور المحل: يدين لنا/ندين له · منظور الزبون: لك عند المحل/عليك للمحل */
+            const lbl=custView?(owed?'لك عند المحل':'عليك للمحل'):(owed?'يدين لنا':'ندين له');
             return`<td style="width:${100/balances.length}%;padding:8px;background:${bg};
                 border:2px solid ${border};border-radius:6px;text-align:center;vertical-align:middle">
                 <div style="font-size:18px;font-weight:900;color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f(Math.abs(v),2)} ${_units[m]}</div>
@@ -2612,20 +2633,21 @@ function buildCustomerLogHtml(c,custOps){
 
     /* صفوف الجدول */
     const rows=custOps.map((o,i)=>{
-        const out=outTypes.has(o.t);
+        const outRaw=outTypes.has(o.t);
+        const out=custView?!outRaw:outRaw;      /* الزبون يرى الاتجاه معكوساً */
         const unit=o.m==='دينار'?'DZD':'g';
         const amtColor=out?'#dc2626':'#16a34a';
         const amtSign=out?'−':'+';
         const tc=tColor[o.t]||'#374151';
         const bg=i%2===0?'#fff':'#fafaf7';
-        const dlines=opDetailLines(o);
+        const dlines=opDetailLines(o,custView);
         const detailHtml=dlines.length
             ?`<div style="margin-top:4px;font-size:10px;color:#555;line-height:1.7;border-top:1px dashed #d1d5db;padding-top:3px">${
                 dlines.map(l=>`<span style="display:block">${l}</span>`).join('')}</div>`:'';
         return`<tr style="background:${bg}">
             <td style="padding:7px 5px;text-align:center;color:#9ca3af;font-size:12px;border-bottom:1px solid #e5e7eb">${custOps.length-i}</td>
             <td style="padding:7px 6px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">${o.dt||'—'}</td>
-            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_tName(o.t)||'—'}</td>
+            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o.t)}</td>
             <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(o.a,2)} ${unit}</td>
             <td style="padding:7px 6px;font-size:11px;border-bottom:1px solid #e5e7eb">${detailHtml}</td>
         </tr>`;}).join('');
@@ -2694,7 +2716,7 @@ window.sendCustomerLogWA=async()=>{
     const fname=`سجل_${safeC}.pdf`;
     closeModal('sendLogModal');
 
-    html2pdf().set(_logPdfOpts(c)).from(buildCustomerLogHtml(c,custOps)).outputPdf('blob')
+    html2pdf().set(_logPdfOpts(c)).from(buildCustomerLogHtml(c,custOps,true)).outputPdf('blob') /* true = منظور الزبون */
         .then(blob=>_showShareCard(blob,fname,`سجل معاملات ${c}`))
         .catch(e=>toast('❌ خطأ في توليد PDF: '+(e&&e.message||e),'error'));
 };
@@ -2811,7 +2833,7 @@ function renderDebts(){
         .map(([n,v])=>{
             const tag=(kind[n]||'market')==='workshop'?'<span style="font-size:.55rem;background:rgba(194,65,12,.15);color:#c2410c;padding:.05rem .3rem;border-radius:.5rem;margin-right:.2rem">ورشة</span>':'<span style="font-size:.55rem;background:rgba(3,105,161,.15);color:#0369a1;padding:.05rem .3rem;border-radius:.5rem;margin-right:.2rem">سوق</span>';
             return`<tr>
-            <td><strong>${n}</strong> ${filter==='all'?tag:''}</td>
+            <td><strong style="cursor:pointer;color:var(--g600);text-decoration:underline;text-decoration-style:dotted" onclick="openGoodsFor('${n.replace(/'/g,"\\'")}')" title="فتح ${(kind[n]||'market')==='workshop'?'شراء':'بيع'} سلعة">${n}</strong> ${filter==='all'?tag:''}</td>
             <td>${fD(v.di,0,'Da')}</td><td>${fD(v.do,2,'غ')}</td>
             <td>${fD(v.g2,2,'غ (24)')}</td>
             <td><button class="btn-settle" onclick="openSettle('${n.replace(/'/g,"\\'")}')">✅ تصفية</button></td>
