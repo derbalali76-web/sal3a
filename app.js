@@ -38,6 +38,23 @@ window._tName=(t)=>({
     'دولار':'سلعة'
 }[t]||t||'');
 
+/* 🏷️ الاسم الحقيقي للعملية حسب محتواها — يصحّح العمليات القديمة «بيع/شراء سلعة»
+   التي كانت فعلياً دينار صرف (بلا ذهب) فتُعرض «دفع/قبض دينار» */
+window._realOpName=(o)=>{
+    const t=(o&&o.t)||'';
+    if(t==='شراء سلعة'||t==='بيع سلعة'){
+        const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
+        if(inv){
+            const hasGoods=(Array.isArray(inv.items)&&inv.items.some(it=>(it.w||0)>0.001))||(inv.kass&&inv.kass.eq>0.001)||(inv.cashiFee&&(inv.cashiFee.din||0)>0.001);
+            const hasCash=(inv.cash||0)>0.001||(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001);
+            if(!hasGoods&&hasCash)return t==='شراء سلعة'?'قبض دينار':'دفع دينار';
+        }else if(Math.abs(o.a||0)<0.001){
+            return t==='شراء سلعة'?'قبض دينار':'دفع دينار';
+        }
+    }
+    return _tName(t);
+};
+
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
 let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
 let goldPrice=12500,dollarRate=24800,dollarSellRate=0,dollarBuyRate=0,liveSpotPrice=0;
@@ -592,7 +609,7 @@ window._addLiqGoodsRow=(vals)=>{
     div.className='lg-row';
     div.style.cssText='display:flex;gap:.35rem';
     div.innerHTML=`
-        <select class="lg-n" style="flex:1.4;margin:0;min-width:0">${typeof _goodsOptions==='function'?_goodsOptions(vals&&vals.n?String(vals.n):''):'<option value="">🛍️ السلعة…</option>'}</select>
+        <select class="lg-n" style="flex:1.4;margin:0;min-width:0">${typeof _goodsOptions==='function'?_goodsOptions(vals&&vals.n?String(vals.n):''):'<option value="">السلعة…</option>'}</select>
         <input type="text" inputmode="decimal" class="lg-w" placeholder="⚖️ الميزان" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
         <input type="text" inputmode="decimal" class="lg-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">`;
     div.querySelector('select.lg-n').addEventListener('change',function(){_handleGoodsSelect(this);_liqGoodsChanged();});
@@ -1324,7 +1341,7 @@ window.renderGoodsNamesList=()=>{
         :'<small style="color:var(--t3)">لا توجد أسماء بعد — أضف أول سلعة</small>';
 };
 function _goodsOptions(sel){
-    let opts=`<option value="">🛍️ السلعة…</option>`+window._goodsNames.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
+    let opts=`<option value="">السلعة…</option>`+window._goodsNames.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
     if(sel&&!window._goodsNames.includes(sel))opts+=`<option value="${sel}" selected>${sel}</option>`;
     opts+=`<option value="__new__">＋ اسم جديد…</option>`;
     return opts;
@@ -1423,10 +1440,12 @@ window.openGoodsFor=(name)=>{
 
             <div style="display:flex;gap:.45rem">
                 <button onclick="document.getElementById('custCardOverlay').classList.remove('active');openSettle('${name.replace(/'/g,"\\'")}')"
-                    style="flex:1;padding:.65rem;border:1.5px solid var(--g500);border-radius:12px;background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">✅ تصفية</button>
+                    style="flex:1;padding:.65rem;border:1.5px solid var(--g500);border-radius:12px;background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">تصفية</button>
                 <button onclick="document.getElementById('custCardOverlay').classList.remove('active');viewCustomerLogDirect('${name.replace(/'/g,"\\'")}')"
-                    style="flex:1;padding:.65rem;border:1.5px solid #7c3aed;border-radius:12px;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">📋 كشف الحساب</button>
+                    style="flex:1;padding:.65rem;border:1.5px solid #7c3aed;border-radius:12px;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">كشف الحساب</button>
             </div>
+            <button onclick="_xferFromCard('${name.replace(/'/g,"\\'")}')"
+                style="width:100%;padding:.65rem;border:1.5px solid #0d9488;border-radius:12px;background:transparent;color:#0d9488;font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">تحويل لزبون</button>
             <button onclick="document.getElementById('custCardOverlay').classList.remove('active')"
                 style="width:100%;padding:.55rem;border:none;border-radius:10px;background:rgba(120,120,120,.12);color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;font-size:.78rem;cursor:pointer">إغلاق</button>
         </div>
@@ -1435,7 +1454,7 @@ window.openGoodsFor=(name)=>{
 };
 window.openDollar=(t,prefillName)=>{
     const _title=document.getElementById('dollarTitle');
-    _title.textContent=t==='buy'?'🛍️ شراء سلعة':'🏷️ بيع سلعة';
+    _title.textContent=t==='buy'?'شراء سلعة':'بيع سلعة';
     /* رأس ملوّن: أخضر للشراء · أحمر للبيع */
     const _grad=t==='buy'?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)';
     _title.style.cssText='margin:-1rem -1rem .6rem;padding:.85rem 1rem;padding-top:calc(.85rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:18px 18px 0 0;font-size:1.05rem;font-weight:900;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15)';
@@ -1447,16 +1466,16 @@ window.openDollar=(t,prefillName)=>{
     _addGoodsRow();
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
-    if(_cl)_cl.innerHTML=(t==='buy'?'<i class="fas fa-money-bill-wave" style="margin-left:.3rem"></i>أخذ دينار':'<i class="fas fa-money-bill-wave" style="margin-left:.3rem"></i>دفع دينار');
+    if(_cl)_cl.textContent=(t==='buy'?'أخذ دينار':'دفع دينار');
     const _kl=document.getElementById('kassLbl');
-    if(_kl)_kl.innerHTML=(t==='buy'?'<i class="fas fa-cube" style="margin-left:.3rem"></i>دفع لاكاص (تدفعه للزبون)':'<i class="fas fa-cube" style="margin-left:.3rem"></i>أخذ لاكاص (تأخذه من الزبون)');
+    if(_kl)_kl.textContent=(t==='buy'?'دفع لاكاص (تدفعه للزبون)':'أخذ لاكاص (تأخذه من الزبون)');
     const _kb=document.getElementById('kassRows');
     if(_kb){_kb.innerHTML='';window._addKassRow();}
     ['cashiAmt','cashiRate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _ccl=document.getElementById('cashiLbl');
-    if(_ccl)_ccl.innerHTML=(t==='buy'?'<i class="fas fa-coins" style="margin-left:.3rem"></i>دفع كاصي بالدينار (منه)':'<i class="fas fa-coins" style="margin-left:.3rem"></i>قبض كاصي بالدينار (له)');
+    if(_ccl)_ccl.textContent=(t==='buy'?'دفع كاصي بالدينار (منه)':'قبض كاصي بالدينار (له)');
     const _cfl=document.getElementById('cashiFeeLbl');
-    if(_cfl)_cfl.innerHTML=(t==='buy'?'<i class="fas fa-scale-balanced" style="margin-left:.3rem"></i>دفع أجرة بالكاصي (منه)':'<i class="fas fa-scale-balanced" style="margin-left:.3rem"></i>أجرة بالكاصي (له)');
+    if(_cfl)_cfl.textContent=(t==='buy'?'دفع أجرة بالكاصي (منه)':'أجرة بالكاصي (له)');
     const _cfb=document.getElementById('cashiFeeRows');
     if(_cfb){_cfb.innerHTML='';window._addCashiFeeRow();}
     const _ce=document.getElementById('cashiEq'); if(_ce)_ce.textContent='';
@@ -1477,9 +1496,9 @@ function _addGoodsRow(vals){
         head.style.cssText='display:flex;gap:.35rem;padding:0 .1rem .15rem;font-size:.56rem;font-weight:800;color:var(--t3)';
         head.innerHTML=`
             <span style="flex:1.4;text-align:center">الصنف</span>
-            <span style="flex:1;text-align:center"><i class="fas fa-weight-hanging"></i> وزن</span>
-            <span style="flex:.85;text-align:center"><i class="fas fa-certificate"></i> عيار</span>
-            <span style="flex:1.1;text-align:center"><i class="fas fa-hand-holding-dollar"></i> أجرة/غ</span>
+            <span style="flex:1;text-align:center">الوزن</span>
+            <span style="flex:.85;text-align:center">العيار</span>
+            <span style="flex:1.1;text-align:center">الأجرة/غ</span>
             <span style="width:26px"></span>`;
         box.parentNode.insertBefore(head,box);
     }
@@ -1627,13 +1646,23 @@ function _updGoodsTotal(){
     const cashiFee=_readCashiFee();
     const _ce=document.getElementById('cashiEq');
     if(_ce)_ce.textContent=cashiCash?('= '+fmt(cashiCash.eq,2)+' غ (705)'):'';
-    let txt=`🛍️ ${fmt(w,2)} غ · مكافئ 705: ${fmt(eq,2)} غ · أجرة ${fmt(fee,0)} دج`;
-    if(rot)txt+=` − ♻️ روتور ${fmt(rot.eq,2)} غ (705) · ${fmt(rot.fv,0)} دج`;
-    if(kass.eq>0)txt+=` − ⚱️ ${isBuyNow?'دفع':'أخذ'} لاكاص ${fmt(kass.eq,2)} غ (705)`;
-    if(cash>0)txt+=` − 💵 ${fmt(cash,0)} دج`;
+    /* 🎯 اعرض فقط ما فيه قيمة — لا أجزاء صفرية مربكة */
+    const parts=[];
+    if(w>0.001||eq>0.001)parts.push(`سلعة ${fmt(w,2)} غ (مكافئ 705: ${fmt(eq,2)} غ)${fee>0?` · أجرة ${fmt(fee,0)} دج`:''}`);
+    if(rot)parts.push(`روتور −${fmt(rot.eq,2)} غ${rot.fv>0?` · −${fmt(rot.fv,0)} دج`:''}`);
+    if(kass.eq>0)parts.push(`${isBuyNow?'دفع':'أخذ'} لاكاص ${fmt(kass.eq,2)} غ (705)`);
+    if(cash>0)parts.push(`${isBuyNow?'أخذ':'دفع'} دينار ${fmt(cash,0)} دج`);
+    if(cashiCash&&cashiCash.amt>0)parts.push(`كاصي ${fmt(cashiCash.amt,0)} دج (${fmt(cashiCash.eq,2)} غ 705)`);
+    if(cashiFee&&cashiFee.din>0)parts.push(`أجرة كاصي ${fmt(cashiFee.din,0)} دج`);
+    /* الصافي الذهبي فقط إن كان فيه ذهب فعلي */
     const netEq=eq-(rot?rot.eq:0)-kass.eq;
-    const netFee=fee-(rot?rot.fv:0)-cash;
-    if(rot||kass.eq>0||cash>0)txt+=` = الصافي: ${fmt(netEq,2)} غ (705) · ${fmt(netFee,0)} دج`;
+    let txt;
+    if(!parts.length){
+        txt='لم تُدخل شيئاً بعد';
+    }else{
+        txt=parts.join(' · ');
+        if(Math.abs(netEq)>0.001&&(rot||kass.eq>0))txt+=` = صافي الذهب: ${fmt(netEq,2)} غ (705)`;
+    }
     el.textContent=txt;
 }
 window.saveDollar=()=>{
@@ -2542,7 +2571,7 @@ function renderLog(){
             <div class="log-avatar" style="background:${bg};margin-top:.15rem">${(o.c||'?').substring(0,2)}</div>
             <span style="flex:1;min-width:0">
                 <strong style="font-size:.68rem">${o.c||''}</strong>
-                <br><small style="color:var(--t2)">${o.dt||''} · <span style="color:${bg};font-weight:700">${_tName(o.t)}</span></small>${detailHtml}
+                <br><small style="color:var(--t2)">${o.dt||''} · <span style="color:${bg};font-weight:700">${_realOpName(o)}</span></small>${detailHtml}
             </span>
             <span style="color:${out?'var(--rd)':'var(--gr)'};font-weight:900;font-size:.7rem;white-space:nowrap;margin-top:.1rem">
                 ${out?'−':'+'}${fmt(o.a||0,2)} ${unit}
@@ -2607,7 +2636,7 @@ window.sendCustomerLog=()=>{
         return`<tr style="background:${i%2?'#f9f7f0':'#fff'}">
             <td style="color:#999;font-size:.75rem">${custOps.length-i}</td>
             <td style="font-size:.78rem">${o.dt||''}</td>
-            <td><span style="background:${clr};color:#fff;padding:.1rem .45rem;border-radius:4px;font-size:.72rem;white-space:nowrap">${_tName(o.t)}</span></td>
+            <td><span style="background:${clr};color:#fff;padding:.1rem .45rem;border-radius:4px;font-size:.72rem;white-space:nowrap">${_realOpName(o)}</span></td>
             <td style="font-size:.78rem">${_tDisp(o.m||'')}</td>
             <td style="font-weight:700;color:${clr};white-space:nowrap">${out?'−':'+'}${(o.a||0).toLocaleString('fr-FR',{maximumFractionDigits:2})} ${unit}</td>
             ${detailCell}
@@ -2740,7 +2769,7 @@ function buildCustomerLogHtml(c,custOps,custView){
         'بيع دولار':'اشتريت سلعة من المحل','شراء دولار':'بعت سلعة للمحل',
         'سلف':'سلفة','رافيناج':'رافيناج','تصفية':'تصفية','مصاريف':'مصاريف','شحن':'شحن'
     }[t]||_tName(t)||t||'');
-    const _nameOf=(t)=>custView?_flipName(t):(_tName(t)||t||'—');
+    const _nameOf=(o)=>{const t=typeof o==='object'?_realOpName(o):o;return custView?_flipName(t):(t||'—');};
 
     /* أرصدة الزبون */
     const _modes=['دينار','دولار','ذهب 730','ذهب 24'];
@@ -2781,7 +2810,7 @@ function buildCustomerLogHtml(c,custOps,custView){
         return`<tr style="background:${bg}">
             <td style="padding:7px 5px;text-align:center;color:#9ca3af;font-size:12px;border-bottom:1px solid #e5e7eb">${custOps.length-i}</td>
             <td style="padding:7px 6px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">${o.dt||'—'}</td>
-            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o.t)}</td>
+            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o)}</td>
             <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(o.a,2)} ${unit}</td>
             <td style="padding:7px 6px;font-size:11px;border-bottom:1px solid #e5e7eb">${detailHtml}</td>
         </tr>`;}).join('');
@@ -2938,7 +2967,7 @@ window.renderProfit=()=>{
 function renderDebts(){
     const tb=document.getElementById('debtsBody');
     const tf=document.getElementById('debtsFoot');
-    if(!debts.length){tb.innerHTML='<tr><td colspan="5" style="padding:2rem;color:var(--t3)"><i class="fas fa-check-circle" style="color:var(--gr)"></i> لا توجد ديون</td></tr>';if(tf)tf.innerHTML='';return}
+    if(!debts.length){tb.innerHTML='<tr><td colspan="4" style="padding:2rem;color:var(--t3)">لا توجد ديون</td></tr>';if(tf)tf.innerHTML='';return}
     const cd={};
     debts.forEach(d=>{
         if(!cd[d.c])cd[d.c]={di:0,do:0,g7:0,g2:0};
@@ -2960,7 +2989,7 @@ function renderDebts(){
         const shown=isDin?fmtDin(v):fmt(v,d);
         return`<span class="${v>0?'debt-pos':'debt-neg'}">${shown}</span>${unit?`<small style="font-size:.65rem;color:var(--t3);margin-right:.15rem"> ${unit}</small>`:''}`;
     };
-    if(!entries.length){tb.innerHTML='<tr><td colspan="5" style="padding:2rem;color:var(--t3)">لا توجد ديون في هذا القسم</td></tr>';if(tf)tf.innerHTML='';return;}
+    if(!entries.length){tb.innerHTML='<tr><td colspan="4" style="padding:2rem;color:var(--t3)">لا توجد ديون في هذا القسم</td></tr>';if(tf)tf.innerHTML='';return;}
     tb.innerHTML=entries
         .sort((a,b)=>{
             const ta=lastTx[a[0]]||0, tb2=lastTx[b[0]]||0;
@@ -2970,17 +2999,16 @@ function renderDebts(){
         .map(([n,v])=>{
             const tag=(kind[n]||'market')==='workshop'?'<span style="font-size:.55rem;background:rgba(194,65,12,.15);color:#c2410c;padding:.05rem .3rem;border-radius:.5rem;margin-right:.2rem">ورشة</span>':'<span style="font-size:.55rem;background:rgba(3,105,161,.15);color:#0369a1;padding:.05rem .3rem;border-radius:.5rem;margin-right:.2rem">سوق</span>';
             return`<tr>
-            <td><strong style="cursor:pointer;color:var(--g600);text-decoration:underline;text-decoration-style:dotted" onclick="openGoodsFor('${n.replace(/'/g,"\\'")}')" title="فتح ${(kind[n]||'market')==='workshop'?'شراء':'بيع'} سلعة">${n}</strong> ${filter==='all'?tag:''}</td>
+            <td><strong style="cursor:pointer;color:var(--g600);text-decoration:underline;text-decoration-style:dotted" onclick="openGoodsFor('${n.replace(/'/g,"\\'")}')" title="فتح بطاقة الزبون">${n}</strong> ${filter==='all'?tag:''}</td>
             <td>${fD(v.di,0,'Da')}</td><td>${fD(v.do,2,'غ')}</td>
             <td>${fD(v.g2,2,'غ (24)')}</td>
-            <td><button class="btn-settle" onclick="openSettle('${n.replace(/'/g,"\\'")}')">✅ تصفية</button></td>
         </tr>`;}).join('');
     /* الإجمالي */
     const tot=entries.reduce((s,[,v])=>({di:s.di+v.di,do:s.do+v.do,g2:s.g2+v.g2}),{di:0,do:0,g2:0});
     if(tf)tf.innerHTML=`<tr style="border-top:2px solid var(--g600);font-weight:900;background:var(--card2)">
         <td style="font-weight:900">الإجمالي (${entries.length})</td>
         <td>${fD(tot.di,0,'Da')}</td><td>${fD(tot.do,2,'غ')}</td>
-        <td>${fD(tot.g2,2,'غ (24)')}</td><td></td>
+        <td>${fD(tot.g2,2,'غ (24)')}</td>
     </tr>`;
 }
 window.exportDebtsPdf=function(){
@@ -3149,6 +3177,37 @@ function _renderSettleRows(){
 
 /* ═══════════ تحويل رصيد ذهب لحساب زبون آخر (لا يمسّ المخزون) ═══════════ */
 let _xferSrcType=null,_xferSrcBal=0,_xferMode='same';
+/* 🔁 تحويل لزبون من بطاقة الزبون: يضبط الزبون ثم يختار نوع الرصيد المتاح */
+window._xferFromCard=(name)=>{
+    document.getElementById('custCardOverlay').classList.remove('active');
+    _settleCustomer=name;
+    const di=getCustBal(name,'دينار'), dO=getCustBal(name,'دولار'), g2=getCustBal(name,'ذهب 24');
+    const avail=[];
+    if(Math.abs(di)>0.001)avail.push({t:'دينار',lbl:'دينار',v:di});
+    if(Math.abs(dO)>0.001)avail.push({t:'دولار',lbl:'ذهب 705',v:dO});
+    if(Math.abs(g2)>0.001)avail.push({t:'ذهب 24',lbl:'ذهب 24',v:g2});
+    if(!avail.length){toast('لا يوجد رصيد لتحويله','info');return;}
+    if(avail.length===1){openXfer(avail[0].t);return;}
+    /* أكثر من نوع → اسأل أيّها */
+    let ov=document.getElementById('xferPickOverlay');
+    if(!ov){
+        ov=document.createElement('div');ov.id='xferPickOverlay';ov.className='modal-overlay';
+        document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');});
+    }
+    ov.innerHTML=`<div class="modal" style="max-width:340px">
+        <div class="modal-handle"></div>
+        <h3 style="text-align:center">أي رصيد تحوّل؟ — ${name}</h3>
+        <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem">
+            ${avail.map(a=>`<button onclick="document.getElementById('xferPickOverlay').classList.remove('active');openXfer('${a.t}')"
+                style="padding:.7rem;border:1.5px solid var(--g500);border-radius:12px;background:transparent;color:var(--t);font-family:Tajawal,sans-serif;font-weight:900;font-size:.9rem;cursor:pointer">
+                ${a.lbl}: ${fmt(Math.abs(a.v),a.t==='دينار'?0:a.t==='دولار'?2:3)} ${a.t==='دينار'?'دج':'غ'} · ${a.v>0?'يسالك':'تسالو'}</button>`).join('')}
+            <button onclick="document.getElementById('xferPickOverlay').classList.remove('active')"
+                style="padding:.5rem;border:none;border-radius:10px;background:rgba(120,120,120,.12);color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">إلغاء</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
+};
 window.openXfer=(srcType)=>{
     const bal=debts.filter(x=>x.c===_settleCustomer&&x.type===srcType).reduce((s,x)=>s+(x.a||0),0);
     if(Math.abs(bal)<0.001){toast('لا يوجد رصيد لهذا النوع','info');return;}
