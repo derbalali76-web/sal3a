@@ -112,7 +112,8 @@ async function doLogin(){
     let users;
     try{users=await _loadUsers();}catch(e){users=_usersCache;}
 
-    const user=users[uname];
+    /* المستخدم قد لا يكون ظهر في _users بعد (تأخّر القاعدة عقب الإنشاء) — اقبله من الكاش */
+    const user=users[uname]||_usersCache[uname];
     if(!user){ if(btn){btn.disabled=false;btn.textContent=origTxt;} return _showLoginErr('اسم المستخدم غير موجود'); }
 
     /* التحقّق من كلمة المرور عبر مصادقة Firebase حصراً (لا بصمة مخزّنة تُكسَر) */
@@ -138,6 +139,10 @@ async function doLogin(){
     const ov=document.getElementById('loginOverlay');
     ov.classList.add('fade-out');setTimeout(()=>ov.remove(),520);
     _fbInitialLoad();_afterLogin();
+    /* أعد كتابة سجل المستخدم إن تعذّر أثناء الإنشاء (تأخّر رمز المصادقة) */
+    if(window._pendingUserWrite===uname){
+        _saveUser(uname,true).then(()=>{window._pendingUserWrite=null;}).catch(()=>{});
+    }
     /* 💾 نسخة احتياطية تلقائية كل 12 ساعة (للأدمن — وكل مستخدم أدمن مساحته) */
     try{ if(window._startAutoBackup)window._startAutoBackup(); }catch(e){}
 }
@@ -178,6 +183,19 @@ async function setupFirstUser(){
         return toast('تعذّر إنشاء الحساب: '+(code||e&&e.message||'خطأ غير معروف'),'error');
     }
 
+    /* ⏳ انتظر استقرار جلسة المصادقة — القاعدة تتحقق من auth.token.email،
+       والكتابة الفورية قبل استقرار الرمز تُرفض بصمت فيبدو أن الحساب لم يُنشأ. */
+    await new Promise(res=>{
+        const _cur=firebase.auth().currentUser;
+        if(_cur&&_cur.email){res();return;}
+        let done=false;
+        const off=firebase.auth().onAuthStateChanged(u=>{
+            if(u&&u.email&&!done){done=true;off();res();}
+        });
+        setTimeout(()=>{ if(!done){done=true;try{off();}catch(_){}res();} },5000);
+    });
+    try{ await firebase.auth().currentUser?.getIdToken(true); }catch(_){}
+
     /* 🔐 مطالبة السريال: تُكتب مرة واحدة فقط (القاعدة تمنع تغييرها لاحقاً) */
     if(window._snHashCur&&!window._snOwner){
         try{
@@ -185,14 +203,18 @@ async function setupFirstUser(){
             window._snOwner=uname;
             try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:window._snHashCur,owner:uname,name:window._snName||''}));}catch(_){}
         }catch(e){
-            /* سبقه غيره للمطالبة */
+            /* سبقه غيره للمطالبة؟ */
             const r=await _fetchSerial(window._snHashCur);
-            if(r&&r.owner)return toast(`🚫 هذا الرمز صار مربوطاً بمحل «${r.owner}»`,'error');
-            return toast('تعذّر ربط الرمز — حاول ثانيةً','error');
+            if(r&&r.owner&&r.owner!==uname)return toast(`🚫 هذا الرمز صار مربوطاً بمحل «${r.owner}»`,'error');
+            /* غير ذلك (تأخّر رمز المصادقة) — نتابع، وتُعاد المحاولة بعد الدخول */
+            window._snOwner=uname;
+            try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:window._snHashCur,owner:uname,name:window._snName||''}));}catch(_){}
         }
     }
 
-    await _saveUser(uname,true);
+    /* سجّل المستخدم — لا نُفشل الدخول لو تأخّرت القاعدة (يُعاد بعد الدخول) */
+    try{ await _saveUser(uname,true); }
+    catch(e){ _usersCache[uname]={isAdmin:true}; window._pendingUserWrite=uname; }
     document.getElementById('loginSetupPanel').style.display='none';
     document.getElementById('loginMainPanel').style.display='block';
     document.getElementById('loginUser').value=uname;
