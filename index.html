@@ -26,7 +26,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="GoldPro">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#f59e0b">
@@ -42,7 +42,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=108">
+    <link rel="stylesheet" href="./style.css?v=110">
 </head>
 <body>
 <datalist id="customersDatalist"></datalist>
@@ -587,7 +587,7 @@
         <span id="cashiFeeLbl" style="display:block;font-weight:900;font-size:.8rem;color:#7c3aed;margin-bottom:.3rem">⚱️ دفع أجرة بالكاصي</span>
         <div id="cashiFeeRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:20vh;overflow-y:auto"></div>
     </div>
-    <div class="infobox" id="goodsTotal" style="font-weight:900;margin-top:.5rem">⚖️ 0 غ · مكافئ 705: 0 غ · 💰 الأجرة: 0 دج</div>
+    <div id="goodsTotal" style="font-weight:900;margin-top:.6rem;padding:.6rem .7rem;border-radius:12px;background:linear-gradient(135deg,rgba(212,175,55,.14),rgba(212,175,55,.06));border:1.5px solid var(--g500);font-size:.82rem;text-align:center;color:var(--t)">⚖️ 0 غ · مكافئ 705: 0 غ · 💰 الأجرة: 0 دج</div>
     <div class="mactions">
         <button class="bgy" onclick="closeModal('dollarModal')">إلغاء</button>
         <button class="bg" onclick="saveDollar()">💾 حفظ</button>
@@ -844,13 +844,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=108"></script>
-<script src="./app.js?v=108"></script>
-<script src="./assistant.js?v=108"></script>
-<script src="./inventory.js?v=108"></script>
-<script src="./invoice.js?v=108"></script>
-<script src="./raffinage.js?v=108"></script>
-<script src="./auth.js?v=108"></script>
+<script src="./firebase.js?v=110"></script>
+<script src="./app.js?v=110"></script>
+<script src="./assistant.js?v=110"></script>
+<script src="./inventory.js?v=110"></script>
+<script src="./invoice.js?v=110"></script>
+<script src="./raffinage.js?v=110"></script>
+<script src="./auth.js?v=110"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

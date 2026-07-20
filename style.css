@@ -38,10 +38,16 @@
 
         /* ─── Layout ─── */
         .app{width:100%;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+        /* 📱 iPhone: املأ خلفية شريط النظام (notch) بلون الترويسة كي لا يبدو منفصلاً */
+        body{background:var(--card)}
 
         /* ─── Header ─── */
         .hdr{
-            background:var(--card);padding:.55rem 1rem;
+            background:var(--card);
+            padding:.55rem 1rem;
+            padding-top:calc(.55rem + env(safe-area-inset-top,0px));
+            padding-left:calc(1rem + env(safe-area-inset-left,0px));
+            padding-right:calc(1rem + env(safe-area-inset-right,0px));
             border-bottom:1px solid var(--border);
             display:flex;align-items:center;justify-content:space-between;
             position:relative;
@@ -58,7 +64,7 @@
         .brand-text h2{font-size:.9rem;font-weight:900;color:var(--g700);line-height:1.1}
         .dark .brand-text h2{color:var(--g400)}
         .brand-text span{font-size:.55rem;color:var(--t2);font-weight:600}
-        .hdr-right{display:flex;gap:.35rem;align-items:center}
+        .hdr-right{display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
         .badge{
             padding:.28rem .65rem;border-radius:2rem;
             font-size:.65rem;font-weight:800;

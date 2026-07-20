@@ -963,7 +963,7 @@ window.showGTBalance=()=>{
 };
 window.openGiveTake=(t)=>{
     gtType=(t==='give')?'give':'take';
-    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+' • v108';
+    document.getElementById('gtTitle').textContent=(t==='give'?'🟢 تسليم (أعطيت)':'🔴 استلام (قبضت)')+'';
     document.getElementById('gtSaveBtn').className=t==='give'?'bg':'br';
     document.getElementById('gtCustomer').value='';
     document.getElementById('gtAmount').value='';
@@ -1356,17 +1356,77 @@ window._resetGoodsSecs=()=>{
     ['secRotor','secCash','secKass','secCashi','secCashiFee'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
     document.querySelectorAll('.gtab').forEach(b=>{const sec=b.getAttribute('data-sec');const c=_GTAB_COLORS[sec]||'#d4af37';b.style.background='transparent';b.style.color=c;});
 };
-/* 🛍️ الضغط على زبون في الدفتر: ورشة → شراء سلعة · سوق → بيع سلعة (مع تعبئة اسمه) */
+/* 🪪 بطاقة الزبون الاحترافية عند الضغط على اسمه في الدفتر */
 window.openGoodsFor=(name)=>{
     const kind=(window._custKind||{})[name]||'market';
-    const t=kind==='workshop'?'buy':'sell';
-    openDollar(t,name);
+    const isWorkshop=kind==='workshop';
+    const di=getCustBal(name,'دينار');
+    const dO=getCustBal(name,'دولار');          /* ذهب 705 */
+    const g2=getCustBal(name,'ذهب 24');
+    const nOps=ops.filter(o=>(o.c||'').toLowerCase()===name.toLowerCase()&&o.t!=='شحن').length;
+
+    const _f=(v,d)=>Math.abs(v).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    const _bal=(v,unit,d)=>{
+        if(Math.abs(v)<0.001)return'';
+        const owed=v>0;
+        return`<div style="flex:1;min-width:88px;background:${owed?'rgba(220,38,38,.08)':'rgba(22,163,74,.08)'};
+            border:1.5px solid ${owed?'rgba(220,38,38,.35)':'rgba(22,163,74,.35)'};border-radius:12px;padding:.55rem .4rem;text-align:center">
+            <div style="font-size:1.05rem;font-weight:900;color:${owed?'#dc2626':'#16a34a'};direction:ltr">${_f(v,d)}</div>
+            <div style="font-size:.58rem;color:var(--t3);font-weight:700;margin-top:.1rem">${unit}</div>
+            <div style="font-size:.56rem;font-weight:800;color:${owed?'#dc2626':'#16a34a'}">${owed?'يسالك':'تسالو'}</div>
+        </div>`;
+    };
+    const balCards=[_bal(di,'دينار',0),_bal(dO,'ذهب 705 (غ)',2),_bal(g2,'ذهب 24 (غ)',2)].filter(Boolean).join('')
+        ||`<div style="flex:1;text-align:center;padding:.7rem;color:#16a34a;font-weight:800;font-size:.85rem;background:rgba(22,163,74,.06);border-radius:12px">✅ الحساب صافٍ — لا ديون</div>`;
+
+    const tagColor=isWorkshop?'#c2410c':'#0369a1';
+    const tagBg=isWorkshop?'rgba(194,65,12,.12)':'rgba(3,105,161,.12)';
+    const tagLabel=isWorkshop?'🔧 ورشة':'🏪 سوق';
+    const actLabel=isWorkshop?'🛍️ شراء سلعة':'🏷️ بيع سلعة';
+    const actType=isWorkshop?'buy':'sell';
+
+    let ov=document.getElementById('custCardOverlay');
+    if(!ov){
+        ov=document.createElement('div');
+        ov.id='custCardOverlay';
+        ov.className='modal-overlay';
+        document.body.appendChild(ov);
+        ov.addEventListener('pointerdown',e=>{if(e.target===ov)ov._os=true;});
+        ov.addEventListener('pointerup',e=>{if(e.target===ov&&ov._os){ov.classList.remove('active');}ov._os=false;});
+    }
+    ov.innerHTML=`<div class="modal" style="max-width:420px">
+        <div class="modal-handle"></div>
+        <div style="text-align:center;margin-bottom:.6rem">
+            <div style="width:56px;height:56px;margin:0 auto .4rem;border-radius:50%;background:linear-gradient(135deg,var(--g400),var(--g600));display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:#fff;box-shadow:0 4px 14px rgba(245,158,11,.35)">👤</div>
+            <div style="font-size:1.2rem;font-weight:900;color:var(--t)">${name}</div>
+            <span style="display:inline-block;margin-top:.25rem;font-size:.66rem;font-weight:900;color:${tagColor};background:${tagBg};padding:.15rem .6rem;border-radius:1rem">${tagLabel}</span>
+            <span style="display:inline-block;margin-top:.25rem;font-size:.62rem;color:var(--t3);margin-right:.3rem">${nOps} معاملة</span>
+        </div>
+
+        <div style="font-size:.66rem;font-weight:800;color:var(--t3);margin:.3rem 0 .35rem;text-align:right">💰 الأرصدة الحالية</div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem">${balCards}</div>
+
+        <div style="display:flex;flex-direction:column;gap:.45rem">
+            <button onclick="document.getElementById('custCardOverlay').classList.remove('active');openDollar('${actType}','${name.replace(/'/g,"\\'")}')"
+                style="width:100%;padding:.8rem;border:none;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:900;font-size:.95rem;cursor:pointer;color:#fff;background:linear-gradient(135deg,${isWorkshop?'#ea580c,#c2410c':'#0ea5e9,#0369a1'});box-shadow:0 4px 14px ${isWorkshop?'rgba(234,88,12,.3)':'rgba(3,105,161,.3)'}">${actLabel}</button>
+
+            <div style="display:flex;gap:.45rem">
+                <button onclick="document.getElementById('custCardOverlay').classList.remove('active');openSettle('${name.replace(/'/g,"\\'")}')"
+                    style="flex:1;padding:.65rem;border:1.5px solid var(--g500);border-radius:12px;background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">✅ تصفية</button>
+                <button onclick="document.getElementById('custCardOverlay').classList.remove('active');openSendLog();setTimeout(()=>{var e=document.getElementById('sendLogCustomer');if(e){e.value='${name.replace(/'/g,"\\'")}';}},200)"
+                    style="flex:1;padding:.65rem;border:1.5px solid #7c3aed;border-radius:12px;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.82rem;cursor:pointer">📋 كشف الحساب</button>
+            </div>
+            <button onclick="document.getElementById('custCardOverlay').classList.remove('active')"
+                style="width:100%;padding:.55rem;border:none;border-radius:10px;background:rgba(120,120,120,.12);color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;font-size:.78rem;cursor:pointer">إغلاق</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
 };
 window.openDollar=(t,prefillName)=>{
     document.getElementById('dollarTitle').textContent=t==='buy'?'🛍️ شراء سلعة':'🛍️ بيع سلعة';
     document.getElementById('goodsCustomer').value=prefillName||'';
     document.getElementById('goodsCustomer').placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
-    document.getElementById('goodsRows').innerHTML='';
+    document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
     _addGoodsRow();
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
@@ -1393,17 +1453,37 @@ window.openDollar=(t,prefillName)=>{
 function _addGoodsRow(vals){
     const box=document.getElementById('goodsRows');
     if(!box||box.children.length>=30)return;
+    /* عناوين الأعمدة مرة واحدة في الأعلى */
+    if(!box.children.length && !document.getElementById('goodsColHead')){
+        const head=document.createElement('div');
+        head.id='goodsColHead';
+        head.style.cssText='display:flex;gap:.35rem;padding:0 .1rem .15rem;font-size:.56rem;font-weight:800;color:var(--t3)';
+        head.innerHTML=`
+            <span style="flex:1.4;text-align:center">الصنف</span>
+            <span style="flex:1;text-align:center">⚖️ وزن</span>
+            <span style="flex:.85;text-align:center">🏷️ عيار</span>
+            <span style="flex:1.1;text-align:center">💰 أجرة/غ</span>
+            <span style="width:26px"></span>`;
+        box.parentNode.insertBefore(head,box);
+    }
     const div=document.createElement('div');
     div.className='g-row';
-    div.style.cssText='display:flex;gap:.35rem';
+    div.style.cssText='display:flex;gap:.35rem;align-items:center';
     div.innerHTML=`
         <select class="g-n" style="flex:1.4;margin:0;min-width:0">${_goodsOptions(vals&&vals.n?String(vals.n):'')}</select>
-        <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
-        <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">
-        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 الأجرة/غ" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:right">`;
+        <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-p" placeholder="💰" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:center">
+        <button type="button" class="g-del" style="width:26px;height:34px;flex-shrink:0;border:none;border-radius:8px;background:rgba(220,38,38,.1);color:#dc2626;font-size:.9rem;cursor:pointer;padding:0" title="حذف السطر">✕</button>`;
     div.querySelector('select.g-n').addEventListener('change',function(){_handleGoodsSelect(this);_gRowsChanged();});
     div.querySelectorAll('input').forEach(inp=>{
         inp.addEventListener('input',()=>{ liveNum(inp);_gRowsChanged(); });
+    });
+    div.querySelector('.g-del').addEventListener('click',()=>{
+        div.remove();
+        /* أبقِ سطراً واحداً على الأقل */
+        if(!box.children.length)_addGoodsRow();
+        _gRowsChanged();
     });
     if(vals){
         div.querySelector('.g-w').value=vals.w||'';
@@ -1654,7 +1734,7 @@ window.editDoll=(id)=>{
     _voidByInvId('dollInvoice',id);
     openDollar(d.isBuy?'buy':'sell');
     document.getElementById('goodsCustomer').value=(d.c&&d.c!=='—')?d.c:'';
-    document.getElementById('goodsRows').innerHTML='';
+    document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
     const _all=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c||'',w:d.gw||'',k:d.gk||'',p:d.a||''}];
     const _rot=d.rot||_all.find(it=>it.n==='روتور'||it.rot);
     if(_rot){
