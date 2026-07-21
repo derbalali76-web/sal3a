@@ -687,6 +687,13 @@ window._addLiqDebtRow=()=>{
                 style="width:100%;min-width:80px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700">
         </td>
         <td style="padding:.25rem .3rem">
+            <select id="liqDK_${i}"
+                style="width:100%;min-width:64px;padding:.3rem .2rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.7rem;font-weight:700">
+                <option value="market">🏪 سوق</option>
+                <option value="workshop">🔧 ورشة</option>
+            </select>
+        </td>
+        <td style="padding:.25rem .3rem">
             <input type="text" inputmode="decimal" id="liqDDin_${i}" placeholder="± 0" dir="ltr"
                 style="width:100%;min-width:70px;padding:.3rem .4rem;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:700;text-align:right"
                 oninput="liveNum(this)">
@@ -714,16 +721,19 @@ window.confirmLiqEdit=()=>{
     const dollar = Math.round(goodsItems.reduce((s,it)=>s+it.eq,0)*1000)/1000; /* مكافئ 705 إجمالي */
     const bars730=[],g730raw=0,g730v=0;
 
-    /* ديون الزبائن: دينار ± وسلعة (705) ± موقّعة مباشرة */
+    /* ديون الزبائن: دينار ± وسلعة (705) ± موقّعة مباشرة + النوع (ورشة/سوق) */
     const debtRows=[];
+    const custKinds={};
     document.querySelectorAll('#liqDebtRows tr[id^="liqRow_"]').forEach(tr=>{
         const i=tr.id.replace('liqRow_','');
         const c=(document.getElementById('liqDC_'+i)?.value||'').trim();
         if(!c)return;
+        const kind=document.getElementById('liqDK_'+i)?.value||'market';
+        custKinds[c]=kind;
         const din=readNum('liqDDin_'+i);
         const gd =readNum('liqDGd_'+i);
-        if(din)debtRows.push({c,type:'دينار',amt:din,dir:'لنا'});   /* الإشارة في القيمة نفسها */
-        if(gd) debtRows.push({c,type:'دولار',amt:gd, dir:'لنا'});
+        if(din)debtRows.push({c,type:'دينار',amt:din,dir:'لنا',kind});   /* الإشارة في القيمة نفسها */
+        if(gd) debtRows.push({c,type:'دولار',amt:gd, dir:'لنا',kind});
     });
 
     const sumLines=[];
@@ -4612,3 +4622,69 @@ window.showDubaiMonth=(mKey)=>{
       </div></div>`;
     m.classList.add('active');
 };
+
+/* ⌨️ التنقل بأسهم لوحة المفاتيح بين الحقول (الحاسوب) — خاصةً نافذتا شراء/بيع السلعة.
+   الأسهم ↑↓ تنقل رأسياً، ←→ أفقياً · Enter ينتقل للحقل التالي.
+   داخل شبكة السلعة: الأعمدة (صنف/وزن/عيار/أجرة) والأسطر تُعامَل كجدول. */
+(function _arrowNav(){
+    /* حقول قابلة للتنقل */
+    const _isField=el=>el&&(el.tagName==='INPUT'||el.tagName==='SELECT')&&!el.disabled&&el.type!=='hidden'&&el.type!=='checkbox'&&el.offsetParent!==null;
+    /* كل الحقول الظاهرة داخل حاوية معيّنة بترتيب الظهور */
+    function _fieldsIn(container){
+        return Array.from(container.querySelectorAll('input,select,textarea')).filter(_isField);
+    }
+    /* أقرب حاوية منطقية (نافذة/مودال) للحقل */
+    function _scope(el){
+        return el.closest('.modal, .modal-overlay, #dollarModal, .page, body')||document.body;
+    }
+
+    document.addEventListener('keydown',e=>{
+        const el=document.activeElement;
+        if(!_isField(el))return;
+        const k=e.key;
+        if(k!=='ArrowUp'&&k!=='ArrowDown'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Enter')return;
+
+        /* لا نعترض الأسهم داخل select مفتوح (يختار الخيارات)، ولا ←→ داخل input نصي فيه نص */
+        if(el.tagName==='SELECT'&&(k==='ArrowUp'||k==='ArrowDown'))return;
+        if((k==='ArrowLeft'||k==='ArrowRight')&&el.tagName==='INPUT'&&el.type!=='number'){
+            /* اترك ←→ للتنقل داخل النص إلا إن كان الحقل فارغاً أو المؤشر في الطرف */
+            const atEdge=(k==='ArrowRight'&&el.selectionStart===0)||(k==='ArrowLeft'&&el.selectionStart===el.value.length);
+            if(el.value.length>0&&!atEdge)return;
+        }
+
+        /* 🛍️ شبكة السلعة: تنقل كجدول */
+        const row=el.closest('.g-row');
+        if(row){
+            const cols=['g-n','g-w','g-k','g-p'];
+            const cls=cols.find(c=>el.classList.contains(c));
+            const box=row.parentElement;
+            const rows=Array.from(box.querySelectorAll('.g-row'));
+            const ri=rows.indexOf(row);
+            const ci=cols.indexOf(cls);
+            let tr=row,tc=ci;
+            if(k==='ArrowLeft')tc=ci+1;          /* RTL: يسار = العمود التالي */
+            else if(k==='ArrowRight')tc=ci-1;    /* RTL: يمين = العمود السابق */
+            else if(k==='ArrowDown'||k==='Enter')tr=rows[ri+1]||rows[ri];
+            else if(k==='ArrowUp')tr=rows[ri-1]||rows[ri];
+            if(tc<0)tc=0; if(tc>cols.length-1)tc=cols.length-1;
+            const target=tr&&tr.querySelector('.'+cols[tc]);
+            if(target){ e.preventDefault(); target.focus(); if(target.select)try{target.select();}catch(_){} }
+            return;
+        }
+
+        /* باقي الحقول: تنقل خطّي حسب ترتيب الظهور */
+        const scope=_scope(el);
+        const fields=_fieldsIn(scope);
+        const idx=fields.indexOf(el);
+        if(idx<0)return;
+        let ni=idx;
+        if(k==='ArrowDown'||k==='Enter')ni=idx+1;
+        else if(k==='ArrowUp')ni=idx-1;
+        else return; /* ←→ تُترك للنص */
+        if(ni<0||ni>=fields.length)return;
+        e.preventDefault();
+        const nx=fields[ni];
+        nx.focus();
+        if(nx.select&&nx.tagName==='INPUT')try{nx.select();}catch(_){}
+    },true);
+})();

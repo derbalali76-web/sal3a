@@ -350,6 +350,7 @@ function _applyEvt(st,evt){
             (d.debtRows||[]).forEach(r=>{
                 const sign=r.dir==='لنا'?1:-1;
                 stUpdDebt(r.c,r.type,sign*r.amt);
+                if(r.kind)_tagCust(r.c,r.kind);   /* 🏷️ تصنيف الزبون: ورشة/سوق */
             });
             /* ═══ 💼 رأس المال = ما أدخلته في الافتتاحية (بالتعريف) ═══
                ذهب: السلعة الافتتاحية + ديون السلعة · دينار: الدينار الافتتاحي + ديون الدينار */
@@ -536,8 +537,8 @@ function _applyEvt(st,evt){
                             const bar={
                                 id:(evt.id||'')+'_cf'+i,
                                 w:Number(it.w)||0, k,
-                                desc:'أجرة كاصي', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
-                                src:d.c||'', _ts:evt.ts||0
+                                desc:d.c?('أجرة كاصي · '+d.c):'أجرة كاصي', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
+                                src:d.c||'', origin:'أجرة كاصي', _ts:evt.ts||0
                             };
                             if(k>=999)st.g24.push(bar); else st.g730.push(bar);
                         });
@@ -550,8 +551,8 @@ function _applyEvt(st,evt){
                             const bar={
                                 id:(evt.id||'')+'_ks'+i,
                                 w:Number(it.w)||0, k,
-                                desc:'لاكاص', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
-                                src:d.c||'', _ts:evt.ts||0
+                                desc:d.c?('لاكاص · '+d.c):'لاكاص', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'',
+                                src:d.c||'', origin:'لاكاص', _ts:evt.ts||0
                             };
                             if(k>=999)st.g24.push(bar); else st.g730.push(bar);
                         });
