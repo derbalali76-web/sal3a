@@ -1125,11 +1125,17 @@ window._publishPortal=()=>{
         const name=_e&&_e.n?_e.n:String(_e||'');
         const pin=_e&&_e.pin?_e.pin:null;
         if(!name||!pin)return; /* الصيغة القديمة بلا كلمة سر لا تُنشر */
-        const myOps=(ops||[]).filter(o=>o.c===name).slice(0,200).map(o=>({
-            id:o.id||'',t:o.t||'',a:o.a||0,m:o.m||'',dt:o.dt||'',did:o.did||'',fee:o.fee||0
+        /* 🔤 مطابقة مرنة: تجاهل حالة الأحرف والمسافات الزائدة كي لا تُفقد معاملات */
+        const _norm=s=>(s||'').toString().trim().toLowerCase().replace(/\s+/g,' ');
+        const _key=_norm(name);
+        const _all=(ops||[]).filter(o=>_norm(o.c)===_key);
+        /* رتّب الأحدث أولاً ثم خذ 500 (بدل قصّ عشوائي قد يفقد الأحدث) */
+        _all.sort((a,b)=>(b._ts||0)-(a._ts||0));
+        const myOps=_all.slice(0,500).map(o=>({
+            id:o.id||'',t:o.t||'',a:o.a||0,m:o.m||'',dt:o.dt||'',did:o.did||'',fee:o.fee||0,_ts:o._ts||0
         }));
         const inv={};
-        (dollInvoices||[]).filter(v=>v.c===name).slice(0,100).forEach(v=>{inv[v.id]=v;});
+        (dollInvoices||[]).filter(v=>_norm(v.c)===_key).slice(0,300).forEach(v=>{inv[v.id]=v;});
         const payload={
             name, shop:(window._snName||_currentUser||''), upd:Date.now(),  /* اسم المحل الودّي من السريال */
             din:Math.round(getCustBal(name,'دينار')*100)/100,
@@ -1262,7 +1268,9 @@ window._renderCustPortal=(d)=>{
     if(dinNote)dinNote.textContent=Math.abs(din)<0.5?'مُصفّى':(din>0?'لك عند المحل':'عليك للمحل');
     if(goldNote)goldNote.textContent=Math.abs(gold)<0.005?'مُصفّى':(gold>0?'لك عند المحل':'عليك للمحل');
     const opsEl=document.getElementById('custPortalOps');
-    const list=Array.isArray(d.ops)?d.ops:Object.values(d.ops||{});
+    let list=Array.isArray(d.ops)?d.ops.slice():Object.values(d.ops||{});
+    /* الأحدث أولاً */
+    list.sort((a,b)=>(b._ts||0)-(a._ts||0));
     /* 🔄 عكس تسميات العمليات: ما هو «شراء» عند المحل هو «بيع» عند الزبون */
     const _flipT=(t)=>({
         'شراء سلعة':'🛍️ بعت سلعة للمحل',
@@ -1273,6 +1281,8 @@ window._renderCustPortal=(d)=>{
         'استلمت':'📤 سلّمت للمحل',
         'تسليم':'📥 استلمت من المحل',
         'استلام':'📤 سلّمت للمحل',
+        'قبض دينار':'📤 دفعت للمحل',
+        'دفع دينار':'📥 قبضت من المحل',
         'سلف':'💰 سلفة',
         'رافيناج':'🔥 رافيناج',
         'تصفية':'✅ تصفية'
