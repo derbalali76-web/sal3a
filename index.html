@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+<script>
+/* ═══ عزل التخزين بين التطبيقات على نفس النطاق (github.io يتشارك localStorage!) ═══
+   يُشتق نطاق فرعي من مسار التطبيق، فيُعزل هذا التطبيق عن أي تطبيق آخر على نفس الحساب.
+   يُغلَّف فقط مفاتيح هذا التطبيق — مفاتيح Firebase (firebase:) تمرّ كما هي. */
+(function(){try{
+    var seg=(location.pathname||'').replace(/\/+$/,'').split('/').filter(Boolean).pop()||'root';
+    try{ seg=decodeURIComponent(seg); }catch(e){}
+    /* ⚠️ المسارات قد تكون عربية — لا نحذف غير ASCII وإلا صار النطاق فارغاً ومشتركاً!
+       نحتفظ بالحروف/الأرقام (عربية أو لاتينية) ونستبدل الفواصل، ثم بصمة احتياطية تضمن التفرّد. */
+    var safe=String(seg).toLowerCase().replace(/[^\p{L}\p{N}_-]/gu,'-');
+    var h=0; for(var i=0;i<seg.length;i++){ h=((h<<5)-h+seg.charCodeAt(i))|0; }
+    var NS='@'+(safe||'root')+'#'+(h>>>0).toString(36)+':';
+    var OURS=/^(gp12_|gp_|va_|dc_calc_vals_|tarbah_notes_)/;
+    var P=Storage.prototype, _g=P.getItem, _s=P.setItem, _r=P.removeItem;
+    P.getItem=function(k){ return _g.call(this, OURS.test(k)?NS+k:k); };
+    P.setItem=function(k,v){ return _s.call(this, OURS.test(k)?NS+k:k, v); };
+    P.removeItem=function(k){ return _r.call(this, OURS.test(k)?NS+k:k); };
+    window.__GP_NS=NS;
+}catch(e){}})();
+</script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="GoldPro">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#f59e0b">
+    <title>GoldPro | نظام إدارة الذهب</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="./style.css?v=162">
+</head>
+<body>
+<script>
+/* 🔒 عزل الموظف الفوري — يُنفَّذ قبل أي رسم، بلا انتظار JS أو إنترنت.
+   يقرأ الدور من التخزين المحلي ويطبّقه على body مباشرةً فلا تظهر أي ومضة لبيانات الأدمين. */
+(function(){try{
+    var r=localStorage.getItem('gp12_role')||sessionStorage.getItem('gp12_role')||'';
+    if(r==='employee'){
+        document.body.classList.add('role-employee');
+        window._userRole='employee';
+    }
+}catch(e){}})();
+</script>
+<datalist id="customersDatalist"></datalist>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+    <!-- Header -->
+    <div class="hdr">
+        <div class="brand" style="min-width:0"></div>
+        <div class="hdr-center-wrap" id="hdrCenterWrap">
+            <div class="price-ball" id="priceBall" style="display:none" onclick="if(!window._badgeDragMoved)window._togglePricePop()" title="اضغط لعرض السعر اللحظي — اسحب لتحريكها">💰</div>
+            <div class="price-pop" id="pricePop">
+                <div class="spot-badge spot-loading" id="spotBadge" title="سعر الذهب العالمي اللحظي — يتحدث كل 5 دقائق">
+                    <div class="spot-dot"></div>
+                    <span id="spotPriceDisplay">جاري التحميل…</span>
+                </div>
+            </div>
+        </div>
+        <div class="hdr-right">
+            <span id="syncIndicator" style="font-size:.58rem;font-weight:800;color:var(--t3)">🔴 أوفلاين</span>
+            <div class="badge" onclick="openSettings()">⚙ <span id="goldPriceDisplay">12500</span> دج/غ</div>
+            <div class="badge" id="userBadge" onclick="openSettings()" title="المستخدم الحالي" style="background:rgba(212,175,55,.15);border-color:var(--g400);color:var(--g400);cursor:pointer">👤 <span id="currentUserDisplay">—</span></div>
+            <div class="icon-btn" onclick="doLogout()" title="تسجيل الخروج" style="background:rgba(239,68,68,.12);color:var(--rd)"><i class="fas fa-sign-out-alt"></i></div>
+            <div class="icon-btn" onclick="toggleDark()" id="darkBtn"><i class="fas fa-moon"></i></div>
+            <div class="icon-btn" id="fsBtn" onclick="toggleFullscreen()" title="فول سكرين"><i class="fas fa-expand"></i></div>
+            <div class="icon-btn" id="panicBtn" onclick="panicExit()" title="طوارئ"
+                style="background:rgba(239,68,68,.18);color:#ef4444;border-color:rgba(239,68,68,.35)">
+                <i class="fas fa-power-off"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+        <!-- الرئيسية -->
+        <div class="page active" id="page-home">
+            <div class="nw-card" style="width:100%;margin-bottom:.7rem">
+                <h3><i class="fas fa-chart-pie"></i> القيمة الإجمالية للأصول</h3>
+                <div class="nw-val" id="netWorth">0 DZD</div>
+                <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
+            </div>
+            <div class="bgrid">
+                <div class="bcard bcard-din" style="position:relative">
+                    <div class="bcard-accent" style="background:var(--bl)"></div>
+                    <div class="ci" style="color:var(--bl)"><i class="fas fa-wallet"></i></div>
+                    <span class="cl">السيولة</span>
+                    <span class="cv" id="dinarBal">0<small> DZD</small></span>
+                    <button id="liqEditBtn" onclick="openLiqEdit()" title="تعديل رصيد السيولة (مرة واحدة فقط)"
+                        style="position:absolute;top:.35rem;left:.35rem;width:22px;height:22px;border-radius:6px;
+                        border:1px solid var(--bl);background:rgba(59,130,246,.12);color:var(--bl);
+                        font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+                        transition:all .2s" title="ضبط الرصيد الأولي">✏️</button>
+                </div>
+                <div class="bcard bcard-g730 clickable" onclick="openInventory('730')">
+                    <div class="bcard-accent" style="background:var(--g400)"></div>
+                    <div class="ci" style="color:var(--g400)"><i class="fas fa-crown"></i></div>
+                    <span class="cl">ذهب 705</span>
+                    <span class="cv" id="g730Bal">0<small> g</small></span>
+                    <span class="hint">👆 المخزون</span>
+                </div>
+                <div class="bcard bcard-g24 clickable" onclick="openInventory('24')">
+                    <div class="bcard-accent" style="background:var(--pu)"></div>
+                    <div class="ci" style="color:var(--pu)"><i class="fas fa-gem"></i></div>
+                    <span class="cl">سبائك 24</span>
+                    <span class="cv" id="g24Bal">0<small> g</small></span>
+                    <span class="hint">👆 المخزون</span>
+                </div>
+                <div class="bcard bcard-dol clickable" onclick="openGoodsStock()">
+                    <div class="bcard-accent" style="background:var(--gr)"></div>
+                    <div class="ci" style="color:var(--gr)"><i class="fas fa-box-open"></i></div>
+                    <span class="cl">سلعة</span>
+                    <span class="cv" id="usdBal">0<small> دج</small></span>
+                    <span class="hint">👆 المخزون</span>
+                </div>
+                <div class="bcard clickable" id="liveKassiCard" onclick="openLiveKassi()" style="display:none">
+                    <div class="bcard-accent" style="background:#ea580c"></div>
+                    <div class="ci" style="color:#ea580c"><i class="fas fa-fire"></i></div>
+                    <span class="cl">كاصي حي</span>
+                    <span class="cv" id="liveKassiBal">0<small> g</small></span>
+                    <span class="hint">👆 للتذويب</span>
+                </div>
+                <div class="bcard clickable" id="laGobalCard" onclick="openLaGobal()" style="display:none">
+                    <div class="bcard-accent" style="background:#7c3aed"></div>
+                    <div class="ci" style="color:#7c3aed"><i class="fas fa-user-tie"></i></div>
+                    <span class="cl">لاقوبال</span>
+                    <span class="cv" id="laGobalBal">0<small> موظف</small></span>
+                    <span class="hint">👆 التفاصيل</span>
+                </div>
+            </div>
+            <div class="gold-sale-card" id="goldSaleCard" style="width:100%;margin:.4rem 0 .7rem;display:flex;flex-direction:column;gap:.3rem">
+                <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع (الكاصي)</div>
+                <div id="goldSaleContent" style="display:flex;flex-direction:column;gap:.35rem"></div>
+            </div>
+            <div class="astrip">
+                <button class="btn buy"  onclick="openDollar('buy')"> <i class="fas fa-cart-plus"></i>شراء سلعة</button>
+                <button class="btn sell" onclick="openDollar('sell')"><i class="fas fa-tag"></i>بيع سلعة</button>
+                <button class="btn exp"  onclick="openExpArchive()">مصاريف</button>
+            </div>
+        </div>
+
+        <!-- الفاتورة -->
+        <!-- ═══════════ 👤 صفحة الموظف المخصّصة ═══════════ -->
+        <div class="page" id="page-empHome">
+            <div class="bgrid" style="margin-bottom:.7rem">
+                <div class="bcard" style="position:relative">
+                    <div class="bcard-accent" style="background:#0d9488"></div>
+                    <div class="ci" style="color:#0d9488"><i class="fas fa-wallet"></i></div>
+                    <span class="cl">صوارد الكوفر</span>
+                    <span class="cv" id="empCofferBal">0<small> دج</small></span>
+                </div>
+                <div class="bcard clickable" onclick="openEmpStock()">
+                    <div class="bcard-accent" style="background:var(--g400)"></div>
+                    <div class="ci" style="color:var(--g400)"><i class="fas fa-crown"></i></div>
+                    <span class="cl">مخزون 705</span>
+                    <span class="cv" id="empG705Bal">0<small> غ</small></span>
+                    <span class="hint">👆 المخزون</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:.6rem;margin-bottom:.7rem">
+                <button onclick="openEmpPay()" style="flex:1;padding:1rem;border:none;border-radius:14px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.95rem;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,.3)">
+                    <i class="fas fa-hand-holding-dollar"></i><br>دفع</button>
+                <button onclick="openExpense()" style="flex:1;padding:1rem;border:none;border-radius:14px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.95rem;cursor:pointer;box-shadow:0 4px 14px rgba(220,38,38,.3)">
+                    <i class="fas fa-receipt"></i><br>مصاريف</button>
+            </div>
+        </div>
+
+        <!-- 👤 دفتر ديون الموظف — صفحة مستقلة -->
+        <div class="page" id="page-empDebts">
+            <div class="stitle">
+                <span><i class="fas fa-book"></i> دفتر الديون</span>
+                <button onclick="openLiqEdit()" style="background:#0d9488;color:#fff;border:none;border-radius:8px;padding:.35rem .75rem;font-size:.78rem;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.3rem">＋ زبون</button>
+            </div>
+            <div class="tbl"><div class="tbl-scroll">
+                <table><thead><tr>
+                    <th>الزبون</th><th>دينار</th><th>ذهب 705</th><th>ذهب 24</th>
+                </tr></thead><tbody id="empDebtsBody"></tbody>
+                <tfoot id="empDebtsFoot"></tfoot></table>
+            </div></div>
+        </div>
+
+        <div class="page" id="page-invoice">
+            <!-- Header -->
+            <div class="inv-receipt-header">
+                <div class="inv-top-row">
+                    <div class="inv-no-badge">N° <span id="invNo">----</span></div>
+                    <div class="inv-selects">
+                        <select id="invType" onchange="onInvTypeChange()">
+                            <option value="buy">شراء</option>
+                            <option value="sell">بيع</option>
+                        </select>
+                        <select id="invPaid">
+                            <option value="debt">غير خالص</option>
+                            <option value="full">خالص</option>
+                        </select>
+                    </div>
+                    <div class="inv-date-badge" id="invDate"></div>
+                </div>
+                <div class="inv-customer-row">
+                    <input type="text" id="invCustomer" placeholder="👤 اسم الزبون..."
+                        oninput="onInvCustomerInput()">
+                </div>
+            </div>
+            <!-- Sell: inventory panel -->
+            <div class="inv-sell-panel" id="invSellPanel" style="display:none">
+                <div style="font-weight:900;font-size:.68rem;color:var(--g600);margin-bottom:.3rem">
+                    <i class="fas fa-boxes"></i> اختر قطعة من المخزون لإضافتها للجدول:
+                </div>
+                <div id="invSellList"></div>
+            </div>
+            <!-- Inline table -->
+            <div class="inv-tbl-wrap">
+                <table class="inv-tbl">
+                    <thead><tr>
+                        <th style="width:16px">#</th>
+                        <th>الميزان</th>
+                        <th>القوبال</th>
+                        <th>ال705</th>
+                        <th>السعر</th>
+                        <th>المجموع</th>
+                    </tr></thead>
+                    <tbody id="invInlineBody"></tbody>
+                    <tfoot>
+                        <tr class="inv-tf-total">
+                            <td class="inv-tf-label" colspan="4">المجموع</td>
+                            <td class="inv-tf-val" id="invSumEq730" title="مكافئ 705">—</td>
+                            <td></td>
+                            <td class="inv-tf-val inv-sum-cell" id="invSumTotal">—</td>
+                        </tr>
+                        <tr>
+                            <td class="inv-tf-label" colspan="5">الرصيد السابق</td>
+                            <td class="inv-tf-val" colspan="2" id="invPrevBal">—</td>
+                        </tr>
+                        <tr>
+                            <td class="inv-tf-label" colspan="5">أخذ</td>
+                            <td colspan="2" style="padding:.05rem .2rem">
+                                <input type="text" class="inv-akhd-input" id="invAkhd" value="0" oninput="calcInvTotals()">
+                            </td>
+                        </tr>
+                        <tr class="inv-tf-final">
+                            <td class="inv-tf-label" colspan="5" style="color:var(--g400)!important">المجموع النهائي</td>
+                            <td class="inv-tf-val" colspan="2" id="invFinalTotal" style="color:var(--g400)!important">—</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <!-- الأسطر تُضاف تلقائياً بمجرد الكتابة في آخر سطر -->
+            <!-- Save + Clear (sticky so always visible) -->
+            <div style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
+                <button onclick="resetInvForm()" title="تفريغ الفاتورة"
+                    style="flex:0 0 auto;padding:.75rem .9rem;border-radius:10px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-size:1rem;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,.08)">🗑️</button>
+                <button class="bg" style="flex:1;padding:.75rem;border-radius:10px;border:none;font-weight:800;cursor:pointer;font-size:.85rem;font-family:Tajawal,sans-serif;box-shadow:0 -2px 12px rgba(0,0,0,.12)"
+                    onclick="saveInvoice()">💾 حفظ الفاتورة</button>
+            </div>
+        </div>
+
+        <!-- الرافيناج -->
+        <div class="page" id="page-raffinage">
+            <!-- Header -->
+            <div class="inv-receipt-header">
+                <div class="inv-top-row">
+                    <div class="inv-no-badge">🔥 رافيناج</div>
+                    <input type="text" id="rafCustomer"
+                        placeholder="👤 الزبون / المصفى..."
+                        style="flex:1;padding:.28rem .5rem;border-radius:6px;border:1.5px solid var(--border);background:var(--card);color:var(--t);font-family:Tajawal,sans-serif;font-size:.72rem;font-weight:800"
+                        oninput="calcRaf()"
+                        onkeydown="if(event.key==='Enter')document.getElementById('rafW_1')?.focus()">
+                    <div class="inv-date-badge" id="rafDate"></div>
+                </div>
+            </div>
+            <!-- جدول الكسر المرسل -->
+            <div class="raf-tbl-wrap">
+                <table class="raf-tbl">
+                    <thead><tr>
+                        <th style="width:16px">#</th>
+                        <th>الوزن (غ)</th>
+                        <th>عيار</th>
+                        <th>خالص (غ)</th>
+                    </tr></thead>
+                    <tbody id="rafTableBody"></tbody>
+                </table>
+                <!-- الأسطر تُضاف تلقائياً بمجرد الكتابة في آخر سطر -->
+            </div>
+            <!-- ذيل الفاتورة -->
+            <div class="raf-footer">
+                <!-- صف 1: المجاميع -->
+                <div class="raf-foot-row raf-row-totals">
+                    <div class="raf-foot-cell">
+                        <span class="raf-foot-label">قيمة دج</span>
+                        <span class="raf-foot-val" id="rafDinarTotal">0</span>
+                    </div>
+                    <div class="raf-foot-cell raf-fee-cell">
+                        <span class="raf-foot-label">أجرة (دج/غ)</span>
+                        <input class="raf-fee-input" type="number" id="rafFee" value="0" min="0" step="any" oninput="calcRaf()" autocomplete="off">
+                    </div>
+                    <div class="raf-foot-cell">
+                        <span class="raf-foot-label">مجموع خالص</span>
+                        <span class="raf-foot-val" id="rafPureTotal">0,00 غ</span>
+                    </div>
+                </div>
+                <!-- صف 2: الرصيد السابق -->
+                <div class="raf-foot-row raf-row-prev">
+                    <div class="raf-foot-cell">
+                        <span class="raf-foot-label">دينار سابق</span>
+                        <span class="raf-foot-val" id="rafPrevDinarDisp">0</span>
+                    </div>
+                    <div class="raf-foot-cell">الرصيد السابق</div>
+                    <div class="raf-foot-cell">
+                        <span class="raf-foot-label">ذهب سابق</span>
+                        <span class="raf-foot-val" id="rafPrevGoldDisp">0,00 غ</span>
+                    </div>
+                </div>
+                <!-- صف 3: دفع صوارد (يمين) | دفع لانقو (يسار) -->
+                <div class="raf-foot-row raf-row-labels">
+                    <div class="raf-foot-cell" style="color:var(--rd)">
+                        <span class="raf-foot-label" style="color:var(--rd)">💰 دفع صوارد (دج)</span>
+                        <input class="raf-entry-input" type="number" id="rafSawared" value="0" min="0" step="any"
+                            oninput="calcRaf()" autocomplete="off" style="color:var(--rd)">
+                    </div>
+                    <div class="raf-foot-cell"></div>
+                    <div class="raf-foot-cell" style="color:var(--g600)">
+                        <span class="raf-foot-label" style="color:var(--g600)">🪙 دفع لانقو (غ)</span>
+                        <input class="raf-entry-input" type="number" id="rafLanqo" value="0" min="0" step="any"
+                            oninput="calcRaf()" autocomplete="off" style="color:var(--g600)">
+                    </div>
+                </div>
+                <!-- صف 4: المجموع النهائي -->
+                <div class="raf-foot-row raf-row-final">
+                    <div class="raf-foot-cell">
+                        <span class="raf-foot-val" id="rafFinalDinar" style="color:var(--g400)">0</span>
+                    </div>
+                    <div class="raf-foot-cell"></div>
+                    <div class="raf-foot-cell">
+                        <span class="raf-foot-val" id="rafFinalGold" style="color:var(--rd)">0,00 غ</span>
+                    </div>
+                </div>
+            </div>
+            <!-- حفظ + تفريغ -->
+            <div style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
+                <button onclick="resetRafForm()" title="تفريغ"
+                    style="flex:0 0 auto;padding:.75rem .9rem;border-radius:10px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-size:1rem;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,.08)">🗑️</button>
+                <button onclick="saveSimpleRaf()"
+                    style="flex:1;padding:.75rem;border-radius:10px;border:none;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;font-size:.82rem;font-family:Tajawal,sans-serif;box-shadow:0 -2px 12px rgba(0,0,0,.12)">
+                    🔥 حفظ الرافيناج
+                </button>
+            </div>
+        </div>
+
+        <!-- السجل -->
+        <div class="page" id="page-log">
+            <div class="stitle">
+                <span><i class="fas fa-history"></i> السجل</span>
+                <div style="display:flex;gap:.4rem">
+                    <button onclick="openSendLog()" style="background:var(--g700);color:#fff;border:none;border-radius:8px;padding:.3rem .75rem;font-size:.72rem;cursor:pointer;display:flex;align-items:center;gap:.3rem">
+                        <i class="fas fa-paper-plane"></i> إرسال سجل زبون
+                    </button>
+                </div>
+            </div>
+            <div class="section-box" style="padding:.5rem">
+                <div class="frow" style="margin-bottom:0">
+                    <div class="fg"><input type="text" id="logSearch" placeholder="🔍 بحث باسم الزبون..." oninput="renderLog()"></div>
+                    <div class="fg">
+                        <input type="date" id="logDayFilter" onchange="renderLog()" style="width:100%;padding:.5rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem">
+                    </div>
+                    <div class="fg" style="display:flex;gap:.3rem">
+                        <button onclick="_logToday()" style="flex:1;padding:.45rem;border-radius:8px;border:1.5px solid var(--g500);background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:800;font-size:.72rem;cursor:pointer">اليوم</button>
+                        <button onclick="_logClearDay()" style="flex:1;padding:.45rem;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;font-size:.72rem;cursor:pointer">كل الأيام</button>
+                    </div>
+                    <div class="fg">
+                        <select id="logFilter" onchange="renderLog()">
+                            <option value="all">الكل</option>
+                            <option value="شراء سلعة">🛍️ شراء سلعة</option><option value="بيع سلعة">🛍️ بيع سلعة</option>
+                            <option value="شراء">شراء</option><option value="بيع">بيع</option>
+                            <option value="أعطيت">أعطيت</option><option value="استلمت">استلمت</option>
+                            <option value="سلف">سلف</option><option value="رافيناج">رافيناج</option>
+                            <option value="مصاريف">مصاريف</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div style="position:relative">
+                <div id="logWm" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center"></div>
+                <div id="logList" style="max-height:55vh;overflow-y:auto;position:relative;z-index:1"></div>
+            </div>
+        </div>
+
+        <!-- الأرشيف -->
+        <div class="page" id="page-archive">
+            <div id="archFilterBar" style="display:flex;gap:.4rem;overflow-x:auto;padding:.5rem 0;margin-bottom:.2rem;-webkit-overflow-scrolling:touch"></div>
+            <input id="archSearch" placeholder="🔍 بحث باسم الزبون…" autocomplete="off"
+                style="width:100%;margin:0 0 .6rem;border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem;font-family:inherit;font-size:.88rem;background:var(--card2);color:var(--t)"
+                oninput="window._archQ=this.value;_applyArchSearch()">
+            <div class="arch-sec" id="archSec-doll">
+                <div class="stitle">
+                    <span>🛍️ أرشيف السلعة</span>
+                    <span id="dollArchiveCount" style="font-size:.58rem;background:#0369a1;color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
+                </div>
+                <div id="dollArchiveList"></div>
+            </div>
+            <div class="arch-sec" id="archSec-gold">
+                <div class="stitle" style="margin-top:.5rem">
+                    <span><i class="fas fa-folder-open"></i> أرشيف الفواتير</span>
+                    <span id="archiveCount" style="font-size:.58rem;background:var(--g700);color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
+                </div>
+                <div id="archiveList"></div>
+            </div>
+            <div class="arch-sec" id="archSec-raf">
+                <div class="stitle" style="margin-top:.5rem">
+                    <span>🔥 أرشيف الرافيناج</span>
+                    <span id="rafArchiveCount" style="font-size:.58rem;background:#c2410c;color:#fff;padding:.1rem .5rem;border-radius:1rem">0</span>
+                </div>
+                <div id="rafArchiveList"></div>
+            </div>
+
+        </div>
+
+        <!-- الديون -->
+        <div class="page" id="page-debts">
+            <div class="stitle">
+                <span><i class="fas fa-book"></i> الديون</span>
+                <button onclick="exportDebtsPdf()" style="background:var(--rd);color:#fff;border:none;border-radius:8px;padding:.35rem .75rem;font-size:.78rem;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.3rem"><i class="fas fa-file-pdf"></i> تصدير PDF</button>
+            </div>
+            <!-- فلترة: الكل / السوق / الورشات -->
+            <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+                <button class="debtFilterBtn" data-f="all" onclick="setDebtFilter('all')" style="flex:1;padding:.45rem;border-radius:9px;border:1.5px solid var(--g600);background:var(--g600);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.78rem;cursor:pointer">📋 الكل</button>
+                <button class="debtFilterBtn" data-f="market" onclick="setDebtFilter('market')" style="flex:1;padding:.45rem;border-radius:9px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;font-family:Tajawal,sans-serif;font-weight:900;font-size:.78rem;cursor:pointer">🏪 ديون السوق</button>
+                <button class="debtFilterBtn" data-f="workshop" onclick="setDebtFilter('workshop')" style="flex:1;padding:.45rem;border-radius:9px;border:1.5px solid #c2410c;background:transparent;color:#c2410c;font-family:Tajawal,sans-serif;font-weight:900;font-size:.78rem;cursor:pointer">🔧 ديون الورشات</button>
+            </div>
+            <div class="tbl"><div class="tbl-scroll">
+                <table><thead><tr>
+                    <th>الزبون</th><th>دينار</th><th>ذهب 705</th><th>ذهب 24</th>
+                </tr></thead><tbody id="debtsBody"></tbody>
+                <tfoot id="debtsFoot"></tfoot></table>
+            </div></div>
+        </div>
+        <!-- ═══ صفحة الأرباح ═══ -->
+        <div class="page" id="page-profit">
+            <div class="stitle"><span>💼 رأس المال والأرباح</span></div>
+            <div id="profitContent" style="padding-bottom:1rem"></div>
+        </div>
+    </div>
+
+    <!-- ═══ 👁 عارض سجل الزبون داخل التطبيق ═══ -->
+<div id="logViewOverlay" style="display:none;position:fixed;inset:0;z-index:10002;background:var(--bg);flex-direction:column">
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.6rem .8rem;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0">
+        <button onclick="closeLogView()" style="background:transparent;border:none;color:var(--t);font-size:1.2rem;cursor:pointer;padding:.2rem .4rem">✕</button>
+        <strong id="logViewTitle" style="flex:1;font-size:.9rem;color:var(--g500)">📋 السجل</strong>
+        <button onclick="printLogView()" style="background:var(--g600);color:#fff;border:none;border-radius:8px;padding:.35rem .7rem;font-size:.72rem;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer"><i class="fas fa-print"></i> طباعة</button>
+    </div>
+    <iframe id="logViewFrame" style="flex:1;width:100%;border:none;background:#fff"></iframe>
+</div>
+
+<!-- ═══ VA Panel ═══ -->
+    <div id="vaPanel" class="va-panel">
+        <div id="vaTranscript" class="va-transcript">اضغط الميكروفون وتكلم…</div>
+        <div id="vaResponse"   class="va-response"></div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bnav">
+        <button class="ni active" id="nav-home"      onclick="switchPage('home')">    <i class="fas fa-home"></i>     <span>الرئيسية</span></button>
+        <button class="ni"        id="nav-invoice"   onclick="switchPage('invoice')"> <i class="fas fa-plus-circle"></i><span>فاتورة</span></button>
+        <button class="ni"        id="nav-raffinage" onclick="switchPage('raffinage')"><i class="fas fa-fire"></i>     <span>رافيناج</span></button>
+        <button class="ni"        id="nav-log"       onclick="switchPage('log')">     <i class="fas fa-history"></i>  <span>السجل</span></button>
+        <button class="ni"        id="nav-archive"   onclick="switchPage('archive')"> <i class="fas fa-folder"></i>   <span>الأرشيف</span></button>
+        <button class="ni"        id="nav-debts"     onclick="switchPage('debts')">   <i class="fas fa-book"></i>     <span>الديون</span></button>
+
+    </div>
+</div>
+
+<!-- ═══ VA Floating Button (draggable) ═══ -->
+<div class="va-fab-wrap" id="vaMicWrap">
+    <button id="vaMicBtn" class="va-mic-btn" onclick="VA.startListen()" title="المساعد الصوتي (Alt+V)">
+        <span class="va-mic-ring"></span>
+        <i class="fas fa-microphone"></i>
+    </button>
+</div>
+
+<!-- ═══════════════════ MODALS ═══════════════════ -->
+
+<!-- مخزون -->
+<div class="modal-overlay" id="invModal"><div class="modal modal-wide">
+    <div class="modal-handle"></div>
+    <h3 id="invModalTitle">📋 المخزون</h3>
+    <div class="infobox">عدد القطع: <strong id="invCount">0</strong> | الوزن: <strong id="invTotalW">0 g</strong></div>
+    <div id="invBarsList" style="max-height:45vh;overflow-y:auto"></div>
+    <div class="mactions"><button class="bgy" onclick="closeModal('invModal')">إغلاق</button></div>
+</div></div>
+
+<!-- تسليف -->
+<div class="modal-overlay" id="loanModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🤝 تسليف قطعة</h3>
+    <div class="balprev" id="loanBalBox" style="display:none"></div>
+    <div class="fg" style="margin-bottom:.35rem"><label>اسم الزبون</label>
+        <input type="text" id="loanCustomer" oninput="showLoanBalance()"
+            onkeydown="if(event.key==='Enter'){document.getElementById('loanAmount').focus();event.preventDefault()}">
+    </div>
+    <div id="loanInfo" class="infobox" style="background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.3);color:var(--or)"></div>
+    <div class="fg" style="margin-bottom:.35rem"><label>الكمية المسلَّفة (غ)</label>
+        <input type="number" id="loanAmount" step="any" min="0.01"
+            onkeydown="if(event.key==='Enter'){confirmLoan();event.preventDefault()}">
+    </div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('loanModal')">إلغاء</button>
+        <button class="bo" onclick="confirmLoan()">🤝 تسليف</button>
+    </div>
+</div></div>
+
+<!-- بيع قطعة -->
+<div class="modal-overlay" id="sellModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>💲 بيع قطعة</h3>
+    <div id="sellInfo" class="infobox"></div>
+    <input type="text" id="sellCustomer" placeholder="👤 اسم الزبون..."
+        style="width:100%;padding:.55rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.82rem;margin-bottom:.35rem"
+        onkeydown="if(event.key==='Enter'){document.getElementById('sellAmount').focus();event.preventDefault()}">
+    <div style="display:flex;gap:.4rem;margin-bottom:.35rem">
+        <div class="fg" style="margin:0"><label>الكمية (غ)</label>
+            <input type="number" id="sellAmount" step="any" min="0.01" oninput="_calcSell()"
+                onkeydown="if(event.key==='Enter'){document.getElementById('sellPrice').focus();event.preventDefault()}">
+        </div>
+        <div class="fg" style="margin:0"><label>سعر الغرام (دج)</label>
+            <input type="number" id="sellPrice" step="any" min="0" oninput="_calcSell()"
+                onkeydown="if(event.key==='Enter'){confirmSell();event.preventDefault()}">
+        </div>
+    </div>
+    <div id="sellEqBox" class="infobox" style="font-size:.72rem;background:rgba(212,175,55,.08);border-color:rgba(212,175,55,.3);margin-bottom:.35rem"></div>
+    <div style="display:flex;gap:.4rem;margin-bottom:.35rem">
+        <label style="font-size:.72rem;font-weight:800;color:var(--t2);align-self:center">حالة الدفع:</label>
+        <button id="sellPaidBtn" onclick="setSellPaid(true)"
+            style="flex:1;padding:.45rem;border-radius:8px;border:2px solid var(--gr);background:var(--gr);color:#fff;font-family:Tajawal,sans-serif;font-size:.8rem;font-weight:800;cursor:pointer">
+            ✅ خالص
+        </button>
+        <button id="sellUnpaidBtn" onclick="setSellPaid(false)"
+            style="flex:1;padding:.45rem;border-radius:8px;border:2px solid var(--border);background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-size:.8rem;font-weight:800;cursor:pointer">
+            ⏳ غير خالص
+        </button>
+    </div>
+    <div class="hlbox">💰 المجموع: <strong id="sellTotal">0 DZD</strong></div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('sellModal')">إلغاء</button>
+        <button class="br" onclick="confirmSell()">💾 بيع</button>
+    </div>
+</div></div>
+
+<!-- استلام / تسليم -->
+<div class="modal-overlay" id="gtModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="gtTitle">حركة</h3>
+    <div class="balprev" id="gtBalBox" style="display:none"></div>
+    <input type="text" id="gtCustomer" placeholder="👤 الاسم"
+        oninput="showGTBalance()"
+        onkeydown="if(event.key==='Enter'){document.getElementById('gtAmount').focus();event.preventDefault()}">
+    <select id="gtMetal" onchange="showGTBalance(); window.toggleGTKarat()">
+        <option value="دينار">💵 دينار</option>
+        <option value="ذهب 730">👑 ذهب 730</option>
+        <option value="ذهب 24">💎 ذهب 24</option>
+        <option value="دولار">🛍️ سلعة (غ)</option>
+    </select>
+    <div class="frow">
+        <div class="fg"><label id="gtAmountLabel">الكمية / المبلغ</label>
+            <input type="text" inputmode="decimal" id="gtAmount" placeholder="🔢 الكمية"
+                dir="ltr" style="text-align:right"
+                oninput="liveNum(this);window.calcGTEq()"
+                onkeydown="if(event.key==='Enter'){saveGT();event.preventDefault()}">
+        </div>
+        <div class="fg" id="gtKaratRow" style="display:none"><label>العيار</label>
+            <input type="number" id="gtKarat" value="730" min="1" max="999" step="1"
+                dir="ltr" style="text-align:right"
+                oninput="window.calcGTEq()"
+                onkeydown="if(event.key==='Enter'){saveGT();event.preventDefault()}">
+        </div>
+    </div>
+    <div id="gt730Extra" style="display:none">
+        <div id="gt730Bars"></div>
+        <button type="button" onclick="_addGT730Bar()" id="gt730AddBtn"
+            style="width:100%;margin-top:.3rem;border:1.5px dashed var(--g500);background:transparent;color:var(--t2);border-radius:7px;padding:.35rem;font-size:.72rem;font-weight:700;font-family:Tajawal,sans-serif;cursor:pointer">
+            ＋ إضافة سبيكة أخرى (وزن + عيار)
+        </button>
+    </div>
+    <div class="infobox" id="gtEqBox" style="display:none"></div>
+    <textarea id="gtNote" placeholder="📝 ملاحظة (اختياري)" rows="2"
+        style="width:100%;resize:none;border:1px solid var(--brd);border-radius:10px;
+               padding:.55rem .8rem;font-size:.82rem;background:var(--bg2);color:var(--t);
+               font-family:inherit;margin-top:.3rem"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){saveGT();event.preventDefault()}"></textarea>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('gtModal')">إلغاء</button>
+        <button class="bg" id="gtSaveBtn" onclick="saveGT()">💾 حفظ</button>
+    </div>
+</div></div>
+
+<!-- سلعة -->
+<div class="modal-overlay" id="dollarModal"><div class="modal" style="max-width:600px">
+    <div class="modal-handle"></div>
+    <h3 id="dollarTitle">سلعة</h3>
+    <input type="text" id="goodsCustomer" placeholder="👤 اسم الزبون"
+        style="font-weight:900;font-size:1.05rem;text-align:center;border:2px solid var(--g500)">
+    <input type="text" id="goodsNote" placeholder="📝 ملاحظة (اختياري)"
+        style="font-size:.85rem;text-align:right;margin-top:.35rem;border:1.5px solid var(--border)">
+    <!-- السلع: القسم الأساسي دائم الظهور -->
+    <div id="goodsRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:26vh;overflow-y:auto;padding:.1rem 0;margin-top:.4rem"></div>
+
+    <!-- أزرار التبويب: كل قسم يظهر عند الضغط -->
+    <div style="display:flex;gap:.4rem;margin:.5rem 0 .3rem;justify-content:center">
+        <button type="button" class="gtab" data-sec="secRotor"    onclick="_toggleGoodsSec('secRotor',this)"    title="روتور"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid var(--g500);background:transparent;color:var(--g500);cursor:pointer"><span style="font-size:.82rem;font-weight:900">روتور</span></button>
+        <button type="button" class="gtab" data-sec="secCash"     onclick="_toggleGoodsSec('secCash',this)"     title="دينار"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;cursor:pointer"><span style="font-size:.82rem;font-weight:900">دينار</span></button>
+        <button type="button" class="gtab" data-sec="secKass"     onclick="_toggleGoodsSec('secKass',this)"     title="لاكاص"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0d9488;background:transparent;color:#0d9488;cursor:pointer"><span style="font-size:.82rem;font-weight:900">لاكاص</span></button>
+        <button type="button" class="gtab" data-sec="secCashi"    onclick="_toggleGoodsSec('secCashi',this)"    title="كاصي بالدينار" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #b45309;background:transparent;color:#b45309;cursor:pointer"><span style="font-size:.82rem;font-weight:900">كاصي</span></button>
+        <button type="button" class="gtab" data-sec="secCashiFee" onclick="_toggleGoodsSec('secCashiFee',this)" title="أجرة بالكاصي"  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;cursor:pointer"><span style="font-size:.82rem;font-weight:900">أجرة</span></button>
+        <button type="button" class="gtab" id="tabLiveKassi" data-sec="secLiveKassi" onclick="_toggleGoodsSec('secLiveKassi',this)" title="كاصي حي" style="flex:1;display:none;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #ea580c;background:transparent;color:#ea580c;cursor:pointer"><span style="font-size:.82rem;font-weight:900">كاصي حي</span></button>
+    </div>
+
+    <!-- ♻️ روتور -->
+    <div id="secRotor" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed var(--g500);border-radius:9px;background:rgba(212,175,55,.05)">
+        <span style="display:block;font-weight:900;font-size:.8rem;color:var(--g500);margin-bottom:.3rem">روتور</span>
+        <div style="display:flex;gap:.35rem;align-items:center">
+            <input type="text" inputmode="decimal" id="rotW" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+            <input type="text" inputmode="decimal" id="rotK" placeholder="🏷️ العيار" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+            <input type="text" inputmode="decimal" id="rotP" placeholder="💰 الأجرة/غ" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+        </div>
+    </div>
+    <!-- 💵 دينار -->
+    <div id="secCash" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #0369a1;border-radius:9px;background:rgba(3,105,161,.05)">
+        <span id="goodsCashLbl" style="display:block;font-weight:900;font-size:.8rem;color:#0369a1;margin-bottom:.3rem">أخذ دينار</span>
+        <input type="text" inputmode="decimal" id="goodsCash" placeholder="💵 المبلغ (دج)" dir="ltr" style="width:100%;margin:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+    </div>
+    <!-- ⚱️ لاكاص -->
+    <div id="secKass" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #0d9488;border-radius:9px;background:rgba(13,148,136,.05)">
+        <span id="kassLbl" style="display:block;font-weight:900;font-size:.8rem;color:#0d9488;margin-bottom:.3rem">دفع لاكاص</span>
+        <div id="kassRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:22vh;overflow-y:auto"></div>
+    </div>
+    <!-- 💵 كاصي بالدينار -->
+    <div id="secCashi" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #b45309;border-radius:9px;background:rgba(180,83,9,.05)">
+        <span id="cashiLbl" style="display:block;font-weight:900;font-size:.8rem;color:#b45309;margin-bottom:.3rem">دفع كاصي بالدينار</span>
+        <div style="display:flex;gap:.35rem;align-items:center">
+            <input type="text" inputmode="decimal" id="cashiAmt" placeholder="💵 المبلغ (دج)" dir="ltr" style="flex:1.2;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+            <input type="text" inputmode="decimal" id="cashiRate" placeholder="🏷️ السعر (دج/غ)" dir="ltr" style="flex:1.2;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
+            <span id="cashiEq" style="flex:1;min-width:0;font-size:.72rem;font-weight:800;color:#b45309;align-self:center;text-align:left" dir="ltr"></span>
+        </div>
+    </div>
+    <!-- ⚱️ أجرة بالكاصي -->
+    <div id="secCashiFee" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #7c3aed;border-radius:9px;background:rgba(124,58,237,.05)">
+        <span id="cashiFeeLbl" style="display:block;font-weight:900;font-size:.8rem;color:#7c3aed;margin-bottom:.3rem">دفع أجرة بالكاصي</span>
+        <div id="cashiFeeRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:20vh;overflow-y:auto"></div>
+    </div>
+    <div id="secLiveKassi" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #ea580c;border-radius:9px;background:rgba(234,88,12,.05)">
+        <span style="display:block;font-weight:900;font-size:.8rem;color:#ea580c;margin-bottom:.3rem">كاصي حي — الوزن الخام الذي أعطاك الزبون</span>
+        <input type="text" inputmode="decimal" id="liveKassiW" placeholder="⚖️ وزن الكاصي الحي (غ)" dir="ltr"
+            style="width:100%;padding:.5rem .7rem;border-radius:8px;border:1.5px solid #ea580c;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:800;text-align:right;box-sizing:border-box"
+            oninput="liveNum(this)">
+        <div style="font-size:.62rem;color:var(--t3);margin-top:.35rem;line-height:1.5">يُسجّل مؤقتاً في دين الزبون كوزن 705، ويدخل مخزون الكاصي الحي. عند تذويبه يُصحَّح الحساب حسب عياره الحقيقي.</div>
+    </div>
+    <div id="goodsTotal" style="font-weight:900;margin-top:.6rem;padding:.6rem .7rem;border-radius:12px;background:linear-gradient(135deg,rgba(212,175,55,.14),rgba(212,175,55,.06));border:1.5px solid var(--g500);font-size:.82rem;text-align:center;color:var(--t)">المجموع: 0 غ · مكافئ 705: 0 غ · الأجرة: 0 دج</div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('dollarModal')">إلغاء</button>
+        <button class="bg" onclick="saveDollar()">💾 حفظ</button>
+    </div>
+</div></div>
+
+<!-- مخزون السلعة -->
+<div class="modal-overlay" id="goodsStockModal"><div class="modal" style="max-width:600px">
+    <div class="modal-handle"></div>
+    <h3>📦 مخزون السلعة <span id="goodsStockCount" style="font-size:.6rem;background:var(--gr);color:#fff;padding:.12rem .55rem;border-radius:1rem;vertical-align:middle">0</span></h3>
+    <div id="goodsStockList" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('goodsStockModal')">إغلاق</button>
+    </div>
+</div></div>
+
+<!-- شحن -->
+<div class="modal-overlay" id="shipModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🚢 شحن</h3>
+    <input type="number" id="shipWeight" step="any" placeholder="⚖️ الوزن (غ)"
+        onkeydown="modalNav(event,'shipFields',0)">
+    <input type="number" id="shipPrice" step="any" placeholder="💵 سعر الغرام (دج/غ)"
+        onkeydown="modalNav(event,'shipFields',1)">
+    <input type="text" id="shipOffice" placeholder="🏢 المكتب"
+        onkeydown="modalNav(event,'shipFields',2)">
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('shipModal')">إلغاء</button>
+        <button class="bg" onclick="saveShip()">💾 إرسال</button>
+    </div>
+</div></div>
+
+<!-- تصفية الديون -->
+<div class="modal-overlay" id="settleModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>✅ تصفية رصيد <span id="settleCustomerName" style="color:var(--g400)"></span></h3>
+    <div id="settleRows"></div>
+    <div class="mactions" style="margin-top:.5rem">
+        <button class="bgy" onclick="closeModal('settleModal')">إغلاق</button>
+    </div>
+</div></div>
+
+<!-- مصاريف -->
+<!-- إرسال سجل زبون -->
+<div class="modal-overlay" id="sendLogModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>📤 إرسال سجل زبون</h3>
+    <div class="fg">
+        <label>اختر الزبون</label>
+        <input type="text" id="sendLogCustomer" placeholder="👤 اسم الزبون"
+            oninput="previewSendLog()">
+    </div>
+    <div id="sendLogPreview" style="font-size:.75rem;color:var(--t2);padding:.4rem 0;min-height:1.2rem"></div>
+    <div class="fg" style="margin-top:.3rem">
+        <label>فترة (اختياري)</label>
+        <select id="sendLogPeriod" onchange="previewSendLog()">
+            <option value="all">كل المعاملات</option>
+            <option value="30">آخر 30 يوماً</option>
+            <option value="90">آخر 90 يوماً</option>
+            <option value="180">آخر 6 أشهر</option>
+            <option value="365">آخر سنة</option>
+        </select>
+    </div>
+    <div class="mactions" style="flex-wrap:wrap;gap:.4rem">
+        <button class="bgy" onclick="closeModal('sendLogModal')">إلغاء</button>
+        <button onclick="viewCustomerLog()" style="flex:1;min-width:7rem;background:var(--g600);color:#fff;border:none;border-radius:8px;padding:.5rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35rem"><i class="fas fa-eye"></i> عرض</button>
+        <button class="bg" onclick="sendCustomerLog()" style="flex:1;min-width:7rem"><i class="fas fa-print"></i> طباعة / PDF</button>
+        <button onclick="sendCustomerLogWA()" style="flex:1;min-width:7rem;background:#25D366;color:#fff;border:none;border-radius:8px;padding:.5rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35rem">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+            واتساب
+        </button>
+    </div>
+</div></div>
+
+<div class="modal-overlay" id="expModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>📝 مصروف</h3>
+    <input type="radio" name="expCur" value="دينار" checked style="display:none">
+    <!-- حقل الزبون — يظهر عند اختيار سلعة -->
+    <div id="expCustomerWrap" style="display:none;margin-bottom:.4rem">
+        <input type="text" id="expCustomer"
+            placeholder="👤 اسم الزبون (إلزامي)"
+            style="width:100%;box-sizing:border-box">
+    </div>
+    <input type="text" inputmode="decimal" id="expAmount" placeholder="💰 القيمة (دج)"
+        dir="ltr" style="text-align:right"
+        oninput="liveNum(this)"
+        onkeydown="if(event.key==='Enter'){document.getElementById('expNote').focus();event.preventDefault()}">
+    <!-- نوع المصروف (إلزامي): حانوت / قوبال -->
+    <div style="display:flex;gap:.5rem;margin-bottom:.4rem">
+        <button type="button" id="expKindShop" onclick="_setExpKind('حانوت')"
+            style="flex:1;padding:.6rem;border-radius:10px;border:1.5px solid var(--g500);background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.85rem;cursor:pointer">حانوت</button>
+        <button type="button" id="expKindGobal" onclick="_setExpKind('قوبال')"
+            style="flex:1;padding:.6rem;border-radius:10px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.85rem;cursor:pointer">قوبال</button>
+    </div>
+    <input type="hidden" id="expKind" value="">
+    <textarea id="expNote" rows="2" placeholder="📝 ملاحظة (اختياري)"
+        style="width:100%;padding:.5rem;border-radius:var(--r);border:1.5px solid var(--border);font-family:Tajawal,sans-serif;margin-bottom:.35rem;font-size:.75rem;background:var(--card2);color:var(--t);resize:none;transition:all .2s"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){saveExp();event.preventDefault()}"></textarea>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('expModal')">إلغاء</button>
+        <button class="br" onclick="saveExp()">💾 خصم</button>
+    </div>
+</div></div>
+
+<!-- دبي -->
+<!-- حاسبة سعر البيع في دبي -->
+<div class="modal-overlay" id="dubaiCalcModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🏙️ حاسبة سعر البيع في دبي</h3>
+    <input type="number" id="dcDisc"     step="any" placeholder="🔻 الخصم ($/أوقية)">
+    <input type="number" id="dcShip"     step="any" placeholder="✈️ سعر الشحن ($/أوقية)">
+    <input type="number" id="dcDollar"   step="any" placeholder="💵 سعر الدولار (دج/$)">
+    <input type="number" id="dcExpenses" step="any" placeholder="💸 مصاريف (دج/غ)">
+    <div class="infobox" id="dcResult" style="font-size:1.05rem;font-weight:900;text-align:center;letter-spacing:.02em">
+        أدخل البيانات ثم اضغط حساب
+    </div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('dubaiCalcModal')">إغلاق</button>
+        <button class="bg"  onclick="calcDubaiSell()">🧮 حساب</button>
+    </div>
+</div></div>
+
+<div class="modal-overlay" id="dubaiModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🏙️ دبي</h3>
+    <input type="text" id="dubaiOffice" placeholder="🏢 المكتب"
+        onkeydown="dubaiNav(event,0)">
+    <input type="number" id="dubaiWeight" step="any" placeholder="⚖️ الوزن (غ)"
+        onkeydown="dubaiNav(event,1)">
+    <input type="number" id="dubaiPrice" step="any" placeholder="📺 سعر الشاشة ($/أوقية)"
+        onkeydown="dubaiNav(event,2)">
+    <input type="number" id="dubaiDisc" value="0" step="any" placeholder="🔻 الخصم ($/أوقية)"
+        onkeydown="dubaiNav(event,3)">
+    <div class="infobox" id="dubaiTotal">💰 0 USD</div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('dubaiModal')">إلغاء</button>
+        <button class="bg" onclick="saveDubai()">💾 ترحيل</button>
+    </div>
+</div></div>
+
+<!-- الأرصدة الافتتاحية (مرة واحدة فقط) -->
+<div class="modal-overlay" id="liqModal">
+<div class="modal" style="max-width:520px;padding:1rem 1rem 1.2rem">
+    <div class="modal-handle"></div>
+    <h3 style="margin-bottom:.6rem">🏦 الأرصدة الافتتاحية</h3>
+    <div class="infobox" style="margin-bottom:.8rem;font-size:.72rem;color:var(--t2);line-height:1.5">
+        ⚠️ هذه العملية مرة واحدة فقط — أدخل السيولة والمخزون وديون الزبائن القديمة ثم اضغط اعتماد.
+    </div>
+
+    <!-- ═══ قسم 1: صوارد الكوفر ═══ -->
+    <p style="font-size:.72rem;font-weight:900;color:var(--g500);margin:.2rem 0 .5rem;text-align:right">💰 صوارد الكوفر</p>
+    <div class="fg" style="margin:0 0 .6rem">
+        <label style="font-size:.68rem">💵 دينار (دج) ±</label>
+        <input type="text" inputmode="decimal" id="liqDinar" placeholder="0"
+            dir="ltr" style="text-align:right;font-weight:800" oninput="liveNum(this)">
+    </div>
+    <div id="liqGoodsSection">
+    <label style="font-size:.68rem;display:block;text-align:right;margin-bottom:.3rem">🛍️ السلعة بالتفصيل (الاسم + الميزان + العيار) — تدخل المخزون</label>
+    <div id="liqGoodsRows" style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:.8rem"></div>
+    </div>
+
+    <!-- ═══ قسم 2: ديون الزبائن القديمة ═══ -->
+    <p style="font-size:.72rem;font-weight:900;color:var(--g500);margin:.2rem 0 .4rem;text-align:right">👥 ديون الزبائن القديمة</p>
+    <div style="overflow-x:auto;margin-bottom:.5rem">
+    <table style="width:100%;border-collapse:collapse;font-size:.72rem" id="liqDebtsTable">
+        <thead>
+            <tr style="background:var(--card2);color:var(--t2)">
+                <th style="padding:.35rem .4rem;text-align:right;font-weight:800;white-space:nowrap">اسم الزبون</th>
+                <th style="padding:.35rem .4rem;text-align:center;font-weight:800">النوع</th>
+                <th style="padding:.35rem .4rem;text-align:right;font-weight:800">دينار ±</th>
+                <th style="padding:.35rem .4rem;text-align:right;font-weight:800">سلعة (705) ±</th>
+                <th style="padding:.35rem;text-align:center;font-weight:800">🗑️</th>
+            </tr>
+        </thead>
+        <tbody id="liqDebtRows"></tbody>
+    </table>
+    </div>
+    <button onclick="_addLiqDebtRow()" style="width:100%;padding:.45rem;border-radius:8px;border:1.5px dashed var(--g500);background:transparent;color:var(--g500);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;margin-bottom:.8rem">
+        ➕ إضافة زبون
+    </button>
+
+    <div class="mactions" style="margin-top:0">
+        <button class="bgy" onclick="closeModal('liqModal')">إلغاء</button>
+        <button class="bg" onclick="confirmLiqEdit()" style="flex:2">✅ اعتماد الأرصدة الافتتاحية</button>
+    </div>
+</div></div>
+
+<!-- إعدادات -->
+<div class="modal-overlay" id="settingsModal"><div class="modal">
+    <div class="modal-handle"></div>
+    <h3>⚙️ الإعدادات</h3>
+    <!-- 👤 كل ما يلي للأدمين فقط — الموظف يرى تغيير كلمة المرور وحدها -->
+    <!-- الأرصدة الافتتاحية: متاحة للأدمين والموظف — تختفي تلقائياً بعد الاعتماد -->
+    <button id="liqSettingsBtn" onclick="closeModal('settingsModal');openLiqEdit()"
+        style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--g400);background:rgba(212,175,55,.1);color:var(--g400);font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;margin-bottom:.8rem">
+        🏦 الأرصدة الافتتاحية
+    </button>
+    <div id="adminOnlySettings">
+    <div class="setting-row">
+        <label><i class="fas fa-crown" style="color:var(--g400)"></i> سعر الذهب (دج/غ)</label>
+        <input type="number" id="settingGoldPrice" step="any" min="1">
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
+        <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">🛍️ أسماء السلع (تظهر كاختيار في الشراء والبيع)</p>
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+            <input type="text" id="newGoodsName" placeholder="اسم سلعة جديد…" style="flex:1;margin:0"
+                onkeydown="if(event.key==='Enter'){addGoodsName();event.preventDefault()}">
+            <button onclick="addGoodsName()" style="padding:.4rem .9rem;border:none;border-radius:8px;background:var(--gr);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">＋</button>
+        </div>
+        <div id="goodsNamesList" style="display:flex;flex-wrap:wrap;gap:.35rem"></div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
+        <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">📱 زبائن البوابة — يدخلون برقم الهاتف ويرون كشف حسابهم</p>
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+            <input type="text" id="portalCustName" placeholder="اسم الزبون (كما في الديون)" style="flex:1.3 1 40%;margin:0">
+            <input type="tel" id="portalCustPhone" placeholder="الهاتف 06…" dir="ltr" style="flex:1 1 26%;margin:0;text-align:right">
+            <input type="text" id="portalCustPin" placeholder="🔑 كلمة السر" dir="ltr" style="flex:.9 1 22%;margin:0;text-align:right"
+                onkeydown="if(event.key==='Enter'){addPortalCust();event.preventDefault()}">
+            <button onclick="addPortalCust()" style="padding:.4rem .9rem;border:none;border-radius:8px;background:var(--gr);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">＋</button>
+        </div>
+        <div id="portalCustList" style="display:flex;flex-direction:column;gap:.3rem"></div>
+    </div>
+    <div class="mactions">
+        <button class="bgy" onclick="closeModal('settingsModal')">إلغاء</button>
+        <button class="bg" onclick="saveSettings()">💾 حفظ</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--brd);margin:1rem 0">
+    <div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+        <button onclick="exportData()" style="flex:1;padding:.6rem;border-radius:8px;border:1.5px solid var(--gr);background:transparent;color:var(--gr);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
+            📥 تحميل النسخة الاحتياطية
+        </button>
+        <button onclick="document.getElementById('importFile').click()" style="flex:1;padding:.6rem;border-radius:8px;border:1.5px solid var(--bl);background:transparent;color:var(--bl);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
+            📤 استيراد نسخة احتياطية
+        </button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+
+    <button onclick="document.getElementById('gpdfFile').click()" style="width:100%;padding:.6rem;margin-bottom:.6rem;border-radius:8px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
+        🔓 فتح فاتورة مقفلة (gpdf)
+    </button>
+    <input type="file" id="gpdfFile" accept=".gpdf,application/octet-stream,application/json" style="display:none" onchange="openLockedPdf(event)">
+    <button onclick="resetAllData()" style="width:100%;padding:.6rem;border-radius:8px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
+        🗑️ مسح جميع البيانات (إعادة ضبط المصنع)
+    </button>
+    </div><!-- /adminOnlySettings -->
+    <button onclick="showTrash()" style="width:100%;padding:.6rem;margin-bottom:.6rem;border-radius:8px;border:1.5px solid #64748b;background:transparent;color:#64748b;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
+        🗑️ سلة المحذوفات (استرجاع)
+    </button>
+    <hr style="border:none;border-top:1px solid var(--brd);margin:.8rem 0">
+    <!-- تغيير كلمة المرور -->
+    <p style="font-size:.72rem;font-weight:800;color:var(--t2);margin:0 0 .4rem;text-align:right">🔒 تغيير كلمة المرور</p>
+    <input type="password" id="pwOld" placeholder="كلمة المرور الحالية"
+        style="width:100%;padding:.5rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.3rem;text-align:center;letter-spacing:.1em">
+    <input type="password" id="pwNew1" placeholder="كلمة المرور الجديدة"
+        style="width:100%;padding:.5rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.3rem;text-align:center;letter-spacing:.1em">
+    <input type="password" id="pwNew2" placeholder="تأكيد كلمة المرور الجديدة"
+        style="width:100%;padding:.5rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.4rem;text-align:center;letter-spacing:.1em"
+        onkeydown="if(event.key==='Enter')changePw()">
+    <button onclick="changePw()" style="width:100%;padding:.5rem;border-radius:8px;border:none;background:var(--g400);color:#1a0a00;font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.6rem">
+        🔑 تغيير كلمة المرور
+    </button>
+    <!-- إدارة الموظفين (المالك فقط) -->
+    <div id="adminPanel" style="display:none">
+        <hr style="border:none;border-top:1px solid var(--brd);margin:.6rem 0">
+        <p style="font-size:.72rem;font-weight:800;color:var(--t2);margin:0 0 .4rem;text-align:right">👥 إدارة المستخدمين</p>
+        <div id="usersList" style="margin-bottom:.4rem"></div>
+        <p style="font-size:.62rem;color:var(--t3);margin:.3rem 0;text-align:right;line-height:1.5">أضف موظفاً (صلاحيات محدودة) أو أدمين ثانٍ (صلاحيات كاملة كشريك). كلاهما يدخل باسمه وكلمة مروره على جهازه.</p>
+        <input type="text" id="newUserName" placeholder="👤 الاسم (لاتيني)" dir="ltr"
+            style="width:100%;padding:.45rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.3rem;text-align:center;box-sizing:border-box">
+        <input type="password" id="newUserPw" placeholder="🔒 كلمة المرور"
+            style="width:100%;padding:.45rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.4rem;text-align:center;letter-spacing:.1em;box-sizing:border-box"
+            onkeydown="if(event.key==='Enter')addUser()">
+        <div style="display:flex;gap:.4rem;margin-bottom:.4rem">
+            <button type="button" id="roleEmp" onclick="window._newUserRole='employee';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid #7c3aed;background:#7c3aed;color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.74rem;cursor:pointer">👤 موظف مقيّد</button>
+            <button type="button" id="roleAdmin" onclick="window._newUserRole='admin';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid var(--g500);background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.74rem;cursor:pointer">👑 أدمين كامل</button>
+        </div>
+        <button id="addUserBtn" onclick="addUser()" style="width:100%;padding:.5rem;border-radius:8px;border:1.5px solid var(--gr);background:transparent;color:var(--gr);font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
+            ➕ إضافة مستخدم
+        </button>
+    </div>
+</div></div>
+
+
+<!-- ═══ ملفات JS ═══ -->
+<script src="./firebase.js?v=162"></script>
+<script src="./app.js?v=162"></script>
+<script src="./assistant.js?v=162"></script>
+<script src="./inventory.js?v=162"></script>
+<script src="./invoice.js?v=162"></script>
+<script src="./raffinage.js?v=162"></script>
+<script src="./auth.js?v=162"></script>
+
+
+<!-- ═══ شاشة السيريل نامبر ═══ -->
+<div id="serialOverlay" style="position:fixed;inset:0;z-index:10000;background:radial-gradient(ellipse at center,#2a1500 0%,#0d0500 100%);display:none;align-items:center;justify-content:center">
+    <div class="login-box" style="max-width:380px">
+        <div class="login-logo" style="font-size:2.5rem">🔐</div>
+        <h2 class="login-title" style="font-size:1.3rem">تفعيل GoldPro</h2>
+        <p class="login-sub" style="font-size:.8rem">أدخل رمز التفعيل الخاص بك للمتابعة</p>
+        <input type="text" id="serialInput" placeholder="XXXX-XXXX-XXXX-XXXX" dir="ltr" maxlength="24"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.1rem;font-family:monospace,sans-serif;text-align:center;letter-spacing:.18em;outline:none;text-transform:uppercase;margin-bottom:.5rem"
+            oninput="this.value=this.value.toUpperCase()"
+            onkeydown="if(event.key==='Enter'){event.stopPropagation();activateSerial()}">
+        <button class="login-btn" onclick="activateSerial()">🔓 تفعيل</button>
+        <p id="serialErr" style="display:none;color:#ff6b6b;font-size:.78rem;text-align:center;margin-top:.5rem;animation:shake .4s"></p>
+        <!-- 👤 الزبون ليس معه رمز تفعيل — له مدخله الخاص -->
+        <div style="border-top:1px dashed rgba(212,175,55,.3);margin-top:.9rem;padding-top:.8rem">
+            <p style="font-size:.7rem;color:#9ca3af;text-align:center;margin-bottom:.5rem">أنت زبون عند محل ولست صاحب التطبيق؟</p>
+            <button onclick="openCustGate()" style="width:100%;padding:.7rem;border:1.5px solid rgba(212,175,55,.45);border-radius:12px;background:transparent;color:#d4af37;font-weight:900;font-family:Tajawal,sans-serif;font-size:.85rem;cursor:pointer">
+                👤 كشف حسابي — بالهاتف وكلمة السر
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 👤 بوابة الزبون: تعمل بلا رمز تفعيل إطلاقاً -->
+<div id="custGate" style="display:none;position:fixed;inset:0;z-index:10004;align-items:center;justify-content:center;background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(212,175,55,.14) 0%,rgba(212,175,55,0) 62%),radial-gradient(ellipse at center,#1c2438 0%,#131a2c 45%,#0a0f1e 100%);font-family:Tajawal,sans-serif;direction:rtl;padding:1rem">
+    <div class="login-box" style="max-width:360px">
+        <div class="login-logo" style="font-size:2.2rem">👤</div>
+        <h2 class="login-title" style="font-size:1.2rem">كشف حسابي</h2>
+        <p class="login-sub" style="font-size:.75rem">أدخل رقم هاتفك وكلمة السر التي أعطاك إياها المحل</p>
+        <input type="tel" id="cgPhone" placeholder="📱 06XXXXXXXX" dir="ltr" maxlength="15"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.05rem;text-align:center;letter-spacing:.1em;outline:none;margin-bottom:.5rem">
+        <input type="password" id="cgPin" placeholder="🔑 كلمة السر" dir="ltr" maxlength="20"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1.05rem;text-align:center;letter-spacing:.12em;outline:none;margin-bottom:.5rem"
+            onkeydown="if(event.key==='Enter'){event.stopPropagation();custGateGo()}">
+        <button class="login-btn" onclick="custGateGo()">عرض حسابي →</button>
+        <p id="cgErr" style="display:none;color:#ff6b6b;font-size:.76rem;text-align:center;margin-top:.5rem"></p>
+        <button onclick="closeCustGate()" style="width:100%;margin-top:.6rem;padding:.55rem;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#ccc;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">← رجوع</button>
+    </div>
+</div>
+<!-- سكريبت متزامن: يُظهر شاشة السيريال فوراً إذا لم يكن مُفعَّلاً في هذا الجهاز -->
+<script>
+(function(){
+    if(!localStorage.getItem('gp12_sn')){
+        var ov=document.getElementById('serialOverlay');
+        if(ov)ov.style.display='flex';
+    }
+})();
+</script>
+
+<!-- ═══ شاشة الدخول — بروح الأيقونة: كحلي داكن وذهبي ═══ -->
+<style>
+#loginOverlay{
+    background:
+        radial-gradient(ellipse 70% 55% at 50% 42%, rgba(212,175,55,.16) 0%, rgba(212,175,55,0) 62%),
+        radial-gradient(ellipse at center, #1c2438 0%, #131a2c 45%, #0a0f1e 100%)!important;
+}
+#loginOverlay .login-box{
+    background:linear-gradient(160deg, rgba(30,39,62,.92), rgba(15,21,38,.94))!important;
+    border:1.5px solid transparent!important;
+    background-clip:padding-box;
+    box-shadow:0 0 0 1.5px rgba(212,175,55,.55), 0 0 42px rgba(212,175,55,.14), 0 24px 60px rgba(0,0,0,.6)!important;
+    border-radius:26px!important;
+}
+#loginOverlay{display:none}
+#loginOverlay.show{display:flex}
+</style>
+<script>
+/* قرار متزامن قبل الرسم: إن كانت هناك جلسة محفوظة لا تُظهر شاشة الدخول إطلاقاً (لا وميض) */
+(function(){
+    try{
+        var hasSession=(localStorage.getItem('gp12_auth')==='1'||sessionStorage.getItem('gp12_auth')==='1')
+            &&(localStorage.getItem('gp12_user')||sessionStorage.getItem('gp12_user'));
+        window.__hasSession=!!hasSession;
+        if(!hasSession){
+            /* لا جلسة → أظهرها فور توفّر العنصر */
+            document.addEventListener('DOMContentLoaded',function(){
+                var o=document.getElementById('loginOverlay'); if(o)o.classList.add('show');
+            });
+        }
+    }catch(e){
+        document.addEventListener('DOMContentLoaded',function(){
+            var o=document.getElementById('loginOverlay'); if(o)o.classList.add('show');
+        });
+    }
+})();
+</script>
+<div id="loginOverlay">
+    <!-- لوحة الدخول الرئيسية -->
+    <div class="login-box" id="loginMainPanel">
+        <div class="login-logo" style="margin-bottom:.7rem">
+            <svg viewBox="0 0 100 100" width="96" height="96" style="display:block;margin:0 auto;border-radius:24px;box-shadow:0 0 34px rgba(212,175,55,.55),0 0 80px rgba(212,175,55,.2)">
+  <defs>
+    <linearGradient id="lgBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a3350"/><stop offset="1" stop-color="#0f1526"/></linearGradient>
+    <linearGradient id="lgGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e27a"/><stop offset="0.5" stop-color="#d4af37"/><stop offset="1" stop-color="#a87b1f"/></linearGradient>
+  </defs>
+  <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#lgBg)" stroke="url(#lgGold)" stroke-width="3"/>
+  <path d="M22 62 C22 50 34 44 50 44 C66 44 78 50 78 62 C78 74 66 80 50 80 C34 80 22 74 22 62 Z" fill="none" stroke="url(#lgGold)" stroke-width="5"/>
+  <path d="M30 66 L70 40 L64 38 M70 40 L68 46" fill="none" stroke="url(#lgGold)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M42 40 L50 24 L58 40 Z" fill="#eaf4ff" stroke="url(#lgGold)" stroke-width="1.5"/>
+  <path d="M42 40 L50 32 L58 40 M50 24 L50 40" fill="none" stroke="#9fb8d6" stroke-width="1"/>
+</svg>
+        </div>
+        <h2 class="login-title" style="background:linear-gradient(135deg,#f6e27a,#d4af37 45%,#a87b1f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.03em">GoldPro</h2>
+        <p class="login-sub">نظام إدارة الذهب — سجّل دخولك</p>
+        <p id="loginShopHint" style="display:none;font-size:.75rem;color:#d4af37;margin:.15rem 0 .5rem;font-weight:800"></p>
+        <p style="font-size:.66rem;color:#9ca3af;margin:.15rem 0 .5rem">أنت زبون؟ أدخل رقم هاتفك في «اسم المستخدم» وكلمة سرك</p>
+        <input type="text" id="loginUser" placeholder="👤 اسم المستخدم"
+            autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text"
+            style="width:100%;padding:.85rem 1rem;border-radius:12px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:1rem;font-family:Tajawal,sans-serif;text-align:center;outline:none;transition:border-color .2s;margin-bottom:.5rem;pointer-events:auto;-webkit-user-select:text;user-select:text;touch-action:auto"
+            onkeydown="if(event.key==='Enter'){document.getElementById('loginPw').focus()}">
+        <input type="password" id="loginPw" placeholder="🔒 كلمة المرور"
+            autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
+            style="pointer-events:auto;-webkit-user-select:text;user-select:text;touch-action:auto"
+            onkeydown="if(event.key==='Enter'){event.stopPropagation();doLogin()}">
+        <button class="login-btn" onclick="doLogin()">دخول →</button>
+        <p id="loginErr" style="display:none">❌ خطأ</p>
+        <p style="margin-top:.8rem;font-size:.72rem;color:rgba(255,255,255,.35);text-align:center">
+            <span onclick="window._changeSN()" style="cursor:pointer;text-decoration:underline;color:rgba(212,175,55,.5)">🔁 تغيير رمز التفعيل</span>
+        </p>
+    </div>
+    <!-- لوحة إعداد أول مستخدم (تظهر فقط إذا لا يوجد حسابات) -->
+    <div class="login-box" id="loginSetupPanel" style="display:none;flex-direction:column">
+        <div class="login-logo">🔧</div>
+        <h2 class="login-title" style="font-size:1.2rem">إعداد أول مستخدم</h2>
+        <p class="login-sub">لا يوجد حسابات — أنشئ حساب المسؤول الآن</p>
+        <p id="setupShopHint" style="display:none;font-size:.75rem;color:#d4af37;margin:.15rem 0 .6rem;font-weight:800;line-height:1.6"></p>
+        <input type="text" id="setupUser" placeholder="👤 اسم محلك (لاتيني)" dir="ltr"
+            style="width:100%;padding:.7rem 1rem;border-radius:10px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:.95rem;font-family:Tajawal,sans-serif;text-align:center;outline:none;margin-bottom:.4rem"
+            onkeydown="if(event.key==='Enter'){document.getElementById('setupPw').focus()}">
+        <input type="password" id="setupPw" placeholder="🔒 كلمة المرور"
+            style="width:100%;padding:.7rem 1rem;border-radius:10px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:.95rem;font-family:Tajawal,sans-serif;text-align:center;outline:none;margin-bottom:.4rem"
+            onkeydown="if(event.key==='Enter'){document.getElementById('setupPw2').focus()}">
+        <input type="password" id="setupPw2" placeholder="🔒 تأكيد كلمة المرور"
+            style="width:100%;padding:.7rem 1rem;border-radius:10px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:.95rem;font-family:Tajawal,sans-serif;text-align:center;outline:none;margin-bottom:.7rem"
+            onkeydown="if(event.key==='Enter'){setupFirstUser()}">
+        <button class="login-btn" onclick="setupFirstUser()">✅ إنشاء الحساب</button>
+    </div>
+</div>
+<script>
+/* ─── Service Worker ─── */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+/* ─── زر تثبيت PWA ─── */
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _pwaPrompt = e;
+  const btn = document.getElementById('pwaInstallBtn');
+  if(btn) btn.style.display = 'flex';
+});
+if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches){
+  document.addEventListener('DOMContentLoaded',()=>{
+    const b=document.getElementById('pwaInstallSettingsBtn'); if(b)b.style.display='none';
+  });
+}
+window.addEventListener('appinstalled', () => {
+  const sb=document.getElementById('pwaInstallSettingsBtn'); if(sb)sb.style.display='none';
+  const btn = document.getElementById('pwaInstallBtn');
+  if(btn) btn.style.display = 'none';
+  _pwaPrompt = null;
+});
+window._installPWA = async () => {
+  if(!_pwaPrompt){
+    /* لا يوجد حدث تثبيت: إما مثبَّت مسبقاً أو المتصفح لا يدعم الطلب المباشر */
+    if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches){
+      alert('✅ التطبيق مثبَّت بالفعل — افتحه من الشاشة الرئيسية');
+    }else if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){
+      alert('📲 للتثبيت على آيفون:\n1) اضغط زر المشاركة ⬆️ في سفاري\n2) اختر «إضافة إلى الشاشة الرئيسية»');
+    }else{
+      alert('📲 للتثبيت:\nافتح قائمة المتصفح ⋮ ثم اختر «إضافة إلى الشاشة الرئيسية» أو «تثبيت التطبيق»');
+    }
+    return;
+  }
+  _pwaPrompt.prompt();
+  const { outcome } = await _pwaPrompt.userChoice;
+  if(outcome === 'accepted') {
+    document.getElementById('pwaInstallBtn').style.display = 'none';
+    _pwaPrompt = null;
+  }
+};
+</script>
+
+<!-- ═══ بوابة الزبون: كشف الحساب ═══ -->
+<div id="custPortalScreen" style="display:none;position:fixed;inset:0;z-index:10002;background:var(--bg,#0d1120);overflow-y:auto;direction:rtl;font-family:Tajawal,sans-serif">
+    <div style="position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#1a1206,#0d1120);border-bottom:1px solid rgba(212,175,55,.25);padding:.8rem 1rem;display:flex;align-items:center;gap:.6rem">
+        <button onclick="closeCustPortal()" style="width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:1rem;cursor:pointer">✕</button>
+        <div style="flex:1">
+            <div id="custPortalName" style="font-weight:900;font-size:1.05rem;color:#d4af37">—</div>
+            <div id="custPortalUpd" style="font-size:.62rem;color:#888"></div>
+        </div>
+        <div style="font-size:1.5rem">👤</div>
+    </div>
+    <div style="max-width:640px;margin:0 auto;padding:1rem">
+        <!-- بطاقتا الرصيد -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
+            <div style="background:linear-gradient(135deg,rgba(3,105,161,.18),rgba(3,105,161,.06));border:1px solid rgba(3,105,161,.4);border-radius:14px;padding:.9rem;text-align:center">
+                <div style="font-size:1.3rem">💵</div>
+                <div style="font-size:.68rem;color:#93c5fd;font-weight:800">دينار</div>
+                <div id="custPortalDin" style="font-size:1.15rem;font-weight:900;color:#fff" dir="ltr">0 دج</div>
+                <div id="custPortalDinNote" style="font-size:.58rem;color:#94a3b8;font-weight:700;margin-top:.15rem"></div>
+            </div>
+            <div style="background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(212,175,55,.06));border:1px solid rgba(212,175,55,.4);border-radius:14px;padding:.9rem;text-align:center">
+                <div style="font-size:1.3rem">👑</div>
+                <div style="font-size:.68rem;color:#fcd34d;font-weight:800">ذهب (غ 705)</div>
+                <div id="custPortalGold" style="font-size:1.15rem;font-weight:900;color:#fff" dir="ltr">0 غ</div>
+                <div id="custPortalGoldNote" style="font-size:.58rem;color:#94a3b8;font-weight:700;margin-top:.15rem"></div>
+            </div>
+        </div>
+        <p style="font-size:.62rem;color:#888;text-align:center;margin:0 0 .8rem">🟢 أخضر = لك عند المحل · 🔴 أحمر = عليك للمحل</p>
+        <div style="font-weight:900;color:#d4af37;font-size:.85rem;margin-bottom:.5rem">📒 سجل معاملاتك <span style="font-size:.62rem;color:#888">(اضغط على المعاملة لعرض فاتورتها)</span></div>
+        <div id="custPortalOps"></div>
+    </div>
+</div>
+
+<!-- زر تثبيت التطبيق -->
+<div id="pwaInstallBtn" onclick="window._installPWA()" style="
+  display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  z-index:9999;background:linear-gradient(135deg,#f59e0b,#d97706);
+  color:#0a0800;padding:14px 28px;border-radius:40px;font-family:Tajawal,sans-serif;
+  font-size:1rem;font-weight:900;box-shadow:0 4px 24px rgba(245,158,11,.6);
+  cursor:pointer;gap:10px;align-items:center;white-space:nowrap;
+  animation:pwaGlow 2s ease-in-out infinite;
+">
+  <i class="fas fa-download"></i>
+  <span>تثبيت التطبيق</span>
+</div>
+<style>
+@keyframes pwaGlow{0%,100%{box-shadow:0 4px 24px rgba(245,158,11,.5)}50%{box-shadow:0 4px 36px rgba(245,158,11,.9)}}
+</style>
+<script>
+/* ═══════════ DRAGGABLE HEADER BADGES — حركة حرة ═══════════ */
+(function(){
+    const el=document.getElementById('hdrCenterWrap');
+    if(!el)return;
+    const POS_KEY='gp12_badge_xy';
+
+    function _defaultPos(){return{x:Math.round(window.innerWidth/2-27),y:Math.round(window.innerHeight/2-27)};}
+    function _loadPos(){
+        /* الكرة مثبّتة في المركز — نتجاهل أي موضع محفوظ */
+        return _defaultPos();
+    }
+    function _savePos(x,y){
+        try{localStorage.setItem(POS_KEY,JSON.stringify({x,y}));}catch(e){}
+    }
+    function _applyPos(x,y){
+        const W=window.innerWidth,H=window.innerHeight;
+        const ew=el.offsetWidth||220,eh=el.offsetHeight||50;
+        x=Math.max(0,Math.min(x,W-ew));
+        y=Math.max(0,Math.min(y,H-eh));
+        el.style.left=x+'px';
+        el.style.top=y+'px';
+        el.style.right='auto';
+        el.style.bottom='auto';
+        el.style.transform='none';
+    }
+
+    /* تطبيق الموضع المحفوظ */
+    requestAnimationFrame(()=>{const p=_loadPos();_applyPos(p.x,p.y);});
+
+    /* ── Mouse drag ── */
+    let _mx=0,_my=0,_ox=0,_oy=0,_mDrag=false,_mMoved=false;
+    el.addEventListener('mousedown',e=>{
+        /* الكرة مثبّتة — لا سحب، الضغط فقط لإظهار الأسعار */
+    });
+    window.addEventListener('mousemove',e=>{
+        if(!_mDrag)return;
+        const dx=e.clientX-_mx,dy=e.clientY-_my;
+        if(Math.abs(dx)+Math.abs(dy)>4)_mMoved=true;
+        if(_mMoved){_applyPos(_ox+dx,_oy+dy);window._badgeDragMoved=true;}
+    });
+    window.addEventListener('mouseup',e=>{
+        if(!_mDrag)return;
+        _mDrag=false;
+        if(_mMoved)_savePos(el.offsetLeft,el.offsetTop);
+        setTimeout(()=>{window._badgeDragMoved=false;},50);
+    });
+
+    /* ── Touch drag — مُسجَّل على document بدل العنصر لضمان العمل على iOS ── */
+    let _tx=0,_ty=0,_tox=0,_toy=0,_tDrag=false,_tMoved=false;
+    /* نكتشف إذا كانت اللمسة بدأت على العنصر أو أبنائه */
+    el.addEventListener('touchstart',e=>{
+        /* الكرة مثبّتة — لا سحب، اللمس فقط لإظهار الأسعار */
+    },{passive:true});
+    /* touchmove على document بـ passive:false لضمان preventDefault */
+    document.addEventListener('touchmove',e=>{
+        if(!_tDrag)return;
+        const dx=e.touches[0].clientX-_tx;
+        const dy=e.touches[0].clientY-_ty;
+        if(Math.abs(dx)+Math.abs(dy)>6){
+            _tMoved=true;
+            e.preventDefault(); /* يمنع scroll الصفحة أثناء السحب */
+        }
+        if(_tMoved){
+            _applyPos(_tox+dx,_toy+dy);
+            window._badgeDragMoved=true;
+        }
+    },{passive:false});
+    document.addEventListener('touchend',e=>{
+        if(!_tDrag)return;
+        _tDrag=false;
+        if(_tMoved){
+            _savePos(el.offsetLeft,el.offsetTop);
+            setTimeout(()=>{window._badgeDragMoved=false;},50);
+        }
+        _tMoved=false;
+    },{passive:true});
+
+    window.addEventListener('resize',()=>{const p=_defaultPos();_applyPos(p.x,p.y);});
+})();
+/* ── فتح/إغلاق لوحة السعر عند الضغط على الكرة (إن لم تكن قد سُحبت) ── */
+window._togglePricePop=function(){
+    const w=document.getElementById('hdrCenterWrap');
+    if(!w)return;
+    const willOpen=!w.classList.contains('open');
+    w.classList.remove('pop-left','pop-right','pop-up');
+    if(willOpen){
+        const r=w.getBoundingClientRect();
+        const W=window.innerWidth,H=window.innerHeight;
+        const cx=r.left+r.width/2;
+        /* أفقياً: تنفتح نحو الداخل حسب جهة الكرة */
+        if(cx>W*0.55)w.classList.add('pop-right');
+        else if(cx<W*0.45)w.classList.add('pop-left');
+        /* عمودياً: تنفتح للأعلى إن كانت الكرة قرب الأسفل */
+        if(r.bottom+185>H)w.classList.add('pop-up');
+        /* حدّث سعر بيع دبي مباشرةً من القيم المحفوظة */
+        if(typeof window._refreshDubaiSell==='function') window._refreshDubaiSell();
+    }
+    w.classList.toggle('open');
+};
+/* إغلاق اللوحة عند الضغط خارجها */
+document.addEventListener('click',e=>{
+    const w=document.getElementById('hdrCenterWrap');
+    if(w&&w.classList.contains('open')&&!w.contains(e.target))w.classList.remove('open');
+});
+/* ── إخفاء أزرار الأرصدة الافتتاحية إذا سبق اعتمادها (لكل مستخدم مفتاحه) ── */
+(function(){
+    try{
+        var role=localStorage.getItem('gp12_role')||sessionStorage.getItem('gp12_role')||'';
+        var me=localStorage.getItem('gp12_user')||sessionStorage.getItem('gp12_user')||'';
+        /* الموظف له مفتاح خاص · الأدمين له المفتاح الأساسي */
+        var key=(role==='employee')?('gp12_liq_set_emp_'+me):'gp12_liq_set';
+        if(localStorage.getItem(key)){
+            ['liqEditBtn','liqSettingsBtn'].forEach(function(id){
+                var el=document.getElementById(id);if(el)el.style.display='none';
+            });
+        }
+    }catch(e){}
+})();
+</script>
+
+<style>
+/* ═══ PANIC / GOOGLE DECOY ═══ */
+#panicOverlay{
+    display:none;position:fixed;inset:0;z-index:99999;
+    background:#fff;flex-direction:column;
+    font-family:arial,sans-serif;
+}
+#panicOverlay.show{display:flex}
+/* top bar */
+.goo-topbar{
+    display:flex;align-items:center;justify-content:flex-end;
+    padding:.7rem 1.2rem;gap:.6rem;flex-shrink:0;
+}
+.goo-toplink{font-size:.85rem;color:#202124;text-decoration:none;padding:.3rem .5rem}
+.goo-toplink:hover{text-decoration:underline}
+.goo-signin{
+    background:#1a73e8;color:#fff;border:none;border-radius:4px;
+    padding:.45rem 1.1rem;font-size:.85rem;cursor:pointer;white-space:nowrap;
+}
+.goo-signin:hover{background:#1765cc}
+/* center */
+.goo-center{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding-bottom:5vh;
+}
+/* Google logo built from colored text */
+.goo-logo{
+    font-size:clamp(3rem,10vw,5.5rem);font-weight:700;
+    letter-spacing:-2px;line-height:1;margin-bottom:1.8rem;
+    cursor:default;-webkit-user-select:none;user-select:none;
+}
+.goo-logo span:nth-child(1){color:#4285f4}
+.goo-logo span:nth-child(2){color:#ea4335}
+.goo-logo span:nth-child(3){color:#fbbc05}
+.goo-logo span:nth-child(4){color:#4285f4}
+.goo-logo span:nth-child(5){color:#34a853}
+.goo-logo span:nth-child(6){color:#ea4335}
+/* search bar */
+.goo-bar-wrap{width:min(584px,90vw);position:relative;margin-bottom:.9rem}
+.goo-bar{
+    width:100%;padding:.7rem 3rem .7rem 1.2rem;
+    border:1px solid #dfe1e5;border-radius:24px;font-size:1rem;
+    outline:none;box-sizing:border-box;
+    box-shadow:0 1px 6px rgba(32,33,36,.28);
+}
+.goo-bar:focus{border-color:rgba(223,225,229,0);box-shadow:0 1px 6px rgba(32,33,36,.5)}
+.goo-mic{
+    position:absolute;right:.9rem;top:50%;transform:translateY(-50%);
+    color:#4285f4;font-size:1.1rem;cursor:pointer;background:none;border:none;padding:0;
+}
+/* buttons */
+.goo-btns{display:flex;gap:.8rem;margin-top:.2rem}
+.goo-btn{
+    background:#f8f9fa;border:1px solid #f8f9fa;border-radius:4px;
+    color:#3c4043;font-size:.875rem;padding:.6rem 1rem;cursor:pointer;
+}
+.goo-btn:hover{box-shadow:0 1px 1px rgba(0,0,0,.1);border-color:#dadce0;color:#202124}
+/* footer */
+.goo-footer{background:#f2f2f2;border-top:1px solid #e4e4e4;padding:.9rem 1.5rem;font-size:.8rem;color:#70757a;flex-shrink:0}
+.goo-footer-top{display:flex;gap:1.5rem;margin-bottom:.6rem}
+.goo-footer-bot{display:flex;justify-content:flex-end;gap:1.5rem}
+.goo-footer a{color:#70757a;text-decoration:none}
+.goo-footer a:hover{text-decoration:underline}
+/* hide progress ring during panic */
+#panicOverlay *{-webkit-tap-highlight-color:transparent}
+</style>
+
+<!-- ═══ PANIC OVERLAY — صفحة Google وهمية ═══ -->
+<div id="panicOverlay">
+    <!-- Top bar -->
+    <div class="goo-topbar">
+        <a class="goo-toplink" href="#">Gmail</a>
+        <a class="goo-toplink" href="#">Images</a>
+        <svg style="width:24px;height:24px;cursor:pointer;color:#5f6368" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+        </svg>
+        <button class="goo-signin">Sign in</button>
+    </div>
+
+    <!-- Center: logo + search -->
+    <div class="goo-center">
+        <div class="goo-logo"
+            id="gooLogo"
+            onpointerdown="_gLogoDown()" onpointerup="_gLogoUp()" onpointerleave="_gLogoUp()"
+            ontouchstart="_gLogoDown()" ontouchend="_gLogoUp()">
+            <span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span>
+        </div>
+        <div class="goo-bar-wrap">
+            <input class="goo-bar" id="gooInput" type="text" autocomplete="off"
+                onkeydown="if(event.key==='Enter')_gSearch()">
+            <button class="goo-mic" title="Search by voice">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#4285f4">
+                    <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V6zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-2.08C16.39 18.43 19 15.53 19 12h-2z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="goo-btns">
+            <button class="goo-btn" onclick="_gSearch()">Google Search</button>
+            <button class="goo-btn" onclick="_gSearch()">I'm Feeling Lucky</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="goo-footer">
+        <div class="goo-footer-top">
+            <span>Algeria</span>
+        </div>
+        <div class="goo-footer-bot">
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Settings</a>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ═══ PANIC LOGIC ═══ */
+function panicExit(){
+    _encKey='';
+    sessionStorage.removeItem('gp12_ek');
+    sessionStorage.removeItem('gp12_auth');
+    sessionStorage.removeItem('gp12_user');
+    document.querySelectorAll('body > *:not(#panicOverlay)')
+        .forEach(el=>el.style.visibility='hidden');
+    const ov=document.getElementById('panicOverlay');
+    ov.classList.add('show');
+    document.getElementById('gooInput').value='';
+    if(document.documentElement.requestFullscreen&&!document.fullscreenElement)
+        document.documentElement.requestFullscreen().catch(()=>{});
+}
+
+/* Space × 3 في ثانيتين: دخول الطوارئ أو العودة */
+/* capturing=true يضمن تشغيله قبل أي مستمع آخر */
+let _spCount=0,_spTimer=null;
+/* ═══ إغلاق نهائي: يمسح المستند بالكامل ═══ */
+function _wipe(){
+    try{ window.close(); }catch(x){}
+    /* document.open() يمسح الصفحة فوراً بشكل مضمون في كل متصفح */
+    document.open();
+    document.write('<!doctype html><html><head><meta charset="utf-8"><title> </title></head><body style="margin:0;background:#fff"></body></html>');
+    document.close();
+}
+
+/* fullscreenchange: إذا خرج المتصفح من فول سكرين وكنا في وضع الطوارئ → _wipe */
+function _fsChange(){
+    const fs=document.fullscreenElement||document.webkitFullscreenElement||null;
+    if(!fs && document.getElementById('panicOverlay').classList.contains('show')){
+        _wipe();
+    }
+}
+document.addEventListener('fullscreenchange',_fsChange);
+document.addEventListener('webkitfullscreenchange',_fsChange);
+
+document.addEventListener('keydown',function(e){
+    /* Escape في وضع الطوارئ */
+    if(e.code==='Escape'){
+        if(document.getElementById('panicOverlay').classList.contains('show')){
+            const fs=document.fullscreenElement||document.webkitFullscreenElement||null;
+            if(!fs){
+                /* لا فول سكرين: _wipe مباشرة */
+                _wipe();
+            }
+            /* إذا كان هناك فول سكرين: المتصفح سيخرج منه تلقائياً
+               ثم fullscreenchange سيستدعي _wipe */
+        }
+        return;
+    }
+    /* Space × 3 */
+    if(e.code!=='Space')return;
+    if(e.repeat)return;
+    const tag=(document.activeElement||{}).tagName||'';
+    if(tag==='INPUT'||tag==='TEXTAREA')return;
+    e.preventDefault();
+    e.stopPropagation();
+    _spCount++;
+    clearTimeout(_spTimer);
+    _spTimer=setTimeout(()=>{_spCount=0;},1500);
+    if(_spCount>=3){
+        _spCount=0;
+        const inPanic=document.getElementById('panicOverlay').classList.contains('show');
+        if(inPanic){
+            if(document.exitFullscreen&&document.fullscreenElement)
+                document.exitFullscreen().catch(()=>{});
+            location.reload();
+        }else{
+            panicExit();
+        }
+    }
+},true);
+
+/* بحث وهمي — لا يفعل شيئاً */
+function _gSearch(){
+    document.getElementById('gooInput').value='';
+    document.getElementById('gooInput').blur();
+}
+
+/* الشعار — بدون وظيفة خفية */
+function _gLogoDown(){}
+function _gLogoUp(){}
+window.panicExit=panicExit;
+</script>
+</body>
+</html>

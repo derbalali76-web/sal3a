@@ -1,0 +1,32 @@
+{
+  "name": "GoldPro — نظام إدارة الذهب",
+  "short_name": "GoldPro",
+  "description": "نظام إدارة الذهب المتكامل — فواتير، رافيناج، زبائن، مخزون",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "background_color": "#0a0800",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/x-gpdf": [".gpdf"],
+        "application/octet-stream": [".gpdf"]
+      },
+      "icons": [
+        { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ],
+      "launch_type": "single-client"
+    }
+  ],
+  "icons": [
+    { "src": "icons/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-180.png",          "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
