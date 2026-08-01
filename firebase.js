@@ -658,6 +658,10 @@ function _applyEvt(st,evt){
                     stUpdDebt(d.emp,'دينار',-total,d.emp);   /* سالب = علينا للموظف · موسوم به */
                 }
             }
+            /* 📄 فاتورة شراء في أرشيف الأدمين */
+            if(disp.invoice)st.invoices.unshift(disp.invoice);
+            /* 📜 عملية بيع الموظف (تُسجّل في سجله) */
+            if(disp.op2)st.ops.push({...disp.op2,id:evt.id+'_emp'});
             break;
         }
 

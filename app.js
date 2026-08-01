@@ -2366,9 +2366,20 @@ window._saveBuyEmpBar=(barId,emp,eq705)=>{
     }
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     const note=`شراء سبيكة ${fmt(bar.w,2)}غ عيار ${fmt(bar.k,0)} من ${emp} بسعر ${fmtDin(price)}/غ = ${fmtDin(total)} دج · ${paid?'خالص':'غير خالص'}`;
+    const _iid='BEB-'+uid();
+    /* فاتورة شراء في أرشيفك أنت (اشتريت السبيكة من الموظف) */
+    const _inv={id:_iid,c:emp,t:'buy',ps:paid?'full':'debt',dt:nowStr,
+        items:[{id:uid(),w:bar.w,k:bar.k,is1000:bar.k>=999,eq730:bar.w*bar.k/730,ppg:price,total}],
+        tp:total,akhd:paid?total:0,prevBal:0,empOwner:undefined,by:(window._currentUser||''),src:'شراء من موظف'};
     emitEvent('ADMIN_BUY_EMP_BAR',
-        {barId,emp,w:bar.w,k:bar.k,price,total,paid},
-        {op:{c:emp,t:'شراء من موظف',m:'دينار',a:total,_ts:Date.now(),dt:nowStr,note,empOwner:emp}}
+        {barId,emp,w:bar.w,k:bar.k,price,total,paid,iid:_iid},
+        {
+            invoice:_inv,
+            /* عمليتك أنت: شراء (تظهر في سجلك وأرشيفك) */
+            op:{c:emp,t:'شراء',m:'دينار',a:total,_ts:Date.now(),dt:nowStr,note,iid:_iid,by:(window._currentUser||'')},
+            /* عملية الموظف: بيع للحانوت (تظهر في سجله) */
+            op2:{c:'الحانوت',t:'بيع',m:'دينار',a:total,_ts:Date.now(),dt:nowStr,note:`بيع سبيكة ${fmt(bar.w,2)}غ عيار ${fmt(bar.k,0)} للحانوت = ${fmtDin(total)} دج · ${paid?'خالص':'دين'}`,empOwner:emp}
+        }
     );
     document.getElementById('buyEmpBarOverlay').classList.remove('active');
     setTimeout(()=>{ try{document.getElementById('laGobalSubOverlay').classList.remove('active');}catch(e){} _laGobalStock(emp); toast(`✅ اشتريت السبيكة — ${paid?'خالص':'دين'}`,'success'); },200);
