@@ -109,9 +109,15 @@ async function doLogin(){
     /* 👤 توجيه الزبون: إذا كان الحقل رقم هاتف (أرقام فقط، 8+ خانات) جرّب بوابة كشف الحساب أولاً */
     const _digits=rawUser.replace(/[^0-9]/g,'');
     if(_digits.length>=8 && /^[0-9+\s]+$/.test(rawUser)){
+        window._portalLastErr='';
         const _ok=await (window._tryCustomerPortal?window._tryCustomerPortal(_digits,pw):Promise.resolve(false));
         if(_ok)return; /* دخل الزبون بنجاح */
-        /* إن فشل، نكمل كمحاولة مستخدم عادي (قد يكون اسم مستخدم رقمي) */
+        /* رسالة تشخيصية حسب سبب الفشل */
+        const _e=window._portalLastErr;
+        if(_e==='auth')return _showLoginErr('⚠️ خدمة الدخول غير مفعّلة — فعّل «Anonymous» في Firebase Auth');
+        if(_e==='rules')return _showLoginErr('⚠️ قواعد قاعدة البيانات لم تُنشر — انشر database.rules.json');
+        if(_e==='notfound')return _showLoginErr('الرقم أو كلمة السر غير صحيحة، أو لم يُسجّلك المحل بعد');
+        /* إن فشل بلا سبب واضح، نكمل كمحاولة مستخدم عادي (قد يكون اسم مستخدم رقمي) */
     }
 
     /* مؤشر التحميل أثناء التحقق */

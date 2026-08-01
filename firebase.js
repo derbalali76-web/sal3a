@@ -961,7 +961,7 @@ function _reproject(){
 
 /* ═══════════ EMIT EVENT — الكتابة الوحيدة المسموح بها ═══════════ */
 function emitEvent(type,data,display){
-    /* 👤 اختم كل عملية باسم من قام بها (الأدمين/الموظف الحالي) */
+    /* 👤 اختم كل عملية باسم من قام بها — المالك أو الأدمين الثاني أو الموظف */
     if(display&&display.op&&!display.op.by){
         display.op.by=window._currentUser||'';
     }

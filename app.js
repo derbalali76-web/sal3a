@@ -47,9 +47,9 @@ window._realOpName=(o)=>{
         if(inv){
             const hasGoods=(Array.isArray(inv.items)&&inv.items.some(it=>(it.w||0)>0.001))||(inv.kass&&inv.kass.eq>0.001)||(inv.cashiFee&&(inv.cashiFee.din||0)>0.001);
             const hasCash=(inv.cash||0)>0.001||(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001);
-            if(!hasGoods&&hasCash)return t==='شراء سلعة'?'قبض دينار':'دفع دينار';
+            if(!hasGoods&&hasCash)return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
         }else if(Math.abs(o.a||0)<0.001){
-            return t==='شراء سلعة'?'قبض دينار':'دفع دينار';
+            return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
         }
     }
     return _tName(t);
@@ -1243,11 +1243,24 @@ window._tryCustomerPortal=async(phoneDigits,pin)=>{
     if(!ph||ph.length<8||!cleanPin)return false;
     try{
         window._portalMode=true;
-        if(!firebase.auth().currentUser)await firebase.auth().signInAnonymously();
+        if(!firebase.auth().currentUser){
+            try{ await firebase.auth().signInAnonymously(); }
+            catch(_authErr){
+                window._portalMode=false;
+                window._portalLastErr='auth';   /* المصادقة المجهولة غير مفعّلة في Firebase */
+                return false;
+            }
+        }
         const base=firebase.database().ref('goldpro/portal/'+ph+'/'+cleanPin);
-        const snap=await base.once('value');
+        let snap;
+        try{ snap=await base.once('value'); }
+        catch(_readErr){
+            window._portalMode=false;
+            window._portalLastErr='rules';   /* القواعد تمنع القراءة — لم تُنشر database.rules.json */
+            return false;
+        }
         const d=snap.val();
-        if(!d){ window._portalMode=false; return false; }
+        if(!d){ window._portalMode=false; window._portalLastErr='notfound'; return false; }
 
         /* 🏪 قد يكون الزبون مرتبطاً بأكثر من محل بنفس الرقم وكلمة السر */
         let shops=[];
@@ -1531,7 +1544,7 @@ window.openDollar=(t,prefillName)=>{
     _addGoodsRow();
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
-    if(_cl)_cl.textContent=(t==='buy'?'أخذ دينار':'دفع دينار');
+    if(_cl)_cl.textContent=(t==='buy'?'دفع دينار':'أخذ دينار');
     const _kl=document.getElementById('kassLbl');
     if(_kl)_kl.textContent=(t==='buy'?'دفع لاكاص (تدفعه للزبون)':'أخذ لاكاص (تأخذه من الزبون)');
     const _kb=document.getElementById('kassRows');
@@ -1820,8 +1833,8 @@ window.saveDollar=()=>{
     let _opName=isBuy?'شراء سلعة':'بيع سلعة';
     let _opM='دولار', _opA=Math.round((equiv-(rot?rot.eq:0))*1000)/1000;
     if(!_hasGoods&&_hasCash){
-        /* دينار فقط بلا ذهب: المبلغ بالدينار، والاسم يعكس الاتجاه */
-        _opName=isBuy?'قبض دينار':'دفع دينار';
+        /* دينار فقط بلا ذهب: المبلغ بالدينار، والاسم معكوس (شراء→دفع · بيع→قبض) */
+        _opName=isBuy?'دفع دينار':'قبض دينار';
         _opM='دينار';
         _opA=_cashAmt;
     }
@@ -2347,6 +2360,10 @@ window._saveBuyEmpBar=(barId,emp,eq705)=>{
     if(!price||price<=0)return toast('أدخل سعر الغرام','error');
     const paid=window._buyBarPaidState!==false;
     const total=Math.round(price*eq705);
+    /* 🔒 حارس السيولة: الشراء الخالص يخصم من سيولتك — تحقّق أنها تكفي */
+    if(paid && B.دينار < total-0.001){
+        return toast(`⚠️ السيولة غير كافية — المتاح ${fmtDin(B.دينار)} دج · المطلوب ${fmtDin(total)} دج`,'error');
+    }
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     const note=`شراء سبيكة ${fmt(bar.w,2)}غ عيار ${fmt(bar.k,0)} من ${emp} بسعر ${fmtDin(price)}/غ = ${fmtDin(total)} دج · ${paid?'خالص':'غير خالص'}`;
     emitEvent('ADMIN_BUY_EMP_BAR',
@@ -3127,7 +3144,9 @@ function renderLog(){
             ?dlines.map(l=>`<br><span style="color:var(--t2);font-size:.6rem;line-height:1.6">${l}</span>`).join('')
             :'';
         /* 👤 من قام بالعملية (يظهر فقط إن كان معروفاً) */
-        const byHtml=o.by?`<br><span style="color:var(--t3);font-size:.56rem;font-style:italic">👤 ${o.by}</span>`:'';
+        /* 👤 اسم من قام بالعملية — يظهر دائماً بخط صغير */
+        const _byName=o.by||o.empOwner||window._dataSpace||window._currentUser||'';
+        const byHtml=_byName?`<br><span style="color:var(--t3);font-size:.56rem;font-style:italic">👤 ${_byName}</span>`:'';
         return`<div class="log-item" style="align-items:flex-start">
             <div class="log-avatar" style="background:${bg};margin-top:.15rem">${(o.c||'?').substring(0,2)}</div>
             <span style="flex:1;min-width:0">
