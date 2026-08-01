@@ -1825,7 +1825,7 @@ window.saveDollar=()=>{
     /* 🔥 كاصي حي (عند البيع فقط): وزن خام يُسجّل مؤقتاً 705 ويدخل مخزون الكاصي الحي */
     const liveKassi=_lkW>0?{id:'LK-'+uid(),w:_lkW,c:cust,did,dt:nowStr,melted:false}:null;
     /* gv:2 — دائماً غير خالص: الشراء يُسجّل ديناً بالأحمر (سلعة مكافئ 705 + الأجرة بالدينار)، والبيع بالعكس */
-    const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined,cashiCash:cashiCash||undefined,cashiFee:cashiFee.eq>0?cashiFee:undefined,liveKassi:liveKassi||undefined,empOwner:(window._userRole==='employee'?_currentUser:undefined)};
+    const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined,cashiCash:cashiCash||undefined,cashiFee:cashiFee.eq>0?cashiFee:undefined,liveKassi:liveKassi||undefined,empOwner:(window._userRole==='employee'?_currentUser:undefined),by:(window._currentUser||'')};
     /* 🏷️ اسم العملية يعكس ما حدث فعلاً — لا «بيع سلعة» على عملية دينار صرفة */
     const _hasGoods=items.some(it=>(it.w||0)>0.001)||(kass.eq>0)||(cashiFee&&cashiFee.eq>0)||(liveKassi&&liveKassi.w>0);
     const _cashAmt=(cash||0)+((cashiCash&&cashiCash.amt)||0);
@@ -3390,7 +3390,7 @@ function buildCustomerLogHtml(c,custOps,custView){
         return`<tr style="background:${bg}">
             <td style="padding:7px 5px;text-align:center;color:#9ca3af;font-size:12px;border-bottom:1px solid #e5e7eb">${custOps.length-i}</td>
             <td style="padding:7px 6px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">${o.dt||'—'}</td>
-            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o)}</td>
+            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o)}${(!custView&&(o.by||o.empOwner))?`<br><span style="font-size:9px;color:#9ca3af;font-weight:600;font-style:italic">✍️ ${o.by||o.empOwner}</span>`:''}</td>
             <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(o.a,2)} ${unit}</td>
             <td style="padding:7px 6px;font-size:11px;border-bottom:1px solid #e5e7eb">${detailHtml}</td>
         </tr>`;}).join('');
@@ -4395,6 +4395,7 @@ function renderArchive(){
                 <span style="color:${inv.t==='buy'?'var(--gr)':'var(--rd)'};font-weight:800;margin-right:.25rem">${inv.t==='buy'?'شراء':'بيع'}</span>
                 <span style="color:var(--g600);font-weight:900">${fmt(inv.tp||0,0)} DZD</span>
                 <small style="color:var(--t2);display:block">${inv.dt} · ${inv.ps==='full'?'💵 نقداً':'🔖 دين'} · ${(inv.items||[]).length} بند</small>
+                ${(inv.by||inv.empOwner)?`<small style="color:var(--t3);font-style:italic;display:block;font-size:.62rem">✍️ ${inv.by||inv.empOwner}</small>`:''}
             </div>
             <div style="display:flex;gap:.3rem">
                 <button class="btn-pdf" onclick="editInv('${inv.id}')" style="background:rgba(124,58,237,.12);color:#7c3aed" title="تعديل"><i class="fas fa-pen"></i></button>
@@ -4441,6 +4442,7 @@ function renderArchive(){
                 ${d.cashiFee&&d.cashiFee.items?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
                 ${(d.rot||d.cash||(d.kass&&d.kass.eq))?`<small style="color:var(--g600);display:block;font-size:.62rem;font-weight:900">= الصافي: ${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0),2)} غ (705) · ${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0),0)} دج</small>`:''}
                 <small style="color:var(--t3);display:block;font-size:.58rem">${d.dt}</small>
+                ${(d.by||d.empOwner)?`<small style="color:var(--t3);font-style:italic;display:block;font-size:.62rem">✍️ ${d.by||d.empOwner}</small>`:''}
             </div>
             <div style="display:flex;gap:.3rem">
                 <button class="btn-pdf" onclick="editDoll('${d.id}')" style="background:rgba(124,58,237,.12);color:#7c3aed" title="تعديل"><i class="fas fa-pen"></i></button>

@@ -436,7 +436,7 @@ window.saveInvoice=()=>{
     }
 
     const _emp=(window._userRole==='employee')?_currentUser:null;
-    const _inv={id:iid,c,t,ps,dt,items:JSON.parse(JSON.stringify(newItems)),tp,akhd,prevBal,empOwner:_emp};
+    const _inv={id:iid,c,t,ps,dt,items:JSON.parse(JSON.stringify(newItems)),tp,akhd,prevBal,empOwner:_emp,by:(window._currentUser||'')};
     /* وسم كل سبيكة مضافة بمالكها (الموظف) لعرضها في مخزونه الخاص */
     if(_emp&&Array.isArray(barsAdd))barsAdd.forEach(b=>{b.empOwner=_emp;});
     const evType=t==='buy'?'INVOICE_BUY':'INVOICE_SELL';
