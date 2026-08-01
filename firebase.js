@@ -48,10 +48,20 @@ window._attachUserCfg=()=>{
         });
         window._cfgRef.child('custPhones').on('value',sn=>{
             const v=sn.val();
-            if(v&&typeof v==='object'){
+            if(v&&typeof v==='object'&&Object.keys(v).length){
                 window._portalCust=v;
                 try{localStorage.setItem('gp12_portalCust',JSON.stringify(v));}catch(e){}
                 if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
+            }else{
+                /* السحابة فارغة: لا تمسح المحلي — بل ادفعه للسحابة (استرجاع) */
+                try{
+                    const _local=JSON.parse(localStorage.getItem('gp12_portalCust')||'{}');
+                    if(_local&&Object.keys(_local).length){
+                        window._portalCust=_local;
+                        if(window._cfgRef)window._cfgRef.child('custPhones').set(_local).catch(()=>{});
+                        if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
+                    }
+                }catch(e){}
             }
         });
     }catch(e){}

@@ -1146,9 +1146,13 @@ window.addPortalCust=()=>{
     if(window._cfgRef){
         window._cfgRef.child('custPhones').set(window._portalCust)
             .then(()=>{ toast(`✅ حُفظ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`,'success'); })
-            .catch(err=>{ toast('⚠️ تعذّر الحفظ في السحابة — انشر database.rules.json','error'); });
+            .catch(err=>{
+                const _msg=(err&&err.message||'').toLowerCase();
+                if(_msg.includes('permission')) toast('⚠️ الحفظ مرفوض — انشر database.rules.json في Firebase','error');
+                else toast('⚠️ تعذّر الحفظ: '+(err&&err.message||'خطأ')+' — البيانات محفوظة محلياً','error');
+            });
     }else{
-        toast(`✅ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`);
+        toast(`✅ ${n} (محلياً) — سجّل الدخول لمزامنته`,'success');
     }
     if(nEl)nEl.value='';
     if(phEl)phEl.value='';
