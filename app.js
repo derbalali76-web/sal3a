@@ -3390,7 +3390,7 @@ function buildCustomerLogHtml(c,custOps,custView){
         return`<tr style="background:${bg}">
             <td style="padding:7px 5px;text-align:center;color:#9ca3af;font-size:12px;border-bottom:1px solid #e5e7eb">${custOps.length-i}</td>
             <td style="padding:7px 6px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">${o.dt||'—'}</td>
-            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o)}${(!custView&&(o.by||o.empOwner))?`<br><span style="font-size:9px;color:#9ca3af;font-weight:600;font-style:italic">✍️ ${o.by||o.empOwner}</span>`:''}</td>
+            <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o)}${!custView?`<br><span style="font-size:9px;color:#9ca3af;font-weight:600;font-style:italic">✍️ ${o.by||o.empOwner||user||''}</span>`:''}</td>
             <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(o.a,2)} ${unit}</td>
             <td style="padding:7px 6px;font-size:11px;border-bottom:1px solid #e5e7eb">${detailHtml}</td>
         </tr>`;}).join('');
@@ -4629,6 +4629,7 @@ function buildInvHtml(inv){
             <span style="flex:1;background:#f8f8f8;border:1px solid #ccc;color:#1a1a1a;padding:5px 10px;font-weight:900;font-size:16px;border-radius:5px;display:flex;align-items:center;justify-content:center">${inv.c}</span>
             <span style="background:#dc2626;color:#fff;padding:5px 10px;font-weight:900;font-size:13px;border-radius:5px;display:flex;align-items:center">${typeLabel}</span>
         </div>
+        <div style="text-align:center;font-size:11px;color:#999;font-style:italic;margin:-3px 0 6px">✍️ ${inv.by||inv.empOwner||(window._currentUser||'')}</div>
         <!-- رقم الفاتورة والتاريخ — RTL: التاريخ يسار، الرقم يمين -->
         <div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:11px;color:#333;border-bottom:1px solid #ddd;padding-bottom:5px">
             <span>التاريخ: <strong>${inv.dt}</strong></span>
@@ -4795,6 +4796,7 @@ function buildDollHtml(d,custView){
         <div style="text-align:center;border-bottom:2px solid ${col};padding-bottom:8px;margin-bottom:10px">
             <div style="font-size:19px;font-weight:900;color:${col}">🛍️ ${lbl}</div>
             <div style="font-size:13px;color:#555">👤 ${d.c} — ${d.dt}</div>
+            <div style="font-size:11px;color:#999;font-style:italic;margin-top:2px">✍️ ${d.by||d.empOwner||(window._currentUser||'')}</div>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead><tr style="background:#f3f3f3">
