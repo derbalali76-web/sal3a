@@ -1129,17 +1129,32 @@ window._normPhone=(p)=>String(p||'').replace(/[^0-9]/g,'');
    الأسماء فريدة عالمياً فلا تصادم بين محلّين. */
 window._shopId=()=>String(_currentUser||'').toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
 window.addPortalCust=()=>{
-    const n=(document.getElementById('portalCustName')?.value||'').trim();
-    const ph=window._normPhone(document.getElementById('portalCustPhone')?.value);
-    const pin=(document.getElementById('portalCustPin')?.value||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
-    if(!n||!ph||ph.length<8)return toast('أدخل اسم الزبون ورقم هاتف صحيح','error');
+    const nEl=document.getElementById('portalCustName');
+    const phEl=document.getElementById('portalCustPhone');
+    const pinEl=document.getElementById('portalCustPin');
+    const n=(nEl?.value||'').trim();
+    const ph=window._normPhone(phEl?.value);
+    const pin=(pinEl?.value||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
+    if(!n)return toast('أدخل اسم الزبون','error');
+    if(!ph||ph.length<8)return toast('أدخل رقم هاتف صحيح (8 خانات على الأقل)','error');
     if(!pin||pin.length<4)return toast('اختر كلمة سر للزبون (4 خانات على الأقل)','error');
+    /* تأكّد أن الخريطة كائن */
+    if(!window._portalCust||typeof window._portalCust!=='object')window._portalCust={};
     window._portalCust[ph]={n,pin};
-    document.getElementById('portalCustName').value='';
-    document.getElementById('portalCustPhone').value='';
-    document.getElementById('portalCustPin').value='';
-    _persistPortalCust();
-    toast(`✅ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`);
+    /* احفظ فوراً: محلياً + Firebase */
+    try{localStorage.setItem('gp12_portalCust',JSON.stringify(window._portalCust));}catch(e){}
+    if(window._cfgRef){
+        window._cfgRef.child('custPhones').set(window._portalCust)
+            .then(()=>{ toast(`✅ حُفظ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`,'success'); })
+            .catch(err=>{ toast('⚠️ تعذّر الحفظ في السحابة — انشر database.rules.json','error'); });
+    }else{
+        toast(`✅ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`);
+    }
+    if(nEl)nEl.value='';
+    if(phEl)phEl.value='';
+    if(pinEl)pinEl.value='';
+    renderPortalCustList();
+    if(window._publishPortalDebounced)window._publishPortalDebounced();
 };
 window.delPortalCust=(ph)=>{
     const _e=window._portalCust[ph];
