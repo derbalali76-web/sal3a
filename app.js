@@ -1260,13 +1260,25 @@ window._tryCustomerPortal=async(phoneDigits,pin)=>{
     const ph=window._normPhone(phoneDigits);
     const cleanPin=(pin||'').trim().replace(/[\/\.\#\$\[\]\s]/g,'');
     if(!ph||ph.length<8||!cleanPin)return false;
+    /* 📱 كاش محلي: اعرض آخر كشف محفوظ فوراً (بلا انتظار الشبكة) */
+    const _ckey='gp12_portal_'+ph+'_'+cleanPin;
+    let _cached=null;
+    try{ _cached=JSON.parse(localStorage.getItem(_ckey)||'null'); }catch(e){}
     try{
         window._portalMode=true;
         if(!firebase.auth().currentUser){
             try{ await firebase.auth().signInAnonymously(); }
             catch(_authErr){
+                /* لا إنترنت/مصادقة؟ اعرض الكاش المحلي إن وُجد */
+                if(_cached&&_cached.name){
+                    window._portalMode=true;
+                    window._renderCustPortal(_cached);
+                    const ov=document.getElementById('loginOverlay'); if(ov)ov.style.display='none';
+                    document.getElementById('custPortalScreen').style.display='block';
+                    return true;
+                }
                 window._portalMode=false;
-                window._portalLastErr='auth';   /* المصادقة المجهولة غير مفعّلة في Firebase */
+                window._portalLastErr='auth';
                 return false;
             }
         }
@@ -1274,8 +1286,15 @@ window._tryCustomerPortal=async(phoneDigits,pin)=>{
         let snap;
         try{ snap=await base.once('value'); }
         catch(_readErr){
+            /* فشل القراءة؟ اعرض الكاش المحلي */
+            if(_cached&&_cached.name){
+                window._renderCustPortal(_cached);
+                const ov=document.getElementById('loginOverlay'); if(ov)ov.style.display='none';
+                document.getElementById('custPortalScreen').style.display='block';
+                return true;
+            }
             window._portalMode=false;
-            window._portalLastErr='rules';   /* القواعد تمنع القراءة — لم تُنشر database.rules.json */
+            window._portalLastErr='rules';
             return false;
         }
         const d=snap.val();
@@ -1294,8 +1313,19 @@ window._tryCustomerPortal=async(phoneDigits,pin)=>{
             const ref=entry.key?base.child(entry.key):base;
             if(window._portalRef){try{window._portalRef.off();}catch(_){}}
             window._portalRef=ref;
-            ref.on('value',s2=>{const v=s2.val();if(v&&v.name)window._renderCustPortal(v);});
-            window._renderCustPortal(entry.data);
+            /* 💾 احفظ الكشف محلياً كي يظهر فوراً في المرة القادمة */
+            const _saveKey=entry.key?(_ckey+'_'+entry.key):_ckey;
+            ref.on('value',s2=>{
+                const v=s2.val();
+                if(v&&v.name){
+                    window._renderCustPortal(v);
+                    try{ localStorage.setItem(_saveKey,JSON.stringify(v)); localStorage.setItem(_ckey,JSON.stringify(v)); }catch(e){}
+                }
+            });
+            /* اعرض الكاش المحلي فوراً إن كان أحدث، وإلا كشف الشبكة */
+            let _localEntry=null;
+            try{ _localEntry=JSON.parse(localStorage.getItem(_saveKey)||'null'); }catch(e){}
+            window._renderCustPortal(_localEntry&&_localEntry.name?_localEntry:entry.data);
             const ov=document.getElementById('loginOverlay');
             if(ov)ov.style.display='none';
             document.getElementById('custPortalScreen').style.display='block';

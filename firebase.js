@@ -247,7 +247,7 @@ function _withOwner(obj){
 let _allEvents=[];
 let _fbListening=false;
 
-function _getEvLsKey(){return 'gp_ev_'+(_currentUser||'');}
+function _getEvLsKey(){return 'gp_ev_'+(window._dataSpace||_currentUser||'');}
 
 function _lsSaveEvents(){
     try{_lsSet(_getEvLsKey(),_allEvents);}catch(e){}
@@ -255,7 +255,8 @@ function _lsSaveEvents(){
 function _lsLoadEvents(){
     try{
         const stored=_lsGet(_getEvLsKey());
-        if(Array.isArray(stored))_allEvents=stored;
+        /* لا تستبدل إن كانت الذاكرة تحتوي أحداثاً أكثر (دمجٌ حديث من Firebase) */
+        if(Array.isArray(stored)&&stored.length>=(_allEvents?_allEvents.length:0))_allEvents=stored;
     }catch(e){}
 }
 
@@ -1023,6 +1024,11 @@ function _scheduleSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(save,120
 /* ═══════════ FIREBASE INITIAL LOAD — مزامنة الأحداث أول مرة ═══════════ */
 function _fbInitialLoad(){
     if(!_baseRef)return;
+    /* 📥 حمّل الكاش المحلي أولاً (إن لم يكن محمّلاً) كي يعمل الحساب التزايدي.
+       يُستدعى _fbInitialLoad قبل load()، فبدون هذا يظنّ الجهاز نفسه جديداً دائماً. */
+    if(!_allEvents||!_allEvents.length){
+        try{ const st=_lsGet(_getEvLsKey()); if(Array.isArray(st)&&st.length)_allEvents=st; }catch(e){}
+    }
     /* تحميل الإعدادات من Firebase */
     _baseRef.child('settings').once('value',s=>{
         const cfg=s.val();
@@ -1038,25 +1044,45 @@ function _fbInitialLoad(){
         }
     });
 
-    /* تحميل الأحداث من Firebase */
-    _baseRef.child('events').once('value',snap=>{
+    /* 📥 تحميل تزايدي للأحداث: نحمّل فقط ما هو أحدث من آخر حدث محفوظ محلياً.
+       يوفّر الحصة المجانية بعدم إعادة تنزيل ما لدينا أصلاً. */
+    const _lastTs=(function(){
+        let mx=0;
+        _allEvents.forEach(e=>{ const t=Number(e&&e.ts)||0; if(t>mx)mx=t; });
+        return mx;
+    })();
+    const _haveLocal=_allEvents.length>0;
+    /* لو عندنا بيانات محلية: اطلب من آخر ts (لا +1) لئلا نفوّت حدثاً بنفس الطابع.
+       المكرّرات تُصفّى بفحص المعرّفات أدناه. */
+    const _query=(_haveLocal&&_lastTs>0)
+        ? _baseRef.child('events').orderByChild('ts').startAt(_lastTs)
+        : _baseRef.child('events');
+    _query.once('value',snap=>{
         const evData=snap.val();
         if(evData){
             const remoteEvents=Object.values(evData).filter(Boolean);
             const localIds=new Set(_allEvents.map(e=>e.id));
+            let _added=0;
             remoteEvents.forEach(e=>{
-                if(e&&e.id&&!localIds.has(e.id)){_allEvents.push(e);localIds.add(e.id);}
+                if(e&&e.id&&!localIds.has(e.id)){_allEvents.push(e);localIds.add(e.id);_added++;}
             });
-            const remoteIds=new Set(remoteEvents.map(e=>e?.id).filter(Boolean));
-            _allEvents.forEach(e=>{
-                if(e&&e.id&&!remoteIds.has(e.id))_fbSetEvent(e);
-            });
-            _lsSaveEvents();
-            _reproject();
-            toast('☁️ تمت المزامنة مع السحابة','info');
+            /* ادفع المحلية غير الموجودة في السحابة (فقط عند التحميل الكامل) */
+            if(!_haveLocal||_lastTs===0){
+                const remoteIds=new Set(remoteEvents.map(e=>e?.id).filter(Boolean));
+                _allEvents.forEach(e=>{ if(e&&e.id&&!remoteIds.has(e.id))_fbSetEvent(e); });
+            }
+            if(_added>0){
+                _lsSaveEvents();
+                _reproject();
+                toast(`☁️ ${_added} تحديث جديد من السحابة`,'info');
+            }else if(_haveLocal){
+                /* لا جديد — استعمل المحلي بلا إعادة بناء ثقيل */
+                _reproject();
+            }
         }else if(_allEvents.length>0){
-            /* لا توجد أحداث في Firebase — ارفع المحلية */
-            _allEvents.forEach(e=>_fbSetEvent(e));
+            /* لا أحداث جديدة في Firebase — ابنِ من المحلي */
+            if(!_haveLocal||_lastTs===0){ _allEvents.forEach(e=>_fbSetEvent(e)); }
+            _reproject();
         }else{
             /* لا توجد بيانات إطلاقاً — جرّب الترحيل من الصيغة القديمة */
             _migrateToEvents();
@@ -1066,6 +1092,8 @@ function _fbInitialLoad(){
         _startSettingsSync();
     }).catch(e=>{
         _fbErr(e);
+        /* فشل الاستعلام التزايدي؟ ابنِ من المحلي على الأقل */
+        if(_allEvents.length>0)try{_reproject();}catch(_){}
         _fbLoaded=true;
         _startFbSync();
         _startSettingsSync();
@@ -1094,7 +1122,14 @@ try{
 function _startFbSync(){
     if(_fbListening)return;
     _fbListening=true;
-    _baseRef.child('events').on('child_added',snap=>{
+    /* 📥 المستمع الحي يبدأ من آخر حدث لدينا — لا يعيد قراءة القديم (توفير الحصة).
+       child_added يُطلق لكل ما بعد المفتاح المحدّد فقط. */
+    let _startTs=0;
+    _allEvents.forEach(e=>{ const t=Number(e&&e.ts)||0; if(t>_startTs)_startTs=t; });
+    const _addedQuery=_startTs>0
+        ? _baseRef.child('events').orderByChild('ts').startAt(_startTs)
+        : _baseRef.child('events');
+    _addedQuery.on('child_added',snap=>{
         if(_importing)return;
         const evt=snap.val();
         if(!evt||!evt.id)return;
@@ -1102,6 +1137,7 @@ function _startFbSync(){
         _allEvents.push(evt);
         _debouncedReproject();
     },_fbErr);
+    /* الحذف يجب أن يُراقب على الكل (قد يُحذف حدث قديم من جهاز آخر) */
     _baseRef.child('events').on('child_removed',snap=>{
         if(_importing)return;
         const evt=snap.val();
