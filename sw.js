@@ -9,7 +9,7 @@ const NS = (() => { try {
   return (safe || 'root') + '#' + (h>>>0).toString(36);
 } catch(e){ return 'root'; } })();
 const CACHE_PREFIX = 'goldpro@' + NS + '-';
-const CACHE = CACHE_PREFIX + 'v176';
+const CACHE = CACHE_PREFIX + 'v177';
 const ASSETS = [
   './',
   './index.html',
@@ -28,11 +28,12 @@ const ASSETS = [
   './icons/icon-180-c1.png',
 ];
 
-/* تثبيت: حفظ الملفات الأساسية في الكاش */
+/* تثبيت: حفظ الملفات الأساسية — مرن: ملف واحد مفقود لا يُفشل التثبيت
+   (فشل addAll كان يمنع تفعيل العامل فيصبح التطبيق «غير قابل للتثبيت») */
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
+      .then(c => Promise.allSettled(ASSETS.map(u => c.add(u))))
       .then(() => self.skipWaiting())
   );
 });
