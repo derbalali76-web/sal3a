@@ -1,33 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1e1a0f"/>
-      <stop offset="100%" stop-color="#0a0800"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef2f7"/>
     </linearGradient>
-    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#fff8c0"/>
-      <stop offset="15%"  stop-color="#f8c830"/>
-      <stop offset="50%"  stop-color="#d97706"/>
-      <stop offset="100%" stop-color="#92400e"/>
+    <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ef4444"/>
+      <stop offset="1" stop-color="#dc2626"/>
     </linearGradient>
   </defs>
-  <!-- background -->
-  <rect width="512" height="512" rx="92" fill="url(#bg)"/>
-  <!-- gold ring -->
-  <circle cx="256" cy="222" r="185" fill="none" stroke="#f59e0b" stroke-width="6" opacity=".5"/>
-  <!-- bar 1 (top, widest) -->
-  <rect x="100" y="140" width="312" height="58" rx="8" fill="url(#g1)"/>
-  <rect x="100" y="140" width="312" height="58" rx="8" fill="none" stroke="#b45309" stroke-width="2" opacity=".7"/>
-  <line x1="115" y1="156" x2="397" y2="156" stroke="#fff8c0" stroke-width="2" opacity=".35"/>
-  <!-- bar 2 (middle) -->
-  <rect x="120" y="213" width="272" height="58" rx="8" fill="url(#g1)"/>
-  <rect x="120" y="213" width="272" height="58" rx="8" fill="none" stroke="#b45309" stroke-width="2" opacity=".7"/>
-  <line x1="135" y1="229" x2="377" y2="229" stroke="#fff8c0" stroke-width="2" opacity=".35"/>
-  <!-- bar 3 (bottom, narrowest) -->
-  <rect x="140" y="286" width="232" height="58" rx="8" fill="url(#g1)"/>
-  <rect x="140" y="286" width="232" height="58" rx="8" fill="none" stroke="#b45309" stroke-width="2" opacity=".7"/>
-  <line x1="155" y1="302" x2="357" y2="302" stroke="#fff8c0" stroke-width="2" opacity=".35"/>
-  <!-- label -->
-  <text x="256" y="408" font-family="Arial,Helvetica,sans-serif" font-size="52" font-weight="900"
-        fill="#f59e0b" text-anchor="middle" letter-spacing="8">GOLD PRO</text>
+  <!-- خلفية البطاقة -->
+  <rect x="56" y="72" width="400" height="384" rx="52" fill="url(#bg)" stroke="#e2e8f0" stroke-width="4"/>
+  <!-- الشريط العلوي الأحمر -->
+  <path d="M56 124 a52 52 0 0 1 52 -52 h296 a52 52 0 0 1 52 52 v40 h-400 z" fill="url(#top)"/>
+  <!-- الحلقتان -->
+  <rect x="150" y="44" width="26" height="70" rx="13" fill="#475569"/>
+  <rect x="336" y="44" width="26" height="70" rx="13" fill="#475569"/>
+  <!-- شبكة الأيام -->
+  <g fill="#cbd5e1">
+    <circle cx="130" cy="230" r="18"/><circle cx="196" cy="230" r="18"/><circle cx="262" cy="230" r="18"/><circle cx="328" cy="230" r="18"/><circle cx="394" cy="230" r="18"/>
+    <circle cx="130" cy="300" r="18"/><circle cx="196" cy="300" r="18"/><circle cx="328" cy="300" r="18"/><circle cx="394" cy="300" r="18"/>
+    <circle cx="130" cy="370" r="18"/><circle cx="262" cy="370" r="18"/><circle cx="328" cy="370" r="18"/><circle cx="394" cy="370" r="18"/>
+  </g>
+  <!-- اليوم المميّز -->
+  <circle cx="262" cy="300" r="26" fill="#0d9488"/>
 </svg>

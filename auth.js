@@ -170,7 +170,7 @@ async function doLogin(){
     const _rec=_usersCache[uname]||{};
     window._userRole=_rec.role||'admin';
     window._userPerms=_rec.perms||null;   /* null/all = كل الصلاحيات */
-    const _dataSpace=((window._userRole==='employee'||window._userRole==='admin')&&_rec.owner)?_rec.owner:uname;
+    const _dataSpace=((window._userRole==='employee'||window._userRole==='admin'||window._userRole==='partner')&&_rec.owner)?_rec.owner:uname;
     window._dataSpace=_dataSpace;
     _LSKEY='gp12_'+(_SITE?_SITE+'_':'')+_dataSpace;
     _LSDRAFT='gp12_draft_'+(_SITE?_SITE+'_':'')+_dataSpace;
@@ -186,8 +186,12 @@ async function doLogin(){
             /* الموظف: احفظ دوره ومساحة مالكه دائماً */
             localStorage.setItem('gp12_role','employee');
             localStorage.setItem('gp12_owner',_dataSpace||'');
+        }else if(_r==='partner'){
+            /* الشريك: يرى كل شيء عدا الموظفين ولاقوبال */
+            localStorage.setItem('gp12_role','partner');
+            localStorage.setItem('gp12_owner',_dataSpace||'');
         }else if(_dataSpace&&_dataSpace!==uname){
-            /* أدمين ثانٍ (شريك) في مساحة مالك آخر */
+            /* أدمين ثانٍ في مساحة مالك آخر */
             localStorage.setItem('gp12_role','admin2');
             localStorage.setItem('gp12_owner',_dataSpace||'');
         }else{
@@ -347,17 +351,20 @@ async function addUser(){
         }
         /* أعِد جلسة المالك (الإنشاء يبدّل الجلسة تلقائياً) */
         if(_ownerEmail){ try{ await firebase.auth().signInWithEmailAndPassword(_ownerEmail,_fbPw(_encKey)); }catch(_){ try{await firebase.auth().signInWithEmailAndPassword(_ownerEmail,_encKey);}catch(__){}} }
-        /* الدور: موظف مقيّد أو أدمين كامل الصلاحيات */
-        const role=(window._newUserRole==='admin')?'admin':'employee';
-        const rec=role==='admin'
+        /* الدور: موظف مقيّد · شريك (كل شيء عدا الموظفين ولاقوبال) · أدمين كامل */
+        const _nr=window._newUserRole;
+        const role=(_nr==='admin')?'admin':(_nr==='partner')?'partner':'employee';
+        const rec=(role==='admin')
             ? {role:'admin',owner,perms:['all'],ts:Date.now()}
+            : (role==='partner')
+            ? {role:'partner',owner,perms:['all'],ts:Date.now()}
             : {role:'employee',owner,perms:['invoice','expense'],ts:Date.now()};
         await _db.ref(`${_usersPathFor()}/${uname}`).set(rec);
         _usersCache[uname]=rec;
         if(btn){btn.disabled=false;btn.textContent='➕ إضافة مستخدم';}
         document.getElementById('newUserName').value='';
         document.getElementById('newUserPw').value='';
-        toast(`✅ أُضيف ${role==='admin'?'الأدمين':'الموظف'} «${uname}» — يسجّل الدخول باسمه وكلمة مروره`,'success');
+        toast(`✅ أُضيف ${role==='admin'?'الأدمين':role==='partner'?'الشريك':'الموظف'} «${uname}» — يسجّل الدخول باسمه وكلمة مروره`,'success');
         renderUsersList();
     }catch(e){
         if(btn){btn.disabled=false;btn.textContent='➕ إضافة موظف';}
@@ -405,7 +412,7 @@ async function _checkAuth(){
     /* 🔒 حارس أمني: الجلسة المحفوظة يجب أن تخصّ مالك السريال المفعَّل على هذا الجهاز.
        استثناء: الموظف/الأدمين الثاني المسجَّل عند المالك — جلسته مشروعة رغم اختلاف اسمه. */
     const _owner=window._snOwner||'';
-    const _isLinked=(savedRole==='employee'||savedRole==='admin2');
+    const _isLinked=(savedRole==='employee'||savedRole==='admin2'||savedRole==='partner');
     if(savedUser && _owner && !_isLinked && savedUser.toLowerCase()!==_owner.toLowerCase()){
         ['gp12_auth','gp12_user','gp12_ek','gp12_role','gp12_owner'].forEach(k=>{
             try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}
@@ -420,7 +427,7 @@ async function _checkAuth(){
         _currentUser=savedUser;
         window._currentUser=savedUser;
         /* 🔒 عزل فوري: طبّق دور الموظف على body قبل أي رسم — يعمل بلا إنترنت */
-        window._userRole=(savedRole==='employee')?'employee':'admin';
+        window._userRole=(savedRole==='employee')?'employee':(savedRole==='partner')?'partner':'admin';
         try{ document.body.classList.toggle('role-employee',window._userRole==='employee'); }catch(e){}
         _USERS_PATH=_usersPathFor();
         /* 👤 الموظف/الأدمين الثاني يعمل في مساحة مالكه المحفوظة */
@@ -682,9 +689,12 @@ window.onload=()=>{ _authReadyPromise.then(()=>_checkSerial()); };
 /* اختيار دور المستخدم الجديد (موظف/أدمين) */
 window._newUserRole='employee';
 window._setNewRole=()=>{
-    const emp=document.getElementById('roleEmp'), adm=document.getElementById('roleAdmin');
-    const isAdm=window._newUserRole==='admin';
-    if(emp){emp.style.background=isAdm?'transparent':'#7c3aed';emp.style.color=isAdm?'#7c3aed':'#fff';}
-    if(adm){adm.style.background=isAdm?'var(--g500)':'transparent';adm.style.color=isAdm?'#fff':'var(--g600)';}
-    const _n=document.getElementById('newUserName'); if(_n)_n.placeholder=isAdm?'👑 اسم الأدمين (لاتيني)':'👤 اسم الموظف (لاتيني)';
+    const emp=document.getElementById('roleEmp'), adm=document.getElementById('roleAdmin'), par=document.getElementById('rolePartner');
+    const r=window._newUserRole||'employee';
+    const _set=(el,on,col)=>{ if(el){el.style.background=on?col:'transparent';el.style.color=on?'#fff':col;} };
+    _set(emp, r==='employee', '#7c3aed');
+    _set(par, r==='partner', '#0d9488');
+    _set(adm, r==='admin', 'var(--g600)');
+    const _n=document.getElementById('newUserName');
+    if(_n)_n.placeholder=r==='admin'?'👑 اسم الأدمين (لاتيني)':r==='partner'?'🤝 اسم الشريك (لاتيني)':'👤 اسم الموظف (لاتيني)';
 };

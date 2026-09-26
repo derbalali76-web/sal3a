@@ -10,10 +10,7 @@
         }
       },
       "_users": {
-        ".read": true,
-        "$uname": {
-          ".write": "false"
-        }
+        ".read": true
       },
       "_appcfg": {
         ".read": "auth != null",
@@ -21,25 +18,28 @@
       },
       "$user": {
         "data": {
-          ".read": "auth != null && (auth.token.email === $user + '@goldpro.local' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'employee' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'admin')",
-          ".write": "auth != null && (auth.token.email === $user + '@goldpro.local' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'employee' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'admin')"
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "events": {
+            ".indexOn": [
+              "ts"
+            ]
+          }
         },
         "cfg": {
-          ".read": "auth != null && (auth.token.email === $user + '@goldpro.local' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'employee' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'admin')",
-          ".write": "auth != null && (auth.token.email === $user + '@goldpro.local' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'employee' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'admin')"
+          ".read": "auth != null",
+          ".write": "auth != null"
         },
         "_users": {
-          ".read": "auth != null && (auth.token.email === $user + '@goldpro.local' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'employee' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'admin')",
-          ".write": "auth != null && (auth.token.email === $user + '@goldpro.local' || root.child('goldpro').child($user).child('_users').child(auth.token.email.replace('@goldpro.local','')).child('role').val() === 'admin')"
+          ".read": "auth != null",
+          ".write": "auth != null && auth.token.email === $user + '@goldpro.local'"
         }
       },
       "portal": {
         "$phone": {
           "$pin": {
             ".read": true,
-            "$shop": {
-              ".write": "auth != null && auth.token.email === $shop + '@goldpro.local'"
-            }
+            ".write": "auth != null"
           }
         }
       }

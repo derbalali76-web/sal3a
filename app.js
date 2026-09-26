@@ -588,7 +588,7 @@ function openSettings(){
     const _adminSec=document.getElementById('adminOnlySettings');
     if(_adminSec)_adminSec.style.display=_isEmp?'none':'';
     /* لوحة الأدمن */
-    const isAdmin=!_isEmp&&_usersCache[_currentUser]?.isAdmin;
+    const isAdmin=!_isEmp&&window._userRole!=='partner'&&_usersCache[_currentUser]?.isAdmin;
     const ap=document.getElementById('adminPanel');
     if(ap)ap.style.display=isAdmin?'block':'none';
     if(isAdmin)renderUsersList();
@@ -868,7 +868,7 @@ function upd(){
     /* 👤 بطاقة لاقوبال: تظهر للأدمين إن كان هناك موظفون */
     try{
         const card=document.getElementById('laGobalCard');
-        if(card&&window._userRole!=='employee'){
+        if(card&&window._userRole!=='employee'&&window._userRole!=='partner'){
             const emps=new Set();
             Object.keys(window._empCoffer||{}).forEach(e=>emps.add(e));
             (debts||[]).forEach(d=>{ if(d.empOwner)emps.add(d.empOwner); });
@@ -4938,7 +4938,15 @@ window.waDubai=(id)=>{
 window._applyRolePerms=()=>{
     const role=window._userRole||'admin';
     const isEmp=role==='employee';
+    const isPartner=role==='partner';
     document.body.classList.toggle('role-employee',isEmp);
+    /* 🤝 الشريك: يرى كل شيء عدا الموظفين ولاقوبال */
+    document.body.classList.toggle('role-partner',isPartner);
+    /* أخفِ لاقوبال وإدارة المستخدمين عن الشريك مباشرةً (لا نعتمد على CSS وحده) */
+    if(isPartner){
+        const _lg=document.getElementById('laGobalCard'); if(_lg)_lg.style.display='none';
+        const _ap=document.getElementById('adminPanel'); if(_ap)_ap.style.display='none';
+    }
     /* 🏦 أظهر/أخفِ زر الأرصدة الافتتاحية حسب مفتاح هذا المستخدم تحديداً */
     try{
         const used=localStorage.getItem(_liqUsedKey());

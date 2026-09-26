@@ -27,10 +27,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="GoldPro">
+    <meta name="apple-mobile-web-app-title" content="التقويم">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#f59e0b">
-    <title>GoldPro | نظام إدارة الذهب</title>
+    <meta name="theme-color" content="#dc2626">
+    <title>التقويم</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
@@ -42,7 +42,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=173">
+    <link rel="stylesheet" href="./style.css?v=175">
 </head>
 <body>
 <script>
@@ -53,8 +53,73 @@
     if(r==='employee'){
         document.body.classList.add('role-employee');
         window._userRole='employee';
+    }else if(r==='partner'){
+        document.body.classList.add('role-partner');
+        window._userRole='partner';
     }
 }catch(e){}})();
+</script>
+
+<!-- ═══════════ 🗓️ قفل مموّه: تقويم يبدو عادياً — الضغط على 14 ثم 8 يفتح التطبيق ═══════════ -->
+<div id="calLock" aria-hidden="true" style="position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#eef2f7">
+  <div class="callock-box">
+    <div class="callock-top">
+      <button class="callock-nav" type="button" id="calPrev">‹</button>
+      <div class="callock-title" id="calTitle">سبتمبر 2026</div>
+      <button class="callock-nav" type="button" id="calNext">›</button>
+    </div>
+    <div class="callock-wk">
+      <span>أحد</span><span>إثن</span><span>ثلا</span><span>أرب</span><span>خمي</span><span>جمع</span><span>سبت</span>
+    </div>
+    <div class="callock-grid" id="calGrid"></div>
+  </div>
+</div>
+<script>
+/* 🗓️ القفل المموّه — تقويم حقيقي المظهر · السر: اضغط 14 ثم 8 */
+(function(){try{
+  var lock=document.getElementById('calLock');
+  var grid=document.getElementById('calGrid');
+  var titleEl=document.getElementById('calTitle');
+  if(!lock||!grid)return;
+  var months=['جانفي','فيفري','مارس','أفريل','ماي','جوان','جويلية','أوت','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  var now=new Date();
+  var vY=now.getFullYear(), vM=now.getMonth();
+  var seq=[];
+  function unlock(){
+    try{ lock.parentNode&&lock.parentNode.removeChild(lock); }catch(e){}
+    try{ document.body.classList.remove('cal-locked'); }catch(e){}
+    window.__calUnlocked=true;
+  }
+  function tap(n){
+    seq.push(n); if(seq.length>2)seq.shift();
+    if(seq[0]===14&&seq[1]===8){ unlock(); }
+  }
+  function render(){
+    titleEl.textContent=months[vM]+' '+vY;
+    var first=new Date(vY,vM,1).getDay();      /* 0=أحد */
+    var days=new Date(vY,vM+1,0).getDate();
+    var today=(vY===now.getFullYear()&&vM===now.getMonth())?now.getDate():-1;
+    var html='';
+    for(var i=0;i<first;i++)html+='<span class="callock-empty"></span>';
+    for(var d=1;d<=days;d++){
+      html+='<span class="callock-day'+(d===today?' is-today':'')+'" data-d="'+d+'">'+d+'</span>';
+    }
+    grid.innerHTML=html;
+  }
+  grid.addEventListener('click',function(e){
+    var el=e.target.closest('.callock-day'); if(!el)return;
+    var n=parseInt(el.getAttribute('data-d'),10);
+    /* وميض خفيف كأنه اختيار يوم عادي */
+    el.classList.add('is-pick'); setTimeout(function(){el.classList.remove('is-pick');},180);
+    tap(n);
+  });
+  document.getElementById('calPrev').addEventListener('click',function(){ vM--; if(vM<0){vM=11;vY--;} render(); });
+  document.getElementById('calNext').addEventListener('click',function(){ vM++; if(vM>11){vM=0;vY++;} render(); });
+  try{ document.body.classList.add('cal-locked'); }catch(e){}
+  render();
+}catch(e){ /* عند أي خطأ: لا تُبقِ المستخدم محبوساً */
+  try{ var l=document.getElementById('calLock'); if(l)l.style.display='none'; document.body.classList.remove('cal-locked'); }catch(_){}
+}})();
 </script>
 <datalist id="customersDatalist"></datalist>
 <div class="toast" id="toast"></div>
@@ -943,8 +1008,9 @@
             style="width:100%;padding:.45rem .7rem;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;margin-bottom:.4rem;text-align:center;letter-spacing:.1em;box-sizing:border-box"
             onkeydown="if(event.key==='Enter')addUser()">
         <div style="display:flex;gap:.4rem;margin-bottom:.4rem">
-            <button type="button" id="roleEmp" onclick="window._newUserRole='employee';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid #7c3aed;background:#7c3aed;color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.74rem;cursor:pointer">👤 موظف مقيّد</button>
-            <button type="button" id="roleAdmin" onclick="window._newUserRole='admin';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid var(--g500);background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.74rem;cursor:pointer">👑 أدمين كامل</button>
+            <button type="button" id="roleEmp" onclick="window._newUserRole='employee';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid #7c3aed;background:#7c3aed;color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.68rem;cursor:pointer">👤 موظف</button>
+            <button type="button" id="rolePartner" onclick="window._newUserRole='partner';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid #0d9488;background:transparent;color:#0d9488;font-family:Tajawal,sans-serif;font-weight:900;font-size:.68rem;cursor:pointer">🤝 شريك</button>
+            <button type="button" id="roleAdmin" onclick="window._newUserRole='admin';_setNewRole()" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid var(--g500);background:transparent;color:var(--g600);font-family:Tajawal,sans-serif;font-weight:900;font-size:.68rem;cursor:pointer">👑 أدمين</button>
         </div>
         <button id="addUserBtn" onclick="addUser()" style="width:100%;padding:.5rem;border-radius:8px;border:1.5px solid var(--gr);background:transparent;color:var(--gr);font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
             ➕ إضافة مستخدم
@@ -954,13 +1020,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=173"></script>
-<script src="./app.js?v=173"></script>
-<script src="./assistant.js?v=173"></script>
-<script src="./inventory.js?v=173"></script>
-<script src="./invoice.js?v=173"></script>
-<script src="./raffinage.js?v=173"></script>
-<script src="./auth.js?v=173"></script>
+<script src="./firebase.js?v=175"></script>
+<script src="./app.js?v=175"></script>
+<script src="./assistant.js?v=175"></script>
+<script src="./inventory.js?v=175"></script>
+<script src="./invoice.js?v=175"></script>
+<script src="./raffinage.js?v=175"></script>
+<script src="./auth.js?v=175"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

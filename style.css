@@ -981,3 +981,53 @@ body.role-employee #archSec-doll{ display:none !important; }
 
 /* 👤 الموظف في الإعدادات: تغيير كلمة المرور فقط */
 body.role-employee #adminOnlySettings{ display:none !important; }
+
+/* 🤝 الشريك: يرى كل شيء عدا الموظفين ولاقوبال */
+body.role-partner #laGobalCard,
+body.role-partner #adminPanel{ display:none !important; }
+
+/* ═══════════ 🗓️ القفل المموّه (تقويم) ═══════════ */
+body.cal-locked{ overflow:hidden; }
+body.cal-locked .app,
+body.cal-locked #loginOverlay{ display:none !important; }
+#calLock{
+  position:fixed; inset:0; z-index:2147483647;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg,#eef2f7 0%,#dde5ee 100%);
+  padding:16px; font-family:'Tajawal',system-ui,Arial,sans-serif;
+  padding-top:calc(16px + env(safe-area-inset-top,0px));
+  padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+}
+.callock-box{
+  width:100%; max-width:400px; background:#fff; border-radius:22px;
+  box-shadow:0 20px 60px rgba(30,50,90,.18); padding:18px 16px 22px;
+}
+.callock-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.callock-title{ font-size:1.15rem; font-weight:900; color:#1e293b; }
+.callock-nav{
+  width:38px; height:38px; border:none; border-radius:12px; cursor:pointer;
+  background:#f1f5f9; color:#334155; font-size:1.3rem; font-weight:700; line-height:1;
+}
+.callock-nav:active{ background:#e2e8f0; }
+.callock-wk{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:6px; }
+.callock-wk span{ text-align:center; font-size:.66rem; font-weight:800; color:#94a3b8; padding:4px 0; }
+.callock-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.callock-empty{ aspect-ratio:1; }
+.callock-day{
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  font-size:.9rem; font-weight:700; color:#334155; border-radius:12px;
+  cursor:pointer; user-select:none; -webkit-user-select:none;
+  transition:background .12s,color .12s,transform .12s;
+}
+.callock-day:hover{ background:#f1f5f9; }
+.callock-day.is-today{ background:#0d9488; color:#fff; }
+.callock-day.is-pick{ background:#0ea5e9; color:#fff; transform:scale(.9); }
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) #calLock{ background:linear-gradient(160deg,#0f172a 0%,#1e293b 100%); }
+  :root:not([data-theme="light"]) .callock-box{ background:#1e293b; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  :root:not([data-theme="light"]) .callock-title{ color:#e2e8f0; }
+  :root:not([data-theme="light"]) .callock-nav{ background:#334155; color:#cbd5e1; }
+  :root:not([data-theme="light"]) .callock-day{ color:#cbd5e1; }
+  :root:not([data-theme="light"]) .callock-day:hover{ background:#334155; }
+  :root:not([data-theme="light"]) .callock-wk span{ color:#64748b; }
+}
