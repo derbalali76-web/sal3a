@@ -9,7 +9,7 @@ const NS = (() => { try {
   return (safe || 'root') + '#' + (h>>>0).toString(36);
 } catch(e){ return 'root'; } })();
 const CACHE_PREFIX = 'goldpro@' + NS + '-';
-const CACHE = CACHE_PREFIX + 'v175';
+const CACHE = CACHE_PREFIX + 'v176';
 const ASSETS = [
   './',
   './index.html',
@@ -22,10 +22,10 @@ const ASSETS = [
   './raffinage.js',
   './auth.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-512-maskable.png',
-  './icons/icon-180.png',
+  './icons/icon-192-c1.png',
+  './icons/icon-512-c1.png',
+  './icons/icon-512-maskable-c1.png',
+  './icons/icon-180-c1.png',
 ];
 
 /* تثبيت: حفظ الملفات الأساسية في الكاش */

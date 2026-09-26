@@ -14,19 +14,47 @@
     {
       "action": "./",
       "accept": {
-        "application/x-gpdf": [".gpdf"],
-        "application/octet-stream": [".gpdf"]
+        "application/x-gpdf": [
+          ".gpdf"
+        ],
+        "application/octet-stream": [
+          ".gpdf"
+        ]
       },
       "icons": [
-        { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }
+        {
+          "src": "icons/icon-192-c1.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
       ],
       "launch_type": "single-client"
     }
   ],
   "icons": [
-    { "src": "icons/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon-180.png",          "sizes": "180x180", "type": "image/png", "purpose": "any" }
+    {
+      "src": "icons/icon-192-c1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-c1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable-c1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-180-c1.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }
