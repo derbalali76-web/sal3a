@@ -75,6 +75,23 @@ async function _saveUser(uname,isAdmin=true){
 /* تهيئة التطبيق بعد الدخول */
 function _afterLogin(){
     initRafTable();
+    /* 🌐 تعبئة الدليل العام تلقائياً: المالك يكتب رابط كل مستخدميه بمالكه
+       (يُصلح حسابات أُنشئت قبل الدليل — تتزامن دون إعادة إضافة يدوية) */
+    try{
+        const _me=(window._currentUser||_currentUser||'').toLowerCase();
+        const _isOwner=(!window._dataSpace)||(window._dataSpace===_me);
+        if(_isOwner&&_db){
+            _db.ref(_usersPathFor()).once('value',s=>{
+                const us=s.val()||{};
+                Object.keys(us).forEach(u=>{
+                    const r=us[u]||{};
+                    if(r.role==='employee'||r.role==='admin'||r.role==='partner'){
+                        try{ _db.ref('goldpro/_appcfg/userdir/'+u).set({owner:_me,role:r.role,perms:r.perms||(r.role==='employee'?['invoice','expense']:['all'])}); }catch(e){}
+                    }
+                });
+            });
+        }
+    }catch(e){}
     /* حمّل بيانات هذا المستخدم المحليّة (ترباح/حاسبة دبي) بمفتاحه الخاص */
     try{ if(typeof _loadTarbah==='function')_loadTarbah(); }catch(e){}
     try{ if(typeof _loadDubaiCalc==='function')_loadDubaiCalc(); }catch(e){}
@@ -154,6 +171,15 @@ async function doLogin(){
                 const rec=snap.val();
                 if(rec&&(rec.role==='employee'||rec.role==='admin')){ _usersCache[uname]={role:rec.role,owner:rec.owner||_own,perms:rec.perms||(rec.role==='admin'?['all']:['invoice','expense'])}; }
             }
+        }
+    }catch(e){}
+
+    /* 🌐 الدليل العام (الأضمن): يربط المستخدم بمالكه مهما كان سرياله — يتقدّم على تخمين السريال */
+    try{
+        const dsnap=await _db.ref('goldpro/_appcfg/userdir/'+uname).once('value');
+        const drec=dsnap.val();
+        if(drec&&drec.owner){
+            _usersCache[uname]={role:drec.role||'admin',owner:drec.owner,perms:drec.perms||(drec.role==='employee'?['invoice','expense']:['all'])};
         }
     }catch(e){}
 
@@ -338,7 +364,8 @@ async function addUser(){
     if(pw.length<4)return toast('كلمة المرور قصيرة (4 أحرف على الأقل)','error');
     if(uname===_currentUser)return toast('هذا اسمك أنت','error');
 
-    const owner=(window._snOwner||_currentUser||'').toLowerCase();
+    /* 🌐 مساحة المالك = مساحة بيانات المُنشئ نفسها (كي يتشارك الجميع نفس العقدة) */
+    const owner=(window._dataSpace||window._snOwner||_currentUser||'').toLowerCase();
     const btn=document.getElementById('addUserBtn');
     if(btn){btn.disabled=true;btn.textContent='⏳ جاري الإضافة...';}
     try{
@@ -360,6 +387,8 @@ async function addUser(){
             ? {role:'partner',owner,perms:['all'],ts:Date.now()}
             : {role:'employee',owner,perms:['invoice','expense'],ts:Date.now()};
         await _db.ref(`${_usersPathFor()}/${uname}`).set(rec);
+        /* 🌐 دليل عام يربط المستخدم بمالكه — أي جهاز/سريال يجده فيتزامن مع مالكه */
+        try{ await _db.ref('goldpro/_appcfg/userdir/'+uname).set({owner,role,perms:rec.perms}); }catch(e){}
         _usersCache[uname]=rec;
         if(btn){btn.disabled=false;btn.textContent='➕ إضافة مستخدم';}
         document.getElementById('newUserName').value='';
