@@ -664,6 +664,23 @@ function _applyEvt(st,evt){
             break;
         }
 
+        case 'MELT_GOODS':{
+            /* 🔥 تذويب سلعة من المخزون → سبيكة تدخل مخزون 705 (g730) */
+            const gi=st.goodsStock.findIndex(x=>x.id===d.id);
+            if(gi>=0){
+                const g=st.goodsStock[gi];
+                /* أخرج السلعة من مخزون السلعة وانقص مكافئها 705 من الرصيد */
+                st.B.دولار-=Math.round((Number(g.w)||0)*(Number(g.k)||0)/705*1000)/1000;
+                st.goodsStock.splice(gi,1);
+                /* أضِف السبيكة الناتجة لمخزون الذهب (705 = عيار÷705) */
+                const w=Number(d.meltW)||0, k=Number(d.meltK)||705;
+                const bar={id:(evt.id||'')+'_mg',w,k,desc:'سلعة مذوّبة · '+(d.name||''),src:'تذويب سلعة',origin:'تذويب',dt:'',_ts:evt.ts||0};
+                if(d.empOwner)bar.empOwner=d.empOwner;   /* سبيكة الموظف تبقى له */
+                if(k>=999)st.g24.push(bar); else st.g730.push(bar);
+            }
+            break;
+        }
+
         case 'ADMIN_BUY_EMP_BAR':{
             /* الأدمين يشتري سبيكة الموظف: تُنقل ملكيتها للأدمين */
             const bar=st.g730.find(b=>b.id===d.barId);
@@ -676,8 +693,9 @@ function _applyEvt(st,evt){
                     st.empCoffer[d.emp]=(st.empCoffer[d.emp]||0)+total;
                     st.B.دينار-=total;   /* خرج من سيولة المحل نقداً للموظف */
                 }else{
-                    /* غير خالص: يُسجّل في دفتر ديون الموظف — الحانوت يدين للموظف */
-                    stUpdDebt(d.emp,'دينار',-total,d.emp);   /* سالب = علينا للموظف · موسوم به */
+                    /* غير خالص: يظهر في دفتر ديون الموظف دينٌ أخضر باسم «الحانوت»
+                       (موجب = الحانوت يدين للموظف بثمن السبيكة) موسوم بالموظف */
+                    stUpdDebt('الحانوت','دينار',total,d.emp);
                 }
             }
             /* 📄 فاتورة شراء في أرشيف الأدمين */

@@ -658,24 +658,21 @@ window._add730BarRow=(w,k)=>{
 
 window.openLiqEdit=()=>{
     const _me=window._currentUser, _isEmp=window._userRole==='employee';
-    /* السماح بإعادة الإدخال إذا كانت الأرصدة صفراً (استعادة بعد فقدان بيانات) */
-    const allZero=_isEmp
-        ? (((window._empCoffer&&window._empCoffer[_me])||0)===0 && !g730.some(b=>b.empOwner===_me) && !debts.some(d=>d.empOwner===_me))
-        : (B.دينار===0&&B.دولار===0&&g730.length===0&&g24.length===0);
-    if(localStorage.getItem(_liqUsedKey())&&!allZero){
-        toast('⚠️ تم اعتماد الأرصدة الافتتاحية مسبقاً — لا يمكن التكرار إلا عند صفر الرصيد','error');
-        return;
-    }
+    /* ♾️ النافذة تعمل دائماً — كل اعتماد يُضاف للأرصدة (لا قيد مرة واحدة) */
     /* تصفير الحقول */
     ['liqDinar'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.value='';
     });
     /* أسطر سلعة الكوفر بالتفصيل (إضافة تلقائية) */
     const lg=document.getElementById('liqGoodsRows'); if(lg)lg.innerHTML='';
-    /* 👤 الموظف: يدخل الكوفر والزبائن فقط — بلا سلعة */
+    /* أسطر السبائك */
+    const lb=document.getElementById('liq730Bars'); if(lb)lb.innerHTML='';
+    /* 👤 الموظف: يدخل الكوفر والزبائن فقط — بلا سلعة ولا سبائك */
     const _goodsSec=document.getElementById('liqGoodsSection');
     if(_goodsSec)_goodsSec.style.display=_isEmp?'none':'';
-    if(!_isEmp)window._addLiqGoodsRow();
+    const _barsSec=document.getElementById('liqBarsSection');
+    if(_barsSec)_barsSec.style.display=_isEmp?'none':'';
+    if(!_isEmp){ window._addLiqGoodsRow(); window._add730BarRow(); }
     /* تصفير جدول الديون وإضافة صف أول */
     _liqDebtCnt=0;
     const tbody=document.getElementById('liqDebtRows');
@@ -723,15 +720,20 @@ window._addLiqDebtRow=()=>{
 }
 
 window.confirmLiqEdit=()=>{
-    const allZero=B.دينار===0&&B.دولار===0&&g730.length===0&&g24.length===0;
-    if(localStorage.getItem(_liqUsedKey())&&!allZero){
-        toast('⚠️ تم اعتماد الأرصدة مسبقاً','error');return;
-    }
+    /* ♾️ لا قيد مرة واحدة — كل اعتماد يُضاف */
     const dinar  = readNum('liqDinar');
     /* 🛍️ سلعة الكوفر بالتفصيل (اسم + ميزان + عيار) — تدخل المخزون */
     const goodsItems=_readLiqGoods();
     const dollar = Math.round(goodsItems.reduce((s,it)=>s+it.eq,0)*1000)/1000; /* مكافئ 705 إجمالي */
-    const bars730=[],g730raw=0,g730v=0;
+    /* 🧱 سبائك المخزون (وزن + عيار) — تدخل مخزون 705 */
+    const bars730=[];
+    document.querySelectorAll('#liq730Bars > div').forEach(row=>{
+        const wEl=row.querySelector('[id^="liq730W_"]'), kEl=row.querySelector('[id^="liq730K_"]');
+        const w=wEl?(parseFloat((wEl.value||'').replace(/\s/g,'').replace(/,/g,'.'))||0):0;
+        const k=kEl?(parseFloat((kEl.value||'').replace(/\s/g,'').replace(/,/g,'.'))||730):730;
+        if(w>0&&k>0)bars730.push({w,k});
+    });
+    const g730v=0;
 
     /* ديون الزبائن: دينار ± وسلعة (705) ± موقّعة مباشرة + النوع (ورشة/سوق) */
     const debtRows=[];
@@ -762,8 +764,12 @@ window.confirmLiqEdit=()=>{
             `  ${r.amt>=0?'🟢':'🔴'} ${r.c}: ${fmt(r.amt,2)} ${r.type==='دولار'?'غ سلعة (705)':'دج'}`
         ));
     }
+    if(bars730.length){
+        sumLines.push('');sumLines.push(`🧱 سبائك المخزون (${bars730.length}):`);
+        bars730.forEach(b=>sumLines.push(`  • ${fmt(b.w,2)} غ عيار ${fmt(b.k,0)} → ${fmt(b.w*b.k/705,2)} غ (705)`));
+    }
     if(!sumLines.length) return toast('أدخل رصيداً أو ديناً واحداً على الأقل','error');
-    if(!confirm(`سيتم اعتماد الأرصدة الافتتاحية التالية:\n\n${sumLines.join('\n')}\n\nهذه العملية لا يمكن تكرارها. هل أنت متأكد؟`))return;
+    if(!confirm(`سيتم إضافة الأرصدة التالية:\n\n${sumLines.join('\n')}\n\nهل أنت متأكد؟`))return;
 
     const dt=new Date().toLocaleDateString('fr-FR');
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -783,12 +789,9 @@ window.confirmLiqEdit=()=>{
         }
     );
 
-    try{localStorage.setItem(_liqUsedKey(),'1');}catch(e){}
-    ['liqEditBtn','liqSettingsBtn'].forEach(id=>{
-        const el=document.getElementById(id);if(el)el.style.display='none';
-    });
+    /* ♾️ لا نُخفي الأزرار ولا نضع قيد المرة الواحدة — النافذة تعمل دائماً */
     closeModal('liqModal');
-    toast(`✅ تم اعتماد الأرصدة الافتتاحية${debtRows.length?' مع '+debtRows.length+' دين':''}`);
+    toast(`✅ أُضيفت الأرصدة${debtRows.length?' مع '+debtRows.length+' دين':''}${bars730.length?' و '+bars730.length+' سبيكة':''}`);
 };
 
 /* ═══════════ BALANCE ═══════════ */
@@ -2005,13 +2008,68 @@ window.renderGoodsStock=()=>{
     cntEl.textContent=goodsStock.length;
     listEl.innerHTML=goodsStock.length?goodsStock.map(g=>`
         <div class="saved-card">
-            <div>
+            <div style="flex:1;min-width:0">
                 <strong>🛍️ ${g.n}</strong>
                 <span style="color:var(--g600);font-weight:900;margin-right:.3rem">⚖️ ${fmt(g.w,2)} غ</span>
                 ${g.k?`<span style="color:var(--pu);font-weight:800;margin-right:.3rem">🏷️ عيار ${fmt(g.k,0)}</span>`:''}
                 <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · الأجرة: ${fmt(g.p||0,0)} دج/غ${g.dt?' · '+g.dt:''}</small>
             </div>
+            <button onclick="openMeltGoods('${g.id}')" title="تذويب السلعة → سبيكة 705"
+                style="flex-shrink:0;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;border:none;border-radius:9px;padding:.45rem .7rem;font-family:Tajawal,sans-serif;font-weight:900;font-size:.72rem;cursor:pointer">🔥 تذويب</button>
         </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:1.2rem">لا توجد سلع في المخزون</div>';
+};
+
+/* 🔥 تذويب سلعة من المخزون → سبيكة تدخل مخزون 705 */
+window.openMeltGoods=(id)=>{
+    const g=goodsStock.find(x=>x.id===id); if(!g)return toast('السلعة غير موجودة','error');
+    let ov=document.getElementById('meltGoodsOverlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='meltGoodsOverlay'; ov.className='modal-overlay'; document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');}); }
+    ov.innerHTML=`<div class="modal" style="max-width:380px">
+        <div class="modal-handle"></div>
+        <h3 style="text-align:center;color:#ea580c">🔥 تذويب سلعة</h3>
+        <div style="font-size:.72rem;color:var(--t3);text-align:center;margin-bottom:.6rem">
+            ${g.n} — الأصل: ${fmt(g.w,2)} غ عيار ${fmt(g.k,0)} = ${fmt(g.w*g.k/705,2)} غ (705)
+        </div>
+        <input type="text" inputmode="decimal" id="mgW" placeholder="⚖️ الوزن بعد التذويب (غ)" value="${fmt(g.w,2)}" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #ea580c;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box" oninput="liveNum(this);_mgPreview('${id}')">
+        <input type="text" inputmode="decimal" id="mgK" placeholder="🏷️ العيار بعد التذويب" value="${fmt(g.k,0)}" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box" oninput="liveNum(this);_mgPreview('${id}')">
+        <div id="mgPreview" style="font-size:.72rem;text-align:center;color:var(--g600);font-weight:800;margin-bottom:.6rem"></div>
+        <div style="display:flex;gap:.5rem">
+            <button onclick="document.getElementById('meltGoodsOverlay').classList.remove('active')"
+                style="flex:1;padding:.65rem;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">إلغاء</button>
+            <button onclick="saveMeltGoods('${id}')"
+                style="flex:2;padding:.65rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;cursor:pointer">🔥 تذويب</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
+    _mgPreview(id);
+    setTimeout(()=>{const e=document.getElementById('mgW');if(e)e.focus();},300);
+};
+window._mgPreview=(id)=>{
+    const g=goodsStock.find(x=>x.id===id); if(!g)return;
+    const w=readNum('mgW'),k=readNum('mgK');
+    const el=document.getElementById('mgPreview'); if(!el)return;
+    if(w>0&&k>0){
+        const eq=w*k/705, orig=g.w*g.k/705, diff=eq-orig;
+        el.innerHTML=`السبيكة الناتجة: ${fmt(eq,2)} غ (705)`+(Math.abs(diff)>0.01?` · فرق ${diff>0?'+':''}${fmt(diff,2)} غ`:'');
+    }else el.textContent='';
+};
+window.saveMeltGoods=(id)=>{
+    const g=goodsStock.find(x=>x.id===id); if(!g)return toast('السلعة غير موجودة','error');
+    const w=readNum('mgW'),k=readNum('mgK');
+    if(!w||w<=0)return toast('أدخل الوزن بعد التذويب','error');
+    if(!k||k<=0)return toast('أدخل العيار','error');
+    const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const _emp=window._userRole==='employee'?_currentUser:null;
+    emitEvent('MELT_GOODS',
+        {id,name:g.n,origW:g.w,origK:g.k,meltW:w,meltK:k,empOwner:_emp},
+        {op:{c:'المخزون',t:'تذويب سلعة',m:'دولار',a:Math.round(w*k/705*1000)/1000,_ts:Date.now(),dt:nowStr,
+            note:`تذويب ${g.n} (${fmt(g.w,2)}غ/${fmt(g.k,0)}) → سبيكة ${fmt(w,2)}غ عيار ${fmt(k,0)} = ${fmt(w*k/705,2)}غ (705)`,empOwner:_emp||undefined}}
+    );
+    document.getElementById('meltGoodsOverlay').classList.remove('active');
+    setTimeout(()=>{ renderGoodsStock(); toast('🔥 تم التذويب — دخلت السبيكة مخزون 705','success'); },250);
 };
 
 /* ═══════════ تعديل الفواتير (دولار/دبي/رافيناج) — إبطال ثم فتح معبّأ، مع استرجاع عند الإلغاء ═══════════ */
@@ -2288,18 +2346,18 @@ window._laGobalExp=(emp)=>{
 };
 window._laGobalStock=(emp)=>{
     const myBars=(g730||[]).filter(b=>b.empOwner===emp);
-    const totEq=myBars.reduce((s,b)=>s+(Number(b.w)||0)*((Number(b.k)||730)/705),0);
+    const totEq=myBars.reduce((s,b)=>s+(Number(b.w)||0)*((Number(b.k)||730)/730),0);
     const html=(myBars.length?myBars.map(b=>`
         <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;border-bottom:1px solid var(--border)">
             <div><div style="font-weight:800;font-size:.85rem">${fmt(b.w,2)} غ · عيار ${fmt(b.k,0)}</div>
             <div style="font-size:.6rem;color:var(--t3)">${b.dt||''}</div></div>
             <div style="display:flex;align-items:center;gap:.5rem">
-                <span style="font-weight:900;color:var(--g600);font-size:.78rem">${fmt(b.w*b.k/705,2)} غ 705</span>
+                <span style="font-weight:900;color:var(--g600);font-size:.78rem">${fmt(b.w*b.k/730,2)} غ 730</span>
                 <button onclick="_adminBuyEmpBar('${b.id}','${emp.replace(/'/g,"\\'")}')" style="padding:.35rem .7rem;border:none;border-radius:8px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-family:Tajawal,sans-serif;font-weight:800;font-size:.68rem;cursor:pointer">شراء</button>
             </div>
         </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:1.5rem">لا سبائك</div>')
-        +`<div style="margin-top:.5rem;padding:.5rem;background:var(--card2);border-radius:10px;text-align:center;font-weight:900">الإجمالي: <span style="color:var(--g600)">${fmt(totEq,2)} غ (705)</span></div>`;
-    _laGobalCard('👑 مخزون 705 — '+emp,'#b45309',html);
+        +`<div style="margin-top:.5rem;padding:.5rem;background:var(--card2);border-radius:10px;text-align:center;font-weight:900">الإجمالي: <span style="color:var(--g600)">${fmt(totEq,2)} غ (730)</span></div>`;
+    _laGobalCard('👑 مخزون 730 — '+emp,'#b45309',html);
 };
 window._laGobalDinar=(emp)=>{
     const coffer=(window._empCoffer&&window._empCoffer[emp])||0;
@@ -2447,17 +2505,17 @@ window.openEmpStock=()=>{
         document.body.appendChild(ov);
         ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');});
     }
-    const totEq=myBars.reduce((s,b)=>s+(Number(b.w)||0)*((Number(b.k)||730)/705),0);
+    const totEq=myBars.reduce((s,b)=>s+(Number(b.w)||0)*((Number(b.k)||730)/730),0);
     ov.innerHTML=`<div class="modal" style="max-width:440px">
         <div class="modal-handle"></div>
-        <h3 style="text-align:center;color:var(--g600)">👑 مخزون 705 — سبائكك</h3>
-        <div style="text-align:center;font-size:.72rem;color:var(--t3);margin-bottom:.5rem">الإجمالي: <b style="color:var(--g600)">${fmt(totEq,2)} غ (705)</b></div>
+        <h3 style="text-align:center;color:var(--g600)">👑 مخزون 730 — سبائكك</h3>
+        <div style="text-align:center;font-size:.72rem;color:var(--t3);margin-bottom:.5rem">الإجمالي: <b style="color:var(--g600)">${fmt(totEq,2)} غ (730)</b></div>
         <div style="max-height:54vh;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem">
             ${myBars.length?myBars.map(b=>`
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;border:1px solid var(--border);border-radius:10px;background:var(--card2)">
                     <div><div style="font-weight:800;font-size:.85rem">${fmt(b.w,2)} غ · عيار ${fmt(b.k,0)}</div>
                     <div style="font-size:.6rem;color:var(--t3)">${b.dt||''}${b.desc?' · '+b.desc:''}</div></div>
-                    <span style="font-weight:900;color:var(--g600);font-size:.8rem">${fmt(b.w*b.k/705,2)} غ 705</span>
+                    <span style="font-weight:900;color:var(--g600);font-size:.8rem">${fmt(b.w*b.k/730,2)} غ 730</span>
                 </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:2rem">لا سبائك بعد</div>'}
         </div>
         <button onclick="document.getElementById('empStockOverlay').classList.remove('active')"
@@ -4951,11 +5009,10 @@ window._applyRolePerms=()=>{
         const _lg=document.getElementById('laGobalCard'); if(_lg)_lg.style.display='none';
         const _ap=document.getElementById('adminPanel'); if(_ap)_ap.style.display='none';
     }
-    /* 🏦 أظهر/أخفِ زر الأرصدة الافتتاحية حسب مفتاح هذا المستخدم تحديداً */
+    /* 🏦 زر الأرصدة يظهر دائماً (النافذة تعمل دائماً) */
     try{
-        const used=localStorage.getItem(_liqUsedKey());
         ['liqEditBtn','liqSettingsBtn'].forEach(id=>{
-            const el=document.getElementById(id); if(el)el.style.display=used?'none':'';
+            const el=document.getElementById(id); if(el)el.style.display='';
         });
     }catch(e){}
     if(!isEmp){
@@ -5001,7 +5058,7 @@ window._renderEmpHome=()=>{
     const _ce=document.getElementById('empCofferBal'); if(_ce)_ce.innerHTML=fmtDin(coffer)+'<small> دج</small>';
     /* 👤 مخزون 705 الخاص بالموظف: سبائكه فقط */
     const myBars=(g730||[]).filter(b=>b.empOwner===me);
-    const myEq=myBars.reduce((s,b)=>s+(Number(b.w)||0)*((Number(b.k)||730)/705),0);
+    const myEq=myBars.reduce((s,b)=>s+(Number(b.w)||0)*((Number(b.k)||730)/730),0);
     const _g=document.getElementById('empG705Bal'); if(_g)_g.innerHTML=fmt(myEq,2)+'<small> غ</small>';
     /* 📖 دفتر ديون الموظف — بنفس شكل جدول الأدمين (زبائنه فقط) */
     const cd={};
