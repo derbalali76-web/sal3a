@@ -417,19 +417,22 @@ function renderUsersList(){
     const ul=document.getElementById('usersList');if(!ul)return;
     /* الموظف لا يرى إدارة المستخدمين */
     if(window._userRole==='employee'){ ul.innerHTML=''; const p=document.getElementById('adminPanel'); if(p)p.style.display='none'; return; }
-    const others=Object.entries(_usersCache).filter(([u,r])=>u!==_currentUser&&r&&(r.role==='employee'||r.role==='admin'));
+    const others=Object.entries(_usersCache).filter(([u,r])=>u!==_currentUser&&r&&(r.role==='employee'||r.role==='admin'||r.role==='partner'));
     ul.innerHTML=`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .6rem;background:var(--card2);border-radius:8px;margin-bottom:.25rem;border:1px solid var(--border)">
             <span style="font-size:.78rem;font-weight:800">${_currentUser} 👑</span>
             <span style="font-size:.62rem;color:var(--t3)">مالك</span>
         </div>
         ${others.map(([u,r])=>{
-            const isAdm=r.role==='admin';
+            const _role=r.role;
+            const _ic=_role==='admin'?'👑':_role==='partner'?'🤝':'👤';
+            const _lbl=_role==='admin'?'أدمين':_role==='partner'?'شريك':'موظف';
+            const _col=_role==='admin'?'var(--g600)':_role==='partner'?'#0d9488':'#7c3aed';
             return `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .6rem;background:var(--card2);border-radius:8px;margin-bottom:.25rem;border:1px solid var(--border)">
-            <span style="font-size:.78rem;font-weight:800">${u} ${isAdm?'👑':'👤'}</span>
+            <span style="font-size:.78rem;font-weight:800">${u} ${_ic}</span>
             <div style="display:flex;align-items:center;gap:.5rem">
-                <span style="font-size:.58rem;color:${isAdm?'var(--g600)':'#7c3aed'}">${isAdm?'أدمين':'موظف'}</span>
+                <span style="font-size:.58rem;color:${_col}">${_lbl}</span>
                 <button onclick="deleteUser('${u.replace(/'/g,"\\'")}')" style="border:none;background:transparent;color:var(--rd);cursor:pointer;font-size:.82rem">🗑️</button>
             </div>
         </div>`;}).join('')}`;
