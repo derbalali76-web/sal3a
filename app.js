@@ -890,7 +890,8 @@ function upd(){
     if(_gsc){
         const tr=window._cashiTracker||{buyW:0,buyDin:0,soldW:0,soldDin:0};
         /* صافي اللاكاص المطلوب = ما قبضته كاصي بالدينار − ما اشتريته فعلاً (أجرة بالكاصي) */
-        const netW=Math.round((tr.buyW-tr.soldW)*1000)/1000;
+        const netW705=Math.round((tr.buyW-tr.soldW)*1000)/1000;
+        const netW=Math.round(netW705*(705/730)*1000)/1000;   /* 🔄 يُعرض بمكافئ 730 */
         const netDin=Math.round(tr.buyDin-tr.soldDin);
         const _rows=[];
         if(Math.abs(netW)<0.001){
@@ -900,7 +901,7 @@ function upd(){
             const price=netW>0?Math.round(netDin/netW):0;
             _rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35);border-radius:10px;padding:.5rem .7rem">
                 <span style="font-weight:900;color:#059669">🛒 لاكاص تشتريه</span>
-                <span style="font-weight:900;color:#059669" dir="ltr">${fmt(netW,2)} غ</span>
+                <span style="font-weight:900;color:#059669" dir="ltr">${fmt(netW,2)} غ (730)</span>
             </div>`);
             _rows.push(`<div style="text-align:left;font-size:.68rem;color:var(--t2);padding:0 .3rem" dir="ltr">السعر: ${fmt(price,0)} دج/غ · إجمالي ${fmt(netDin,0)} دج</div>`);
         } else {
@@ -909,7 +910,7 @@ function upd(){
             const price=sellW>0?Math.round(sellDin/sellW):0;
             _rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:.5rem .7rem">
                 <span style="font-weight:900;color:#dc2626">🏷️ لاكاص تبيعه</span>
-                <span style="font-weight:900;color:#dc2626" dir="ltr">${fmt(sellW,2)} غ</span>
+                <span style="font-weight:900;color:#dc2626" dir="ltr">${fmt(sellW,2)} غ (730)</span>
             </div>`);
             _rows.push(`<div style="text-align:left;font-size:.68rem;color:var(--t2);padding:0 .3rem" dir="ltr">سعر البيع: ${fmt(price,0)} دج/غ · إجمالي ${fmt(sellDin,0)} دج</div>`);
         }
