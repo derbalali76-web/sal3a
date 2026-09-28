@@ -9,7 +9,7 @@ const NS = (() => { try {
   return (safe || 'root') + '#' + (h>>>0).toString(36);
 } catch(e){ return 'root'; } })();
 const CACHE_PREFIX = 'goldpro@' + NS + '-';
-const CACHE = CACHE_PREFIX + 'v178';
+const CACHE = CACHE_PREFIX + 'v181';
 const ASSETS = [
   './',
   './index.html',

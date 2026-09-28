@@ -616,7 +616,8 @@ window._addLiqGoodsRow=(vals)=>{
     div.innerHTML=`
         <select class="lg-n" style="flex:1.4;margin:0;min-width:0">${typeof _goodsOptions==='function'?_goodsOptions(vals&&vals.n?String(vals.n):''):'<option value="">السلعة…</option>'}</select>
         <input type="text" inputmode="decimal" class="lg-w" placeholder="⚖️ الميزان" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right">
-        <input type="text" inputmode="decimal" class="lg-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:right">`;
+        <input type="text" inputmode="decimal" class="lg-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.8;margin:0;min-width:0;text-align:right">
+        <input type="text" inputmode="decimal" class="lg-f" placeholder="💰 أجرة" dir="ltr" style="flex:.8;margin:0;min-width:0;text-align:right" title="الأجرة دج/غ (اختياري)">`;
     div.querySelector('select.lg-n').addEventListener('change',function(){_handleGoodsSelect(this);_liqGoodsChanged();});
     div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{liveNum(inp);_liqGoodsChanged();}));
     box.appendChild(div);
@@ -632,8 +633,8 @@ window._readLiqGoods=()=>{
     document.querySelectorAll('#liqGoodsRows .lg-row').forEach(row=>{
         const gv=c=>{const el=row.querySelector(c);return el?el.value.trim():'';};
         const gn=c=>{const el=row.querySelector(c);return el?(parseFloat(el.value.replace(/\s/g,'').replace(/,/g,'.'))||0):0;};
-        const n=gv('.lg-n'),w=gn('.lg-w'),k=gn('.lg-k');
-        if(n&&w>0&&k>0)items.push({n,w,k,eq:Math.round(w*k/705*1000)/1000});
+        const n=gv('.lg-n'),w=gn('.lg-w'),k=gn('.lg-k'),p=gn('.lg-f');
+        if(n&&w>0&&k>0)items.push({n,w,k,p,eq:Math.round(w*k/705*1000)/1000});
     });
     return items;
 };
@@ -752,7 +753,7 @@ window.confirmLiqEdit=()=>{
     if(dinar !==0&&!isNaN(dinar)&&dinar) sumLines.push(`💵 دينار: ${fmt(dinar,0)} دج`);
     if(goodsItems.length){
         sumLines.push(`🛍️ سلعة الكوفر (${goodsItems.length}):`);
-        goodsItems.forEach(it=>sumLines.push(`  • ${it.n}: ${fmt(it.w,2)} غ عيار ${fmt(it.k,0)} → ${fmt(it.eq,2)} غ (705)`));
+        goodsItems.forEach(it=>sumLines.push(`  • ${it.n}: ${fmt(it.w,2)} غ عيار ${fmt(it.k,0)}${it.p?' · أجرة '+fmt(it.p,0)+' دج/غ':''} → ${fmt(it.eq,2)} غ (705)`));
         sumLines.push(`  = المجموع بالمكافئ: ${fmt(dollar,2)} غ (705)`);
     }
     if(debtRows.length){
@@ -873,6 +874,8 @@ function upd(){
             Object.keys(window._empCoffer||{}).forEach(e=>emps.add(e));
             (debts||[]).forEach(d=>{ if(d.empOwner)emps.add(d.empOwner); });
             (ops||[]).forEach(o=>{ if(o.empOwner)emps.add(o.empOwner); });
+            /* 👥 اكتشف الموظفين من سجلّهم أيضاً (يظهرون حتى قبل أي عملية) */
+            try{ const _uc=(typeof _usersCache!=='undefined'?_usersCache:{}); Object.keys(_uc).forEach(u=>{ if((_uc[u]||{}).role==='employee')emps.add(u); }); }catch(e){}
             const n=[...emps].filter(Boolean).length;
             if(n>0){ card.style.display=''; const b=document.getElementById('laGobalBal'); if(b)b.innerHTML=n+'<small> موظف</small>'; }
             else card.style.display='none';
@@ -2214,11 +2217,12 @@ window.toggleExpCur=()=>{};
 /* 👤 مخزون 705 الخاص بالموظف — سبائكه فقط */
 /* ═══════════ 👤 لاقوبال — نظرة الأدمين على الموظفين ═══════════ */
 window.openLaGobal=()=>{
-    /* اجمع أسماء الموظفين من الكوفر + الديون + المصاريف */
+    /* اجمع أسماء الموظفين من الكوفر + الديون + المصاريف + السجلّ */
     const emps=new Set();
     Object.keys(window._empCoffer||{}).forEach(e=>emps.add(e));
     (debts||[]).forEach(d=>{ if(d.empOwner)emps.add(d.empOwner); });
     (ops||[]).forEach(o=>{ if(o.empOwner)emps.add(o.empOwner); });
+    try{ const _uc=(typeof _usersCache!=='undefined'?_usersCache:{}); Object.keys(_uc).forEach(u=>{ if((_uc[u]||{}).role==='employee')emps.add(u); }); }catch(e){}
     const list=[...emps].filter(Boolean);
     let ov=document.getElementById('laGobalOverlay');
     if(!ov){

@@ -37,6 +37,17 @@ window._delPortalNodeFb=(ph,pin,shop)=>{ try{return _db.ref('goldpro/portal/'+ph
 window._attachUserCfg=()=>{
     if(!window._cfgRef)return;
     try{
+        /* 👥 مزامنة سجلّ المستخدمين لحظياً — كي يرى كل أدمين الموظفين المضافين حديثاً */
+        if(typeof _usersPathFor==='function'){
+            _db.ref(_usersPathFor()).on('value',sn=>{
+                const v=sn.val();
+                if(v&&typeof v==='object'){
+                    _usersCache=v;
+                    if(typeof renderUsersList==='function')try{renderUsersList();}catch(e){}
+                    if(typeof updAll==='function')try{updAll();}catch(e){}   /* يحدّث بطاقة لاقوبال */
+                }
+            });
+        }
         window._cfgRef.child('goodsNames').on('value',sn=>{
             const v=sn.val();
             if(Array.isArray(v)){
@@ -355,7 +366,7 @@ function _applyEvt(st,evt){
                     _eq+=w*k/705;
                     st.goodsStock.unshift({
                         id:(evt.id||'')+'_og'+i,
-                        n:it.n||'؟', w, k, p:0,
+                        n:it.n||'؟', w, k, p:Number(it.p)||0,
                         src:'افتتاحي', dt:'', ts:evt.ts||0
                     });
                 });
@@ -690,20 +701,18 @@ function _applyEvt(st,evt){
         }
 
         case 'EMP_PAY':{
-            /* 👤 دفع الموظف: يزيد صوارد كوفره + يزيد سيولة المحل (الأدمين) */
+            /* 👤 دفع الموظف: يزيد صوارد كوفره فقط — لا يمسّ سيولة الأدمين (معزول في لاقوبال) */
             const emp=d.emp||'';
             st.empCoffer[emp]=(st.empCoffer[emp]||0)+(Number(d.a)||0);
-            st.B.دينار+=(Number(d.a)||0); /* يظهر عند الأدمين في سيولته */
             break;
         }
 
         case 'EXPENSE':{
-            if(d.cur==='دولار')stUpdDebt(d.cust,'دولار',-d.a);   // علينا للزبون (نحن مدينون له)
-            else st.B.دينار-=d.a;
-            /* 👤 مصروف الموظف: يُخصم من كوفره أيضاً، ويُوسم «قوبال» عند الأدمين */
+            /* 👤 مصروف الموظف: يُخصم من كوفره فقط — لا يمسّ سيولة الأدمين */
             if(d.empOwner){
                 st.empCoffer[d.empOwner]=(st.empCoffer[d.empOwner]||0)-(Number(d.a)||0);
-            }
+            }else if(d.cur==='دولار')stUpdDebt(d.cust,'دولار',-d.a);   // علينا للزبون (نحن مدينون له)
+            else st.B.دينار-=d.a;
             break;
         }
 
