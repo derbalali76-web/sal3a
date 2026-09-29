@@ -55,13 +55,13 @@ function restoreDraft(){
 function invRowHtml(i){
     return`<tr id="invTR_${i}">
         <td class="inv-rn">${i}</td>
-        <td><input type="text" class="inv-ci" id="inv_w_${i}" autocomplete="off"
+        <td><input type="text" inputmode="decimal" class="inv-ci" id="inv_w_${i}" autocomplete="off"
             oninput="calcInvRow(${i});saveDraft()" onkeydown="invNav(event,${i},'w')"
             onblur="fmtInput(this,2)" onfocus="rawInput(this)"></td>
-        <td><input type="text" class="inv-ci" id="inv_k_${i}" autocomplete="new-password"
+        <td><input type="text" inputmode="decimal" class="inv-ci" id="inv_k_${i}" autocomplete="new-password"
             oninput="calcInvRow(${i});saveDraft()" onkeydown="invNav(event,${i},'k')"></td>
         <td class="inv-auto-cell" id="inv_eq_${i}">—</td>
-        <td><input type="text" class="inv-ci" id="inv_p_${i}" autocomplete="off"
+        <td><input type="text" inputmode="decimal" class="inv-ci" id="inv_p_${i}" autocomplete="off"
             dir="ltr" style="text-align:right"
             oninput="liveNum(this);calcInvRow(${i});_maybeSuggestPrice(${i});saveDraft()" onkeydown="invNav(event,${i},'p')"
             onfocus="rawInput(this)"></td>
