@@ -891,8 +891,15 @@ function upd(){
         const tr=window._cashiTracker||{buyW:0,buyDin:0,soldW:0,soldDin:0};
         /* صافي اللاكاص المطلوب = ما قبضته كاصي بالدينار − ما اشتريته فعلاً (أجرة بالكاصي) */
         const netW705=Math.round((tr.buyW-tr.soldW)*1000)/1000;
-        const netW=Math.round(netW705*(705/730)*1000)/1000;   /* 🔄 يُعرض بمكافئ 730 */
-        const netDin=Math.round(tr.buyDin-tr.soldDin);
+        /* 📒 ميزانات ترباح تدخل في ذهب البيع (شراء +وزن · بيع −وزن) */
+        let _tbW=0,_tbDin=0;
+        try{
+            const _num=v=>{const n=parseFloat(String(v||'').replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0;};
+            (window._tarbahList||[]).forEach(x=>{ const w=_num(x.weight),p=_num(x.price);
+                if(w>0){ if(x.type==='buy'){_tbW+=w;_tbDin+=w*p;} else if(x.type==='sell'){_tbW-=w;_tbDin-=w*p;} } });
+        }catch(e){}
+        const netW=Math.round((netW705*(705/730)+_tbW)*1000)/1000;   /* 🔄 كاصي بمكافئ 730 + ترباح */
+        const netDin=Math.round((tr.buyDin-tr.soldDin)+_tbDin);
         const _rows=[];
         if(Math.abs(netW)<0.001){
             _rows.push(`<div style="text-align:center;color:var(--t3);font-size:.78rem;padding:.3rem">لا يوجد كاصي معلّق</div>`);
@@ -2564,6 +2571,54 @@ window.saveEmpPay=()=>{
     setTimeout(()=>{ _renderEmpHome(); toast('💵 دُفع '+fmtDin(a)+' دج — ظهر في كوفرك','success'); },200);
 };
 
+/* ═══════════ 💵 أخذ / دفع دينار على الزبون (من/إلى صوارد الكوفر) ═══════════ */
+window.openPayTake=(dir)=>{
+    const isPay=dir==='pay';
+    let ov=document.getElementById('payTakeOverlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='payTakeOverlay'; ov.className='modal-overlay'; document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');}); }
+    const col=isPay?'#dc2626':'#16a34a';
+    const grad=isPay?'linear-gradient(135deg,#dc2626,#b91c1c)':'linear-gradient(135deg,#16a34a,#15803d)';
+    ov.innerHTML=`<div class="modal" style="max-width:380px">
+        <div class="modal-handle"></div>
+        <h3 style="text-align:center;color:${col}">${isPay?'📤 دفع دينار للزبون':'📥 أخذ دينار من الزبون'}</h3>
+        <div style="font-size:.68rem;color:var(--t3);text-align:center;margin-bottom:.6rem">
+            ${isPay?'يخرج من صوارد الكوفر ويُسجّل ديناً على الزبون':'يدخل صوارد الكوفر ويُنقص دين الزبون'}
+        </div>
+        <input type="text" id="ptCust" placeholder="👤 اسم الزبون" autocomplete="off"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid ${col};background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:700;text-align:right;margin-bottom:.5rem;box-sizing:border-box">
+        <input type="text" inputmode="decimal" id="ptAmount" placeholder="💰 المبلغ (دج)" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box"
+            oninput="liveNum(this)">
+        <input type="text" id="ptNote" placeholder="📝 ملاحظة (اختياري)"
+            style="width:100%;padding:.6rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.85rem;text-align:right;margin-bottom:.6rem;box-sizing:border-box">
+        <div style="display:flex;gap:.5rem">
+            <button onclick="document.getElementById('payTakeOverlay').classList.remove('active')"
+                style="flex:1;padding:.65rem;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">إلغاء</button>
+            <button onclick="savePayTake('${dir}')"
+                style="flex:2;padding:.65rem;border:none;border-radius:12px;background:${grad};color:#fff;font-family:Tajawal,sans-serif;font-weight:900;cursor:pointer">💾 حفظ</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
+    setTimeout(()=>{const e=document.getElementById('ptCust');if(e){e.focus();if(window._acAttach)_acAttach('ptCust');}},300);
+};
+window.savePayTake=(dir)=>{
+    const isPay=dir==='pay';
+    const c=(document.getElementById('ptCust').value||'').trim();
+    const a=readNum('ptAmount');
+    const note=(document.getElementById('ptNote').value||'').trim();
+    if(!c)return toast('أدخل اسم الزبون','error');
+    if(!a||a<=0)return toast('أدخل المبلغ','error');
+    const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const _emp=window._userRole==='employee'?_currentUser:null;
+    emitEvent('DINAR_MOVE',
+        {dir,c,a,empOwner:_emp},
+        {op:{c,t:isPay?'دفع دينار':'أخذ دينار',m:'دينار',a,_ts:Date.now(),dt:nowStr,note:note||undefined,empOwner:_emp||undefined}}
+    );
+    document.getElementById('payTakeOverlay').classList.remove('active');
+    setTimeout(()=>{ updAll(); toast((isPay?'📤 دُفع ':'📥 أُخذ ')+fmtDin(a)+' دج','success'); },150);
+};
+
 window.openExpense=()=>{
     document.getElementById('expAmount').value='';
     document.getElementById('expNote').value='';
@@ -2889,6 +2944,7 @@ window._loadTarbah=()=>{
 function _tarbahPersist(){
     try{localStorage.setItem(_tarbahKey(),JSON.stringify(window._tarbahList));}catch(e){}
     if(typeof _scheduleSave==='function')_scheduleSave();   /* مزامنة عبر الأجهزة عبر إعدادات Firebase */
+    if(typeof updAll==='function')try{updAll();}catch(e){}  /* 📒 تحديث ذهب البيع فوراً */
 }
 window._applyTarbah=(jsonStr)=>{
     try{ const arr=JSON.parse(jsonStr); if(Array.isArray(arr)){ window._tarbahList=arr; try{localStorage.setItem(_tarbahKey(),jsonStr);}catch(e){} _renderTarbahList(); } }catch(e){}

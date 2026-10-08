@@ -734,6 +734,25 @@ function _applyEvt(st,evt){
             break;
         }
 
+        case 'DINAR_MOVE':{
+            /* 💵 أخذ/دفع دينار بالدينار فقط
+               - دفع (pay): المبلغ يخرج من صوارد الكوفر ويُسجَّل ديناً على الزبون (موجب = أخضر = لنا عليه)
+               - أخذ (take): العكس — المبلغ يدخل صوارد الكوفر ويُنقص دين الزبون
+               - موسوم بـ empOwner لعزل الموظف (كوفر الموظف منفصل عن سيولة الأدمين) */
+            const a=Number(d.a)||0;
+            const _emp=d.empOwner||null;
+            if(d.dir==='pay'){
+                if(_emp)st.empCoffer[_emp]=(st.empCoffer[_emp]||0)-a;   /* يخرج من كوفر الموظف */
+                else st.B.دينار-=a;                                     /* يخرج من صوارد الكوفر */
+                stUpdDebt(d.c,'دينار',a,_emp);                          /* الزبون يدين لنا (أخضر) */
+            }else{
+                if(_emp)st.empCoffer[_emp]=(st.empCoffer[_emp]||0)+a;   /* يدخل كوفر الموظف */
+                else st.B.دينار+=a;                                     /* يدخل صوارد الكوفر */
+                stUpdDebt(d.c,'دينار',-a,_emp);                         /* يُنقص دين الزبون */
+            }
+            break;
+        }
+
         case 'DUBAI':{
             if(d.fromDebt>0.001)stUpdDebt(d.o,'ذهب 24',-d.fromDebt);
             applyBars();

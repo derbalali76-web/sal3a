@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=189">
+    <link rel="stylesheet" href="./style.css?v=190">
 </head>
 <body>
 <script>
@@ -145,10 +145,6 @@
             <div class="icon-btn" onclick="doLogout()" title="تسجيل الخروج" style="background:rgba(239,68,68,.12);color:var(--rd)"><i class="fas fa-sign-out-alt"></i></div>
             <div class="icon-btn" onclick="toggleDark()" id="darkBtn"><i class="fas fa-moon"></i></div>
             <div class="icon-btn" id="fsBtn" onclick="toggleFullscreen()" title="فول سكرين"><i class="fas fa-expand"></i></div>
-            <div class="icon-btn" id="panicBtn" onclick="panicExit()" title="طوارئ"
-                style="background:rgba(239,68,68,.18);color:#ef4444;border-color:rgba(239,68,68,.35)">
-                <i class="fas fa-power-off"></i>
-            </div>
         </div>
     </div>
 
@@ -157,16 +153,20 @@
 
         <!-- الرئيسية -->
         <div class="page active" id="page-home">
-            <div class="nw-card" style="width:100%;margin-bottom:.7rem">
+            <div class="nw-card" style="width:100%;margin-bottom:.5rem">
                 <h3><i class="fas fa-chart-pie"></i> القيمة الإجمالية للأصول</h3>
                 <div class="nw-val" id="netWorth">0 DZD</div>
                 <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
+            </div>
+            <div class="gold-sale-card" id="goldSaleCard" style="width:100%;margin:0 0 .7rem;display:flex;flex-direction:column;gap:.3rem">
+                <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع (الكاصي)</div>
+                <div id="goldSaleContent" style="display:flex;flex-direction:column;gap:.35rem"></div>
             </div>
             <div class="bgrid">
                 <div class="bcard bcard-din" style="position:relative">
                     <div class="bcard-accent" style="background:var(--bl)"></div>
                     <div class="ci" style="color:var(--bl)"><i class="fas fa-wallet"></i></div>
-                    <span class="cl">السيولة</span>
+                    <span class="cl">صوارد الكوفر</span>
                     <span class="cv" id="dinarBal">0<small> DZD</small></span>
                     <button id="liqEditBtn" onclick="openLiqEdit()" title="الأرصدة الافتتاحية"
                         style="position:absolute;top:.35rem;left:.35rem;width:22px;height:22px;border-radius:6px;
@@ -195,6 +195,20 @@
                     <span class="cv" id="usdBal">0<small> دج</small></span>
                     <span class="hint">👆 المخزون</span>
                 </div>
+                <div class="bcard clickable" onclick="openPayTake('pay')">
+                    <div class="bcard-accent" style="background:#dc2626"></div>
+                    <div class="ci" style="color:#dc2626"><i class="fas fa-arrow-up-from-bracket"></i></div>
+                    <span class="cl">دفع</span>
+                    <span class="cv" style="font-size:.9rem">دينار</span>
+                    <span class="hint">👆 للزبون</span>
+                </div>
+                <div class="bcard clickable" onclick="openPayTake('take')">
+                    <div class="bcard-accent" style="background:#16a34a"></div>
+                    <div class="ci" style="color:#16a34a"><i class="fas fa-arrow-down-to-bracket"></i></div>
+                    <span class="cl">أخذ</span>
+                    <span class="cv" style="font-size:.9rem">دينار</span>
+                    <span class="hint">👆 من الزبون</span>
+                </div>
                 <div class="bcard clickable" id="liveKassiCard" onclick="openLiveKassi()" style="display:none">
                     <div class="bcard-accent" style="background:#ea580c"></div>
                     <div class="ci" style="color:#ea580c"><i class="fas fa-fire"></i></div>
@@ -209,10 +223,6 @@
                     <span class="cv" id="laGobalBal">0<small> موظف</small></span>
                     <span class="hint">👆 التفاصيل</span>
                 </div>
-            </div>
-            <div class="gold-sale-card" id="goldSaleCard" style="width:100%;margin:.4rem 0 .7rem;display:flex;flex-direction:column;gap:.3rem">
-                <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع (الكاصي)</div>
-                <div id="goldSaleContent" style="display:flex;flex-direction:column;gap:.35rem"></div>
             </div>
             <div class="astrip">
                 <button class="btn buy"  onclick="openDollar('buy')"> <i class="fas fa-cart-plus"></i>شراء سلعة</button>
@@ -1033,13 +1043,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=189"></script>
-<script src="./app.js?v=189"></script>
-<script src="./assistant.js?v=189"></script>
-<script src="./inventory.js?v=189"></script>
-<script src="./invoice.js?v=189"></script>
-<script src="./raffinage.js?v=189"></script>
-<script src="./auth.js?v=189"></script>
+<script src="./firebase.js?v=190"></script>
+<script src="./app.js?v=190"></script>
+<script src="./assistant.js?v=190"></script>
+<script src="./inventory.js?v=190"></script>
+<script src="./invoice.js?v=190"></script>
+<script src="./raffinage.js?v=190"></script>
+<script src="./auth.js?v=190"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
