@@ -528,6 +528,17 @@ const _SERIALS={
     'b47b612f7332e6041f20eac2ac57b3c2bb7d1bb341c10a56eca3ad4deeccc4b6':'محل 8',
     'f2b47d01f87d2d496397e167895e78b7c1846d919bc680de33b6b82f48c1dcc6':'محل 9',
     '329709f726a3213e9ea62a00ec376cc95a068e8002902fb5d682f7551863e6aa':'محل 10',
+    /* ═══ 10 سريالات جديدة للتوزيع (أكتوبر) ═══ */
+    '91b805351133af4477de797eb7721a6510177a98f298233a897f401c266b80ec':'',   /* GP-G64U-2E4Z-SGAD */
+    '2eb1f733788e4261e3141c9f1be732caf7e6d7bf0e4212f6a26b99555993b3fa':'',   /* GP-39YM-4HFZ-Y84M */
+    '831540bb1adf3b7924c7fb5073c4d029b8a0f7d7dbb73caec6b03b55b88d440f':'',   /* GP-YV9J-SVMV-FDXN */
+    'b68139e3a0004eb0e1e040f7b875b5453ef0bad69b4a755f716d354a5cda6093':'',   /* GP-TPHV-LFC6-VKPU */
+    '01e58869b7dfa6ce3b33a39554ee72fddb764819329de8b4af8ad8a7f75081c9':'',   /* GP-4E9J-MBX7-A8U4 */
+    'ffe397148779e76f9458365e45a5088807d7827c3920c3b512cdd1e46c6a7042':'',   /* GP-48PC-5UUH-MYDT */
+    '1abe0cb731faaffb1c5533e9c614fc76240d5066f7ccbbd1c5886c484b328eb4':'',   /* GP-RSAD-KX86-92DB */
+    'c2a69147862f4f8b652ede00858c43889571fb127332fe7cab6823019321af86':'',   /* GP-3JVU-Y53D-JCZX */
+    '63b010bf59f116c1d57a9e1fae2a1db625d811db1548430cdee1d6d7f30ed29c':'',   /* GP-P2SQ-MWZC-AXAW */
+    'be40bafc6bc3693911c9ea849b0d87ce3fa525d692694d45ffe94d362290dbd7':'',   /* GP-T6LF-RG76-HS8D */
 };
 /* 🌐 سريالات Firebase: goldpro/_serials/{sha256} = {site, name, active}
    لا يمكن سردها — تُقرأ بالهاش فقط (من يعرف السريال فقط يصل لعقدته). */
@@ -558,8 +569,8 @@ async function _checkSerial(){
         const sep=stored.lastIndexOf(':');
         const hash=stored.slice(0,sep);
         const site=stored.slice(sep+1);
-        /* ① مدمج → صالح فوراً · لكن اقرأ المالك أولاً كي يعمل حارس الجلسة */
-        const builtinOk=(hash in _SERIALS && _SERIALS[hash]===(site||''));
+        /* ① مدمج → صالح فوراً (الاعتماد على وجود الهاش لا على التسمية) */
+        const builtinOk=(hash in _SERIALS);
         if(builtinOk){
             /* استعد المالك من الكاش قبل _checkAuth (وإلا رأى الزبون جلسة أدمن أخرى) */
             try{const o=JSON.parse(localStorage.getItem('gp12_sn_own')||'null');
