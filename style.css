@@ -187,7 +187,7 @@
         .nw-row{display:flex;gap:.6rem;align-items:stretch;margin-bottom:0}
         .nw-row .nw-card{flex:1;min-width:0;margin-bottom:0}
         .gold-sale-card{
-            width:110px;flex-shrink:0;
+            width:132px;flex-shrink:0;
             background:linear-gradient(145deg,#1a1400 0%,#0d0a00 100%);
             border:1px solid rgba(245,158,11,.45);border-radius:var(--rx);
             padding:.8rem .6rem;display:flex;flex-direction:column;

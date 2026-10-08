@@ -891,37 +891,28 @@ function upd(){
         const tr=window._cashiTracker||{buyW:0,buyDin:0,soldW:0,soldDin:0};
         /* صافي اللاكاص المطلوب = ما قبضته كاصي بالدينار − ما اشتريته فعلاً (أجرة بالكاصي) */
         const netW705=Math.round((tr.buyW-tr.soldW)*1000)/1000;
-        /* 📒 ميزانات ترباح تدخل في ذهب البيع (شراء +وزن · بيع −وزن) */
+        /* 📒 ميزانات ترباح تدخل في ذهب البيع:
+           شراء 100غ ⟵ يزيد «ذهب البيع» (−وزن = المزيد للبيع) · بيع ⟵ يُنقصه */
         let _tbW=0,_tbDin=0;
         try{
             const _num=v=>{const n=parseFloat(String(v||'').replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0;};
             (window._tarbahList||[]).forEach(x=>{ const w=_num(x.weight),p=_num(x.price);
-                if(w>0){ if(x.type==='buy'){_tbW+=w;_tbDin+=w*p;} else if(x.type==='sell'){_tbW-=w;_tbDin-=w*p;} } });
+                if(w>0){ if(x.type==='buy'){_tbW-=w;_tbDin-=w*p;} else if(x.type==='sell'){_tbW+=w;_tbDin+=w*p;} } });
         }catch(e){}
         const netW=Math.round((netW705*(705/730)+_tbW)*1000)/1000;   /* 🔄 كاصي بمكافئ 730 + ترباح */
         const netDin=Math.round((tr.buyDin-tr.soldDin)+_tbDin);
-        const _rows=[];
+        /* ═══ بطاقة مُدمجة بجانب الأصول: القيمة · السعر · عيار 730 ═══ */
         if(Math.abs(netW)<0.001){
-            _rows.push(`<div style="text-align:center;color:var(--t3);font-size:.78rem;padding:.3rem">لا يوجد كاصي معلّق</div>`);
-        } else if(netW>0){
-            /* لاكاص يجب شراؤه: قبضت أكثر مما اشتريت */
-            const price=netW>0?Math.round(netDin/netW):0;
-            _rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35);border-radius:10px;padding:.5rem .7rem">
-                <span style="font-weight:900;color:#059669">🛒 لاكاص تشتريه</span>
-                <span style="font-weight:900;color:#059669" dir="ltr">${fmt(netW,2)} غ (730)</span>
-            </div>`);
-            _rows.push(`<div style="text-align:left;font-size:.68rem;color:var(--t2);padding:0 .3rem" dir="ltr">السعر: ${fmt(price,0)} دج/غ · إجمالي ${fmt(netDin,0)} دج</div>`);
+            _gsc.innerHTML=`<div class="gs-val" style="font-size:1.3rem;color:var(--t3)">0<small style="font-size:.7rem"> غ</small></div>
+                <div class="gs-lbl" style="margin-top:.2rem">لا يوجد كاصي معلّق</div>`;
         } else {
-            /* لاكاص كثير تبيعه: اشتريت أكثر مما قبضت */
-            const sellW=Math.abs(netW), sellDin=Math.abs(netDin);
-            const price=sellW>0?Math.round(sellDin/sellW):0;
-            _rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:.5rem .7rem">
-                <span style="font-weight:900;color:#dc2626">🏷️ لاكاص تبيعه</span>
-                <span style="font-weight:900;color:#dc2626" dir="ltr">${fmt(sellW,2)} غ (730)</span>
-            </div>`);
-            _rows.push(`<div style="text-align:left;font-size:.68rem;color:var(--t2);padding:0 .3rem" dir="ltr">سعر البيع: ${fmt(price,0)} دج/غ · إجمالي ${fmt(sellDin,0)} دج</div>`);
+            const price=Math.round(Math.abs(netDin)/Math.abs(netW));
+            /* سالب = لاكاص تبيعه (أحمر) · موجب = لاكاص تشتريه (أخضر) */
+            const col=netW<0?'#f87171':'#34d399';
+            _gsc.innerHTML=`<div class="gs-val" style="font-size:1.4rem;color:${col};line-height:1.05;word-break:break-word" dir="ltr">${fmt(netW,2)}<small style="font-size:.72rem"> غ</small></div>
+                <div class="gs-val" style="font-size:.72rem;color:#d97706;margin-top:.3rem;font-weight:800;word-break:break-word" dir="ltr">${fmt(price,0)} دج/غ</div>
+                <div class="gs-lbl" style="margin-top:.25rem">عيار 730</div>`;
         }
-        _gsc.innerHTML=_rows.join('');
     }
     const _nv=net();
     const _nwEl=document.getElementById('netWorth');

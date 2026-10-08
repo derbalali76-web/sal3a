@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=190">
+    <link rel="stylesheet" href="./style.css?v=191">
 </head>
 <body>
 <script>
@@ -153,14 +153,16 @@
 
         <!-- الرئيسية -->
         <div class="page active" id="page-home">
-            <div class="nw-card" style="width:100%;margin-bottom:.5rem">
-                <h3><i class="fas fa-chart-pie"></i> القيمة الإجمالية للأصول</h3>
-                <div class="nw-val" id="netWorth">0 DZD</div>
-                <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
-            </div>
-            <div class="gold-sale-card" id="goldSaleCard" style="width:100%;margin:0 0 .7rem;display:flex;flex-direction:column;gap:.3rem">
-                <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع (الكاصي)</div>
-                <div id="goldSaleContent" style="display:flex;flex-direction:column;gap:.35rem"></div>
+            <div class="nw-row" style="margin-bottom:.7rem">
+                <div class="nw-card" style="margin:0">
+                    <h3><i class="fas fa-chart-pie"></i> القيمة الإجمالية للأصول</h3>
+                    <div class="nw-val" id="netWorth">0 DZD</div>
+                    <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
+                </div>
+                <div class="gold-sale-card" id="goldSaleCard">
+                    <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع</div>
+                    <div id="goldSaleContent" style="display:flex;flex-direction:column;align-items:center;gap:.15rem;width:100%"></div>
+                </div>
             </div>
             <div class="bgrid">
                 <div class="bcard bcard-din" style="position:relative">
@@ -1043,13 +1045,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=190"></script>
-<script src="./app.js?v=190"></script>
-<script src="./assistant.js?v=190"></script>
-<script src="./inventory.js?v=190"></script>
-<script src="./invoice.js?v=190"></script>
-<script src="./raffinage.js?v=190"></script>
-<script src="./auth.js?v=190"></script>
+<script src="./firebase.js?v=191"></script>
+<script src="./app.js?v=191"></script>
+<script src="./assistant.js?v=191"></script>
+<script src="./inventory.js?v=191"></script>
+<script src="./invoice.js?v=191"></script>
+<script src="./raffinage.js?v=191"></script>
+<script src="./auth.js?v=191"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
