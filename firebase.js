@@ -735,20 +735,27 @@ function _applyEvt(st,evt){
         }
 
         case 'DINAR_MOVE':{
-            /* 💵 أخذ/دفع دينار بالدينار فقط
-               - دفع (pay): المبلغ يخرج من صوارد الكوفر ويُسجَّل ديناً على الزبون (موجب = أخضر = لنا عليه)
-               - أخذ (take): العكس — المبلغ يدخل صوارد الكوفر ويُنقص دين الزبون
-               - موسوم بـ empOwner لعزل الموظف (كوفر الموظف منفصل عن سيولة الأدمين) */
+            /* 💵💎 أخذ/دفع — دينار أو ذهب 24
+               - دفع (pay): يخرج من الرصيد/المخزون ويُسجَّل على الزبون (موجب = أخضر = لنا عليه)
+               - أخذ (take): العكس — يدخل الرصيد/المخزون ويُنقص دين الزبون
+               - موسوم بـ empOwner لعزل الموظف */
             const a=Number(d.a)||0;
             const _emp=d.empOwner||null;
-            if(d.dir==='pay'){
-                if(_emp)st.empCoffer[_emp]=(st.empCoffer[_emp]||0)-a;   /* يخرج من كوفر الموظف */
-                else st.B.دينار-=a;                                     /* يخرج من صوارد الكوفر */
-                stUpdDebt(d.c,'دينار',a,_emp);                          /* الزبون يدين لنا (أخضر) */
+            const cur=d.cur||'دينار';
+            if(cur==='ذهب 24'){
+                applyBars();   /* دفع: barsRemove/barUpdates · أخذ: barsAdd (على st.g24) */
+                if(d.dir==='pay')stUpdDebt(d.c,'ذهب 24',a,_emp);    /* الزبون يدين لنا بالذهب (أخضر) */
+                else stUpdDebt(d.c,'ذهب 24',-a,_emp);               /* يُنقص دينه بالذهب */
             }else{
-                if(_emp)st.empCoffer[_emp]=(st.empCoffer[_emp]||0)+a;   /* يدخل كوفر الموظف */
-                else st.B.دينار+=a;                                     /* يدخل صوارد الكوفر */
-                stUpdDebt(d.c,'دينار',-a,_emp);                         /* يُنقص دين الزبون */
+                if(d.dir==='pay'){
+                    if(_emp)st.empCoffer[_emp]=(st.empCoffer[_emp]||0)-a;   /* يخرج من كوفر الموظف */
+                    else st.B.دينار-=a;                                     /* يخرج من صوارد الكوفر */
+                    stUpdDebt(d.c,'دينار',a,_emp);                          /* الزبون يدين لنا (أخضر) */
+                }else{
+                    if(_emp)st.empCoffer[_emp]=(st.empCoffer[_emp]||0)+a;   /* يدخل كوفر الموظف */
+                    else st.B.دينار+=a;                                     /* يدخل صوارد الكوفر */
+                    stUpdDebt(d.c,'دينار',-a,_emp);                         /* يُنقص دين الزبون */
+                }
             }
             break;
         }

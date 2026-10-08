@@ -2369,7 +2369,7 @@ window._laGobalDinar=(emp)=>{
 /* 📜 سجل عمليات الموظف (للأدمين) */
 window._laGobalLog=(emp)=>{
     const myOps=ops.filter(o=>o.empOwner===emp).slice(0,100);
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دفع دينار','بيع سلعة']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دفع دينار','دفع ذهب 24','بيع سلعة']);
     const html=myOps.length?myOps.map(o=>{
         const out=outTypes.has(o.t);
         const unit=o.m==='دينار'?'DZD':'g';
@@ -2573,8 +2573,16 @@ window.openPayTake=(dir)=>{
     ov.innerHTML=`<div class="modal" style="max-width:380px">
         <div class="modal-handle"></div>
         <h3 style="text-align:center;color:${col}">${isPay?'📤 دفع دينار للزبون':'📥 أخذ دينار من الزبون'}</h3>
-        <div style="font-size:.68rem;color:var(--t3);text-align:center;margin-bottom:.6rem">
-            ${isPay?'يخرج من صوارد الكوفر ويُسجّل ديناً على الزبون':'يدخل صوارد الكوفر ويُنقص دين الزبون'}
+        <div style="font-size:.68rem;color:var(--t3);text-align:center;margin-bottom:.5rem">
+            ${isPay?'يخرج من الرصيد ويُسجّل على الزبون (له علينا ← لنا عليه)':'يدخل الرصيد ويُنقص دين الزبون'}
+        </div>
+        <div style="display:flex;gap:.4rem;margin-bottom:.55rem">
+            <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.5rem;border:1.5px solid ${col};border-radius:10px;cursor:pointer;font-weight:800;font-size:.85rem;background:var(--card2)">
+                <input type="radio" name="ptCur" value="دينار" checked onchange="_ptCurChg()"> 💵 دينار
+            </label>
+            <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.5rem;border:1.5px solid var(--pu,#7c3aed);border-radius:10px;cursor:pointer;font-weight:800;font-size:.85rem;background:var(--card2)">
+                <input type="radio" name="ptCur" value="ذهب 24" onchange="_ptCurChg()"> 💎 ذهب 24
+            </label>
         </div>
         <input type="text" id="ptCust" placeholder="👤 اسم الزبون" autocomplete="off"
             style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid ${col};background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:700;text-align:right;margin-bottom:.5rem;box-sizing:border-box">
@@ -2593,21 +2601,61 @@ window.openPayTake=(dir)=>{
     ov.classList.add('active');
     setTimeout(()=>{const e=document.getElementById('ptCust');if(e){e.focus();if(window._acAttach)_acAttach('ptCust');}},300);
 };
+/* تبديل العملة بين الدينار وذهب 24 — يُحدّث نصّ حقل المبلغ */
+window._ptCurChg=()=>{
+    const g=(document.querySelector('input[name="ptCur"]:checked')?.value)==='ذهب 24';
+    const el=document.getElementById('ptAmount');
+    if(el)el.placeholder=g?'💰 الوزن (غ ذهب 24)':'💰 المبلغ (دج)';
+};
 window.savePayTake=(dir)=>{
     const isPay=dir==='pay';
     const c=(document.getElementById('ptCust').value||'').trim();
     const a=readNum('ptAmount');
     const note=(document.getElementById('ptNote').value||'').trim();
+    const cur=(document.querySelector('input[name="ptCur"]:checked')?.value)||'دينار';
     if(!c)return toast('أدخل اسم الزبون','error');
-    if(!a||a<=0)return toast('أدخل المبلغ','error');
+    if(!a||a<=0)return toast(cur==='ذهب 24'?'أدخل الوزن':'أدخل المبلغ','error');
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     const _emp=window._userRole==='employee'?_currentUser:null;
+    const _close=()=>{ document.getElementById('payTakeOverlay').classList.remove('active');
+        setTimeout(()=>{ updAll(); const u=cur==='ذهب 24'?(fmt(a,2)+' غ (24)'):(fmtDin(a)+' دج');
+            toast((isPay?'📤 دُفع ':'📥 أُخذ ')+u,'success'); },150); };
+
+    if(cur==='ذهب 24'){
+        /* ═══ ذهب 24: دفع يُخرج من مخزون 24 · أخذ يُدخله — مع حارس على المخزون ═══ */
+        const mine24=(g24||[]).filter(b=> _emp ? b.empOwner===_emp : !b.empOwner);
+        let extra={};
+        if(isPay){
+            const av=mine24.reduce((s,b)=>s+(b.w||0),0);
+            if(av < a-0.005)return toast(`⚠️ مخزون ذهب 24 غير كافٍ (متاح: ${fmt(av,2)} غ)`,'error');
+            /* اختر السبائك للإخراج (الأحدث أولاً) */
+            const barsRemove=[],barUpdates=[]; let rem=a;
+            for(let i=mine24.length-1;i>=0 && rem>0.005;i--){ const bar=mine24[i];
+                if(bar.w<=rem+0.005){barsRemove.push(bar.id);rem=parseFloat((rem-bar.w).toFixed(4));}
+                else{barUpdates.push({id:bar.id,pool:'24',newW:parseFloat((bar.w-rem).toFixed(4))});rem=0;} }
+            extra={barsRemove,barUpdates};
+            emitEvent('DINAR_MOVE',
+                {dir,c,a,cur:'ذهب 24',empOwner:_emp,...extra},
+                {op:{c,t:'دفع ذهب 24',m:'ذهب 24',a,_ts:Date.now(),dt:nowStr,note:note||undefined,empOwner:_emp||undefined}}
+            );
+        }else{
+            const bid='b'+Date.now()+Math.random().toString(36).slice(2,6);
+            const nb={id:bid,pool:'24',w:a,k:1000}; if(_emp)nb.empOwner=_emp;
+            emitEvent('DINAR_MOVE',
+                {dir,c,a,cur:'ذهب 24',empOwner:_emp,barsAdd:[nb]},
+                {op:{c,t:'أخذ ذهب 24',m:'ذهب 24',a,_ts:Date.now(),dt:nowStr,note:note||undefined,empOwner:_emp||undefined},
+                 bars:{[bid]:{desc:'أخذ ذهب 24 من '+c,dt:nowStr,src:'أخذ'}}}
+            );
+        }
+        return _close();
+    }
+
+    /* ═══ دينار (كما كان) ═══ */
     emitEvent('DINAR_MOVE',
-        {dir,c,a,empOwner:_emp},
+        {dir,c,a,cur:'دينار',empOwner:_emp},
         {op:{c,t:isPay?'دفع دينار':'أخذ دينار',m:'دينار',a,_ts:Date.now(),dt:nowStr,note:note||undefined,empOwner:_emp||undefined}}
     );
-    document.getElementById('payTakeOverlay').classList.remove('active');
-    setTimeout(()=>{ updAll(); toast((isPay?'📤 دُفع ':'📥 أُخذ ')+fmtDin(a)+' دج','success'); },150);
+    _close();
 };
 
 window.openExpense=()=>{
@@ -3303,7 +3351,7 @@ function renderLog(){
     }
     const list=document.getElementById('logList');
     if(!fl.length){list.innerHTML='<div style="text-align:center;padding:2.5rem;color:var(--t3)"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>لا توجد عمليات'+(day?' في هذا اليوم':'')+'</div>';return}
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار','دفع ذهب 24']);
     const colors={'سلف':'#f97316','رافيناج':'#ea580c','مصاريف':'#dc2626','شحن':'#8b5cf6','بيع دبي':'#14b8a6'};
     list.innerHTML=fl.map(o=>{
         const out=outTypes.has(o.t);
@@ -3369,7 +3417,7 @@ window.sendCustomerLog=()=>{
     const custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
     if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','error');
 
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار','دفع ذهب 24']);
     const typeColors={'أعطيت':'#ef4444','استلمت':'#22c55e','شراء':'#3b82f6','بيع':'#ef4444',
         'سلف':'#f97316','رافيناج':'#ea580c','مصاريف':'#dc2626','شحن':'#8b5cf6','تحويل لزبون':'#7c3aed'};
     const user=document.getElementById('currentUserDisplay').textContent||'';
@@ -3503,7 +3551,7 @@ function buildCustomerLogHtml(c,custOps,custView){
     const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
     const now=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
     const user=document.getElementById('currentUserDisplay')?.textContent||'';
-    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار']);
+    const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار','دفع ذهب 24']);
     const tColor={'أعطيت':'#dc2626','استلمت':'#16a34a','شراء':'#2563eb','بيع':'#dc2626',
         'سلف':'#ea580c','رافيناج':'#92400e','مصاريف':'#dc2626','شحن':'#7c3aed','بيع دبي':'#0d9488',
         'بيع دولار':'#dc2626','شراء دولار':'#2563eb','تحويل لزبون':'#7c3aed','تحويل وارد':'#16a34a','دولار وارد':'#16a34a','دولار صادر':'#dc2626'};

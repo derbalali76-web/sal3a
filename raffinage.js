@@ -117,8 +117,6 @@ window.saveSimpleRaf=()=>{
     /* 🔒 الرافيناج يستهلك سبائك المستخدم الحالي فقط (لا سبائك الموظفين) */
     const _me=window._currentUser, _isEmp=window._userRole==='employee';
     const _mineBar=(b)=> _isEmp ? (b.empOwner===_me) : (!b.empOwner);
-    const avail730=g730.filter(_mineBar).reduce((s,b)=>s+(b.w||0),0);
-    if(totalSentW>avail730+0.001)return toast(`⚠️ مخزون 730 غير كافٍ (متاح: ${fmt(avail730,2)} غ)`,'error');
     const feeRate=parseFloat(document.getElementById('rafFee')?.value)||0;
     if(feeRate<=0)return toast('أدخل سعر الأجرة (دج/غ)','error');
     /* خاصية «عثمان»: الأجرة على وزن المكافئ 730 */
@@ -131,44 +129,24 @@ window.saveSimpleRaf=()=>{
     const prevG=getCustBal(c,'ذهب 24');
     const finalDinar=-totalDinar+sawared+prevD;
     const finalGold=totalSentEq24-lanqo+prevG;
-    /* حركة المخزون — مطابقة كل صفّ مع سبيكته:
-       ① صف يطابق سبيكة تماماً (وزن+عيار) → تُحذف كاملة.
-       ② صف وزنه أقلّ من سبيكة بنفس العيار → تُقصّ منها والباقي يبقى بعيارها.
-       ③ السبائك التي لا صفوف لها تبقى سليمة. والفائض غير المطابق يُقتطع احتياطاً بالترتيب. */
+    /* 🔒 حركة المخزون — مطابقة صارمة: كل صفّ يطابق سبيكة بعينها (وزن + عيار) بالضبط.
+       تُحذف السبيكة كاملة فقط · لا قصّ ولا خصم من أي سبيكة أخرى.
+       إن لم توجد سبيكة مطابقة لأي صفّ ⟵ تُرفض الفاتورة كلها. */
     const barsRemove730=[], barUpdates730=[];
     {
         const used=new Set();
-        let rem=totalSentW;
-        const takeFull=bar=>{used.add(bar.id);barsRemove730.push(bar.id);rem=parseFloat((rem-bar.w).toFixed(4));};
-        const takePart=(bar,w)=>{used.add(bar.id);barUpdates730.push({id:bar.id,pool:'730',newW:parseFloat((bar.w-w).toFixed(4))});rem=parseFloat((rem-w).toFixed(4));};
         const kEq=(a,b)=>Math.round(a||730)===Math.round(b||730);
-        const pool=pred=>g730.filter(b=>pred(b)&&!used.has(b.id)&&_mineBar(b));
-        /* ① مطابقة تامة (وزن+عيار) — المختارة أولاً ثم البقية */
-        rows.forEach(r=>{
-            let bar=pool(b=>_rafSentIds.has(b.id)&&Math.abs((b.w||0)-r.w)<0.005&&kEq(b.k,r.k))[0]
-                 ||pool(b=>Math.abs((b.w||0)-r.w)<0.005&&kEq(b.k,r.k))[0];
-            if(bar){r._done=true;takeFull(bar);}
-        });
-        /* ② قصّ جزئي من سبيكة بنفس العيار تسع الوزن — المختارة أولاً */
-        rows.forEach(r=>{
-            if(r._done)return;
-            let bar=pool(b=>_rafSentIds.has(b.id)&&kEq(b.k,r.k)&&(b.w||0)>=r.w-0.005)[0]
-                 ||pool(b=>kEq(b.k,r.k)&&(b.w||0)>=r.w-0.005)[0];
-            if(bar){r._done=true;
-                if(Math.abs(bar.w-r.w)<0.005)takeFull(bar);else takePart(bar,r.w);
+        const wEq=(a,b)=>Math.abs((a||0)-(b||0))<0.005;
+        for(const r of rows){
+            /* السبيكة المختارة المطابقة أولاً، ثم أي سبيكة مطابقة تماماً (وزن+عيار) */
+            const bar=g730.find(b=>!used.has(b.id)&&_mineBar(b)&&_rafSentIds.has(b.id)&&wEq(b.w,r.w)&&kEq(b.k,r.k))
+                   || g730.find(b=>!used.has(b.id)&&_mineBar(b)&&wEq(b.w,r.w)&&kEq(b.k,r.k));
+            if(!bar){
+                return toast(`⚠️ لا توجد سبيكة بوزن ${fmt(r.w,2)} غ وعيار ${Math.round(r.k||730)} في مخزون 705 — لا يُقصّ من سبيكة أخرى`,'error');
             }
-        });
-        /* ③ الفائض غير المطابق (صفوف بلا سبيكة) يُقتطع بالترتيب */
-        const _consume=list=>{
-            for(let i=0;i<list.length && rem>0.001;i++){
-                const bar=list[i];
-                if(used.has(bar.id))continue;
-                if(bar.w<=rem+0.001)takeFull(bar);
-                else{takePart(bar,rem);}
-            }
-        };
-        if(rem>0.001)_consume(g730.filter(b=>_rafSentIds.has(b.id)&&_mineBar(b)));
-        if(rem>0.001)_consume(g730.filter(b=>!_rafSentIds.has(b.id)&&_mineBar(b)));
+            used.add(bar.id);
+            barsRemove730.push(bar.id);
+        }
     }
     const barsAdd24=[];
     const dispBars={};
