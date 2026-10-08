@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=187">
+    <link rel="stylesheet" href="./style.css?v=188">
 </head>
 <body>
 <script>
@@ -1033,13 +1033,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=187"></script>
-<script src="./app.js?v=187"></script>
-<script src="./assistant.js?v=187"></script>
-<script src="./inventory.js?v=187"></script>
-<script src="./invoice.js?v=187"></script>
-<script src="./raffinage.js?v=187"></script>
-<script src="./auth.js?v=187"></script>
+<script src="./firebase.js?v=188"></script>
+<script src="./app.js?v=188"></script>
+<script src="./assistant.js?v=188"></script>
+<script src="./inventory.js?v=188"></script>
+<script src="./invoice.js?v=188"></script>
+<script src="./raffinage.js?v=188"></script>
+<script src="./auth.js?v=188"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
@@ -1176,7 +1176,7 @@
         <input type="password" id="setupPw2" placeholder="🔒 تأكيد كلمة المرور"
             style="width:100%;padding:.7rem 1rem;border-radius:10px;border:1.5px solid rgba(212,175,55,.4);background:rgba(255,255,255,.08);color:#fff;font-size:.95rem;font-family:Tajawal,sans-serif;text-align:center;outline:none;margin-bottom:.7rem"
             onkeydown="if(event.key==='Enter'){setupFirstUser()}">
-        <button class="login-btn" onclick="setupFirstUser()">✅ إنشاء الحساب</button>
+        <button class="login-btn" id="setupBtn" onclick="setupFirstUser()">✅ إنشاء الحساب</button>
     </div>
 </div>
 <script>

@@ -237,6 +237,7 @@ async function doLogin(){
 }
 
 async function setupFirstUser(){
+    if(window._setupBusy)return;   /* منع الضغط المزدوج */
     const uname=(document.getElementById('setupUser').value||'').trim().toLowerCase();
     const pw=document.getElementById('setupPw').value;
     const pw2=document.getElementById('setupPw2').value;
@@ -244,10 +245,19 @@ async function setupFirstUser(){
     if(!/^[a-z0-9_]+$/.test(uname))return toast('أحرف لاتينية وأرقام فقط بدون مسافة','error');
     if(pw.length<4)return toast('كلمة المرور قصيرة (4 أحرف على الأقل)','error');
     if(pw!==pw2)return toast('كلمتا المرور لا تتطابقان','error');
+    /* ⏳ مؤشر تحميل + منع التعلّق */
+    window._setupBusy=true;
+    const _sb=document.getElementById('setupBtn');
+    const _sbTxt=_sb?_sb.textContent:'';
+    if(_sb){_sb.disabled=true;_sb.textContent='⏳ جارٍ إنشاء الحساب...';}
+    const _resetBtn=()=>{ window._setupBusy=false; if(_sb){_sb.disabled=false;_sb.textContent=_sbTxt||'✅ إنشاء الحساب';} };
+    const _fail=(m)=>{ _resetBtn(); toast(m,'error'); };
+    /* حارس زمني: لو تأخّر أكثر من 20 ثانية، حرّر الزر وأبلغ */
+    const _guard=setTimeout(()=>{ if(window._setupBusy){ _resetBtn(); toast('⚠️ تأخّر الاتصال — تأكد من الإنترنت وحاول ثانيةً','error'); } },20000);
 
     /* 🔒 سريال مربوط بمحل آخر؟ */
     if(window._snOwner&&window._snOwner!==uname)
-        return toast(`🚫 هذا الرمز مربوط بمحل «${window._snOwner}» — ادخل بكلمة مروره`,'error');
+        return _fail(`🚫 هذا الرمز مربوط بمحل «${window._snOwner}» — ادخل بكلمة مروره`);
 
     /* الاسم محجوز عالمياً؟ (Firebase Auth يفرض التفرّد) */
     let created=false;
@@ -260,16 +270,16 @@ async function setupFirstUser(){
     }catch(e){
         const code=(e&&e.code)||'';
         if(code==='auth/email-already-in-use')
-            return toast(`🚫 الاسم «${uname}» محجوز — اختر اسماً آخر`,'error');
+            clearTimeout(_guard);return _fail(`🚫 الاسم «${uname}» محجوز — اختر اسماً آخر`);
         if(code==='auth/operation-not-allowed')
-            return toast('⚠️ فعّل Email/Password في Firebase Console ← Authentication','error');
+            clearTimeout(_guard);return _fail('⚠️ فعّل Email/Password في Firebase Console ← Authentication');
         if(code==='auth/weak-password')
-            return toast('كلمة المرور ضعيفة — 6 أحرف على الأقل','error');
+            clearTimeout(_guard);return _fail('كلمة المرور ضعيفة — 6 أحرف على الأقل');
         if(code==='auth/network-request-failed')
-            return toast('لا يوجد اتصال بالإنترنت — حاول ثانيةً','error');
+            clearTimeout(_guard);return _fail('لا يوجد اتصال بالإنترنت — حاول ثانيةً');
         if(code==='auth/invalid-email')
-            return toast('الاسم يحتوي رموزاً غير مقبولة — أحرف لاتينية وأرقام فقط','error');
-        return toast('تعذّر إنشاء الحساب: '+(code||e&&e.message||'خطأ غير معروف'),'error');
+            clearTimeout(_guard);return _fail('الاسم يحتوي رموزاً غير مقبولة — أحرف لاتينية وأرقام فقط');
+        clearTimeout(_guard);return _fail('تعذّر إنشاء الحساب: '+(code||e&&e.message||'خطأ غير معروف'));
     }
 
     /* ⏳ انتظر استقرار جلسة المصادقة — القاعدة تتحقق من auth.token.email،
@@ -285,31 +295,34 @@ async function setupFirstUser(){
     });
     try{ await firebase.auth().currentUser?.getIdToken(true); }catch(_){}
 
+    /* سباق مهلة: الكتابة لا تُرجع وعدها عند ضعف الشبكة — لا نُجمّد الإنشاء بسببها */
+    const _raceTO=(p,ms)=>Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj(new Error('to')),ms))]);
+
     /* 🔐 مطالبة السريال: تُكتب مرة واحدة فقط (القاعدة تمنع تغييرها لاحقاً) */
     if(window._snHashCur&&!window._snOwner){
         try{
-            await firebase.database().ref('goldpro/_serials/'+window._snHashCur+'/owner').set(uname);
+            await _raceTO(firebase.database().ref('goldpro/_serials/'+window._snHashCur+'/owner').set(uname),5000);
             window._snOwner=uname;
             try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:window._snHashCur,owner:uname,name:window._snName||''}));}catch(_){}
         }catch(e){
-            /* سبقه غيره للمطالبة؟ */
-            const r=await _fetchSerial(window._snHashCur);
-            if(r&&r.owner&&r.owner!==uname)return toast(`🚫 هذا الرمز صار مربوطاً بمحل «${r.owner}»`,'error');
-            /* غير ذلك (تأخّر رمز المصادقة) — نتابع، وتُعاد المحاولة بعد الدخول */
+            /* سبقه غيره للمطالبة؟ (بمهلة) */
+            let r=null; try{ r=await _raceTO(_fetchSerial(window._snHashCur),5000); }catch(_){}
+            if(r&&r.owner&&r.owner!==uname){ clearTimeout(_guard); return _fail(`🚫 هذا الرمز صار مربوطاً بمحل «${r.owner}»`); }
+            /* غير ذلك (تأخّر الشبكة) — نتابع، وتُعاد المطالبة بعد الدخول */
             window._snOwner=uname;
             try{localStorage.setItem('gp12_sn_own',JSON.stringify({h:window._snHashCur,owner:uname,name:window._snName||''}));}catch(_){}
         }
     }
 
-    /* سجّل المستخدم في مساحة محله (المالك) — لا في السجل العالمي */
+    /* سجّل المستخدم في مساحة محله — بمهلة كي لا يتعلّق */
     _USERS_PATH=_usersPathFor();
-    try{ await _saveUser(uname,true); }
+    try{ await _raceTO(_saveUser(uname,true),5000); }
     catch(e){ _usersCache[uname]={isAdmin:true}; window._pendingUserWrite=uname; }
     document.getElementById('loginSetupPanel').style.display='none';
     document.getElementById('loginMainPanel').style.display='block';
     document.getElementById('loginUser').value=uname;
     document.getElementById('loginPw').value=pw;
-    toast('✅ تم إنشاء محلك — سيتم الدخول تلقائياً','success');
+    clearTimeout(_guard);window._setupBusy=false;toast('✅ تم إنشاء محلك — سيتم الدخول تلقائياً','success');
     setTimeout(doLogin,600);
 }
 
