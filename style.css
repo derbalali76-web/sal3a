@@ -268,8 +268,8 @@
         .btn.dubai{background:linear-gradient(135deg,var(--te),var(--te2))}
 
         /* ═══ الصفحة الرئيسية تملأ الشاشة بالكامل دون فراغ أو تمرير ═══ */
-        #page-home{flex:1 1 auto;min-height:0;gap:.5rem;display:flex;flex-direction:column}
-        #page-home.active{height:100%}   /* نفس أسلوب صفحة الديون المُجرّب */
+        /* ⚠️ مقيّد بـ .active فقط — وإلّا بقيت الصفحة ظاهرة فوق باقي الصفحات عند التنقّل */
+        #page-home.active{flex:1 1 auto;min-height:0;height:100%;gap:.5rem;display:flex;flex-direction:column}
         #page-home .nw-row{gap:.5rem;flex:0 0 auto}
         #page-home .nw-card{padding:.9rem 1rem;display:flex;flex-direction:column;justify-content:center}
         #page-home .nw-card h3{font-size:.62rem;margin-bottom:.2rem}
