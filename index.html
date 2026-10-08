@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=193">
+    <link rel="stylesheet" href="./style.css?v=195">
 </head>
 <body>
 <script>
@@ -199,16 +199,16 @@
                 </div>
                 <div class="bcard clickable" onclick="openPayTake('pay')">
                     <div class="bcard-accent" style="background:#dc2626"></div>
-                    <div class="ci" style="color:#dc2626"><i class="fas fa-arrow-up-from-bracket"></i></div>
+                    <div class="ci" style="color:#dc2626"><i class="fas fa-arrow-up"></i></div>
                     <span class="cl">دفع</span>
-                    <span class="cv" style="font-size:.9rem">دينار</span>
+                    <span class="cv" style="font-size:.7rem">دينار · ذهب 24</span>
                     <span class="hint">👆 للزبون</span>
                 </div>
                 <div class="bcard clickable" onclick="openPayTake('take')">
                     <div class="bcard-accent" style="background:#16a34a"></div>
-                    <div class="ci" style="color:#16a34a"><i class="fas fa-arrow-down-to-bracket"></i></div>
+                    <div class="ci" style="color:#16a34a"><i class="fas fa-arrow-down"></i></div>
                     <span class="cl">أخذ</span>
-                    <span class="cv" style="font-size:.9rem">دينار</span>
+                    <span class="cv" style="font-size:.7rem">دينار · ذهب 24</span>
                     <span class="hint">👆 من الزبون</span>
                 </div>
                 <div class="bcard clickable" id="liveKassiCard" onclick="openLiveKassi()" style="display:none">
@@ -231,7 +231,7 @@
                 <button class="btn sell" onclick="openDollar('sell')"><i class="fas fa-tag"></i>بيع سلعة</button>
                 <button class="btn exp"  onclick="openExpArchive()">مصاريف</button>
             </div>
-            <button onclick="openTarbah()" style="width:100%;margin-top:.5rem;padding:.7rem;border:1.5px solid #7c3aed;border-radius:12px;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.85rem;cursor:pointer">
+            <button onclick="openTarbah()" style="width:100%;margin-top:.15rem;padding:.5rem;border:1.5px solid #7c3aed;border-radius:12px;background:transparent;color:#7c3aed;font-family:Tajawal,sans-serif;font-weight:900;font-size:.8rem;cursor:pointer">
                 <i class="fas fa-book"></i> ترباح — ملاحظات</button>
         </div>
 
@@ -997,10 +997,6 @@
     </div>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
 
-    <button onclick="document.getElementById('gpdfFile').click()" style="width:100%;padding:.6rem;margin-bottom:.6rem;border-radius:8px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
-        🔓 فتح فاتورة مقفلة (gpdf)
-    </button>
-    <input type="file" id="gpdfFile" accept=".gpdf,application/octet-stream,application/json" style="display:none" onchange="openLockedPdf(event)">
     <button onclick="resetAllData()" style="width:100%;padding:.6rem;border-radius:8px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
         🗑️ مسح جميع البيانات (إعادة ضبط المصنع)
     </button>
@@ -1045,13 +1041,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=193"></script>
-<script src="./app.js?v=193"></script>
-<script src="./assistant.js?v=193"></script>
-<script src="./inventory.js?v=193"></script>
-<script src="./invoice.js?v=193"></script>
-<script src="./raffinage.js?v=193"></script>
-<script src="./auth.js?v=193"></script>
+<script src="./firebase.js?v=195"></script>
+<script src="./app.js?v=195"></script>
+<script src="./assistant.js?v=195"></script>
+<script src="./inventory.js?v=195"></script>
+<script src="./invoice.js?v=195"></script>
+<script src="./raffinage.js?v=195"></script>
+<script src="./auth.js?v=195"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

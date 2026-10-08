@@ -463,9 +463,10 @@ window.delInv=(id)=>{
     if(!confirm('حذف هذه الفاتورة وعكس أثرها على الحسابات؟'))return;
     if(!_voidByInvId('invoice',id)){
         invoices=invoices.filter(x=>x.id!==id);
-        renderArchive();
     }
-    toast('🗑️ تم حذف الفاتورة','info');
+    /* تحديث الأرشيف فوراً بعد الحذف حتى تختفي الفاتورة من القائمة */
+    if(typeof renderArchive==='function')renderArchive();
+    toast('🗑️ تم حذف الفاتورة وعُكِس الأثر','info');
 };
 
 /* ── تعديل فاتورة: تحميلها في النموذج؛ الحفظ يُبطل القديمة ويُنشئ الجديدة فتُعاد الحسابات ── */

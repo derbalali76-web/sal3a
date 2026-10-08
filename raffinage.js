@@ -268,8 +268,9 @@ window.delRaf=(id)=>{
     if(!confirm('حذف هذه الفاتورة وعكس أثرها؟'))return;
     if(!_voidByInvId('rafInvoice',id)){
         rafInvoices=rafInvoices.filter(x=>x.id!==id);
-        renderArchive();
     }
-    toast('🗑️ تم الحذف','info');
+    /* تحديث الأرشيف فوراً بعد الحذف (نجح الإبطال أو لا) حتى تختفي الفاتورة من القائمة */
+    if(typeof renderArchive==='function')renderArchive();
+    toast('🗑️ تم الحذف وعُكِس الأثر','info');
 };
 

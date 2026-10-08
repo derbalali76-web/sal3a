@@ -1520,16 +1520,16 @@ window.delDoll=(id)=>{
     if(!confirm('حذف هذه الفاتورة وعكس أثرها؟'))return;
     if(!_voidByInvId('dollInvoice',id)){
         dollInvoices=dollInvoices.filter(x=>x.id!==id);
-        renderArchive();
     }
-    toast('🗑️ تم الحذف','info');
+    if(typeof renderArchive==='function')renderArchive();
+    toast('🗑️ تم الحذف وعُكِس الأثر','info');
 };
 
 window.delDubai=(id)=>{
     if(!confirm('حذف هذه الفاتورة وعكس أثرها؟'))return;
     if(!_voidByInvId('dubaiInvoice',id)){
         dubaiInvoices=dubaiInvoices.filter(x=>x.id!==id);
-        renderArchive();
     }
-    toast('🗑️ تم الحذف','info');
+    if(typeof renderArchive==='function')renderArchive();
+    toast('🗑️ تم الحذف وعُكِس الأثر','info');
 };

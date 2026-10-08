@@ -267,6 +267,23 @@
         .btn.exp {background:linear-gradient(135deg,var(--or),var(--or2))}
         .btn.dubai{background:linear-gradient(135deg,var(--te),var(--te2))}
 
+        /* ═══ الصفحة الرئيسية مُدمجة — تظهر كاملة دون تمرير ═══ */
+        #page-home{gap:.45rem}
+        #page-home .nw-row{gap:.45rem}
+        #page-home .nw-card{padding:.7rem .8rem}
+        #page-home .nw-card h3{font-size:.58rem;margin-bottom:.12rem}
+        #page-home .nw-val{font-size:clamp(1.05rem,4.4vw,1.7rem);line-height:1.08;text-shadow:0 0 22px rgba(245,158,11,.4)}
+        #page-home .nw-sub{font-size:.54rem;margin-top:.25rem;padding:.22rem .5rem;line-height:1.5}
+        #page-home .gold-sale-card{width:122px;padding:.5rem .45rem;gap:.15rem}
+        #page-home .bgrid{gap:.4rem}
+        #page-home .bcard{padding:.5rem .5rem}
+        #page-home .ci{width:30px;height:30px;font-size:1rem;margin-bottom:.12rem;border-radius:10px}
+        #page-home .cl{font-size:.6rem}
+        #page-home .cv{font-size:1rem;margin-top:.03rem}
+        #page-home .hint{font-size:.46rem;margin-top:.03rem}
+        #page-home .astrip{padding:.4rem;gap:.3rem}
+        #page-home .btn{padding:.45rem .2rem}
+
         /* ─── Table ─── */
         .tbl{background:var(--card);border-radius:var(--rl);border:1px solid var(--border);overflow:hidden;width:100%;box-shadow:var(--sh)}
         .tbl-scroll{max-height:40vh;overflow-y:auto}
