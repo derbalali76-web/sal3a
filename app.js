@@ -2988,6 +2988,44 @@ function _tarbahPersist(){
 window._applyTarbah=(jsonStr)=>{
     try{ const arr=JSON.parse(jsonStr); if(Array.isArray(arr)){ window._tarbahList=arr; try{localStorage.setItem(_tarbahKey(),jsonStr);}catch(e){} _renderTarbahList(); } }catch(e){}
 };
+
+/* ═══════════ 📝 ملاحظات نصّية حرّة (كومنت) — تُحفظ وتُحذف · لا تدخل أي حساب ═══════════ */
+const _tbNotesKey=()=>'free_notes_'+(typeof _SITE!=='undefined'&&_SITE?_SITE+'_':'')+(_currentUser||'_');
+window._tbNotesList=[];
+window._loadTbNotes=()=>{
+    try{ window._tbNotesList=JSON.parse(localStorage.getItem(_tbNotesKey())||'[]')||[]; }catch(e){ window._tbNotesList=[]; }
+    if(typeof _renderTbNotes==='function')_renderTbNotes();
+};
+function _tbNotesPersist(){ try{localStorage.setItem(_tbNotesKey(),JSON.stringify(window._tbNotesList));}catch(e){} }
+window.addTbNote=()=>{
+    const el=document.getElementById('tbNoteText'); if(!el)return;
+    const txt=(el.value||'').trim();
+    if(!txt)return toast('اكتب الملاحظة أولاً','error');
+    const dt=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    window._tbNotesList.unshift({id:'nt'+Date.now()+Math.random().toString(36).slice(2,6),txt,dt});
+    _tbNotesPersist(); _renderTbNotes();
+    el.value=''; el.focus();
+    toast('💾 حُفظت الملاحظة','success');
+};
+window.delTbNote=(id)=>{
+    if(!confirm('حذف هذه الملاحظة؟'))return;
+    window._tbNotesList=(window._tbNotesList||[]).filter(x=>x.id!==id);
+    _tbNotesPersist(); _renderTbNotes();
+};
+function _renderTbNotes(){
+    const box=document.getElementById('tbNotesList'); if(!box)return;
+    const L=window._tbNotesList||[];
+    if(!L.length){ box.innerHTML='<div style="text-align:center;color:var(--t2);font-size:.78rem;padding:.5rem">لا ملاحظات محفوظة</div>'; return; }
+    box.innerHTML=L.map(x=>`
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem">
+            <div style="flex:1;min-width:0;font-size:.85rem;line-height:1.6;color:var(--t);white-space:pre-wrap;word-break:break-word">${String(x.txt).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.15rem;flex-shrink:0">
+                <button onclick="delTbNote('${x.id}')" style="background:transparent;border:none;color:#dc2626;font-size:1.05rem;cursor:pointer;padding:.1rem">🗑</button>
+                <span style="font-size:.58rem;color:var(--t3);white-space:nowrap">${x.dt||''}</span>
+            </div>
+        </div>`).join('');
+}
+window._renderTbNotes=_renderTbNotes;
 let _tbType='buy';
 window._setTbType=(t)=>{
     _tbType=t;
@@ -3005,11 +3043,17 @@ function _ensureTarbahModal(){
     div.innerHTML=`
     <div class="modal-box" style="max-width:420px">
         <div class="modal-header">
-            <h3 style="font-size:.95rem">📒 ترباح — ملاحظات</h3>
+            <h3 style="font-size:.95rem">📝 ملاحظة</h3>
             <button class="close-btn" onclick="closeModal('tarbahModal')">✕</button>
         </div>
-        <div style="padding:.9rem;display:flex;flex-direction:column;gap:.7rem">
-            <div style="font-size:.72rem;color:var(--t2);text-align:center">ملاحظات حرّة فقط — لا تدخل في أي حساب أو رصيد</div>
+        <div style="padding:.9rem;display:flex;flex-direction:column;gap:.6rem">
+            <!-- 📝 ملاحظات نصّية حرّة — تُحفظ وتُحذف، لا تدخل أي حساب -->
+            <textarea id="tbNoteText" placeholder="📝 اكتب ملاحظتك هنا..." rows="3" style="width:100%;padding:.6rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.9rem;box-sizing:border-box;background:var(--card);color:var(--t);resize:vertical"></textarea>
+            <button onclick="addTbNote()" style="width:100%;padding:.55rem;border:none;border-radius:10px;background:#16a34a;color:#fff;font-weight:800;font-size:.88rem;font-family:inherit;cursor:pointer">💾 حفظ الملاحظة</button>
+            <div id="tbNotesList" style="display:flex;flex-direction:column;gap:.4rem;max-height:30vh;overflow-y:auto"></div>
+
+            <div style="border-top:1px dashed var(--border);margin:.2rem 0"></div>
+            <div style="font-size:.7rem;color:var(--t2);text-align:center;font-weight:700">📊 ميزان ترباح <span style="color:var(--t3);font-weight:600">(يدخل في ذهب البيع)</span></div>
             <div style="display:flex;gap:.4rem">
                 <button id="tbBuyBtn" onclick="_setTbType('buy')">🟢 شراء</button>
                 <button id="tbSellBtn" onclick="_setTbType('sell')">🔴 بيع</button>
@@ -3019,8 +3063,8 @@ function _ensureTarbahModal(){
                 <input id="tbWeight" type="text" inputmode="decimal" placeholder="الميزان (غ)" style="padding:.6rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.9rem;box-sizing:border-box;text-align:center;background:var(--card);color:var(--t)">
                 <input id="tbPrice" type="text" inputmode="decimal" placeholder="السعر" style="padding:.6rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.9rem;box-sizing:border-box;text-align:center;background:var(--card);color:var(--t)">
             </div>
-            <button onclick="addTarbah()" style="width:100%;padding:.6rem;border:none;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;font-size:.9rem;font-family:inherit;cursor:pointer">➕ إضافة</button>
-            <div id="tarbahList" style="display:flex;flex-direction:column;gap:.4rem;max-height:42vh;overflow-y:auto"></div>
+            <button onclick="addTarbah()" style="width:100%;padding:.6rem;border:none;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;font-size:.9rem;font-family:inherit;cursor:pointer">➕ إضافة للميزان</button>
+            <div id="tarbahList" style="display:flex;flex-direction:column;gap:.4rem;max-height:32vh;overflow-y:auto"></div>
         </div>
     </div>`;
     document.body.appendChild(div);
@@ -3028,9 +3072,10 @@ function _ensureTarbahModal(){
 window.openTarbah=()=>{
     _ensureTarbahModal();
     _setTbType('buy');
+    if(typeof _loadTbNotes==='function')_loadTbNotes(); else _renderTbNotes();
     _renderTarbahList();
     document.getElementById('tarbahModal').classList.add('active');
-    setTimeout(()=>document.getElementById('tbName')?.focus(),300);
+    setTimeout(()=>document.getElementById('tbNoteText')?.focus(),300);
 };
 window.addTarbah=()=>{
     const g=id=>(document.getElementById(id).value||'').trim();

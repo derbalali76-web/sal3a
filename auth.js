@@ -94,6 +94,7 @@ function _afterLogin(){
     }catch(e){}
     /* حمّل بيانات هذا المستخدم المحليّة (ترباح/حاسبة دبي) بمفتاحه الخاص */
     try{ if(typeof _loadTarbah==='function')_loadTarbah(); }catch(e){}
+    try{ if(typeof _loadTbNotes==='function')_loadTbNotes(); }catch(e){}
     try{ if(typeof _loadDubaiCalc==='function')_loadDubaiCalc(); }catch(e){}
     load();syncBal();updAll();
     invRows=10;initInvTable();
