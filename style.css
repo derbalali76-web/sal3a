@@ -828,19 +828,18 @@
             th{font-size:1rem}td{font-size:1.15rem}.qt{font-size:1.2rem}
         }
 
-        /* 🖥️ فاتورة/رافيناج على الشاشات العريضة (ليس الهاتف): تملأ الارتفاع،
-           الجدول يُمرَّر داخلياً مع تثبيت رأسه، والمجاميع وزر الحفظ يبقيان ظاهرين دون تغطية */
+        /* 🖥️ فاتورة/رافيناج على الشاشات العريضة: تمرير طبيعي للصفحة كما في الهاتف،
+           وزر الحفظ في التدفّق العادي (غير عائم) حتى لا يغطّي المجاميع ويظهر كل شيء بالتمرير */
         @media(min-width:640px){
-            #page-invoice.active,#page-raffinage.active{height:100%;display:flex;flex-direction:column;min-height:0}
-            #page-invoice .inv-tbl-wrap{flex:1 1 auto;min-height:0;overflow:auto}
-            #page-raffinage .raf-tbl-wrap{flex:1 1 auto;min-height:0;overflow:auto}
-            /* تثبيت رأس الجدول أعلى أثناء التمرير */
+            #page-invoice.active,#page-raffinage.active{height:auto;display:block;min-height:0}
+            #page-invoice .inv-tbl-wrap,#page-raffinage .raf-tbl-wrap{overflow-x:auto;overflow-y:visible}
+            /* زر الحفظ لا يطفو على الحاسوب — يبقى بعد المجاميع في ترتيبه الطبيعي */
+            .inv-save-bar{position:static!important;box-shadow:none!important}
+            /* تثبيت رأس الجدول أعلى أثناء تمرير الصفحة */
             #page-invoice .inv-tbl thead th{position:sticky;top:0;z-index:3;background:#0f172a}
             #page-raffinage .raf-tbl thead th{position:sticky;top:0;z-index:3;background:#7f1d1d}
             .dark #page-invoice .inv-tbl thead th{background:#020617}
             .dark #page-raffinage .raf-tbl thead th{background:#450a0a}
-            /* ذيل الرافيناج (منفصل عن الجدول) وزر الحفظ لا يُمرَّران */
-            #page-raffinage .raf-footer{flex:0 0 auto}
         }
 
         /* ══════════════════════════════════════

@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=204">
+    <link rel="stylesheet" href="./style.css?v=205">
 </head>
 <body>
 <script>
@@ -344,7 +344,7 @@
             </div>
             <!-- الأسطر تُضاف تلقائياً بمجرد الكتابة في آخر سطر -->
             <!-- Save + Clear (sticky so always visible) -->
-            <div style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
+            <div class="inv-save-bar" style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
                 <button onclick="resetInvForm()" title="تفريغ الفاتورة"
                     style="flex:0 0 auto;padding:.75rem .9rem;border-radius:10px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-size:1rem;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,.08)">🗑️</button>
                 <button class="bg" style="flex:1;padding:.75rem;border-radius:10px;border:none;font-weight:800;cursor:pointer;font-size:.85rem;font-family:Tajawal,sans-serif;box-shadow:0 -2px 12px rgba(0,0,0,.12)"
@@ -434,7 +434,7 @@
                 </div>
             </div>
             <!-- حفظ + تفريغ -->
-            <div style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
+            <div class="inv-save-bar" style="position:sticky;bottom:0;z-index:8;background:var(--bg);padding:.4rem 0 .6rem;display:flex;gap:.5rem">
                 <button onclick="resetRafForm()" title="تفريغ"
                     style="flex:0 0 auto;padding:.75rem .9rem;border-radius:10px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-size:1rem;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,.08)">🗑️</button>
                 <button onclick="saveSimpleRaf()"
@@ -1041,13 +1041,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=204"></script>
-<script src="./app.js?v=204"></script>
-<script src="./assistant.js?v=204"></script>
-<script src="./inventory.js?v=204"></script>
-<script src="./invoice.js?v=204"></script>
-<script src="./raffinage.js?v=204"></script>
-<script src="./auth.js?v=204"></script>
+<script src="./firebase.js?v=205"></script>
+<script src="./app.js?v=205"></script>
+<script src="./assistant.js?v=205"></script>
+<script src="./inventory.js?v=205"></script>
+<script src="./invoice.js?v=205"></script>
+<script src="./raffinage.js?v=205"></script>
+<script src="./auth.js?v=205"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
