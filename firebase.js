@@ -274,8 +274,20 @@ function _lsLoadEvents(){
 /* ═══════════ PICK BARS (خالص — لا تعديل للحالة) ═══════════ */
 function _pickBarsToRemove(pool,weight){
     const bars=pool==='24'?g24:g730;
-    const result={barsRemove:[],barUpdates:[]};
-    let rem=weight;
+    const result={barsRemove:[],barUpdates:[],short:0};
+    let rem=Math.round((Number(weight)||0)*1000)/1000;
+    if(pool==='730'){
+        /* 🔒 ذهب 705: سبائك كاملة فقط — لا قصّ إطلاقاً.
+           تُؤخذ السبائك التي تَسع الباقي (الأكبر أولاً)، وأي عجز يُعاد في short ليرفضه المُستدعي */
+        const idxs=bars.map((b,i)=>i).sort((x,y)=>(bars[y].w||0)-(bars[x].w||0));
+        for(const i of idxs){
+            if(rem<=0.001)break;
+            const bar=bars[i];
+            if((bar.w||0)<=rem+0.001){ result.barsRemove.push(bar.id); rem=Math.round((rem-(bar.w||0))*1000)/1000; }
+        }
+        result.short=rem>0.001?rem:0;
+        return result;
+    }
     for(let i=bars.length-1;i>=0&&rem>0.001;i--){
         const bar=bars[i];
         if(bar.w<=rem+0.001){
@@ -486,39 +498,37 @@ function _applyEvt(st,evt){
                         stUpdDebt(d.c,'دينار',Number(d.cashiFee.din)||0);
                         st.cashiSoldW-=Number(d.cashiFee.eq)||0;
                         st.cashiSoldDin-=Number(d.cashiFee.din)||0;
+                        /* 🔒 مطابقة صارمة: تُحذف السبيكة بنفس الوزن والعيار بالضبط من سبائك صاحب العملية
+                           — لا قصّ ولا خصم من سبيكة أخرى (يطابق حارس الحفظ) */
+                        const _own=d.empOwner||null;
                         d.cashiFee.items.forEach(it=>{
-                            const k=Number(it.k)||705;
+                            const w=Number(it.w)||0, k=Number(it.k)||0;
                             const pool=(k>=999)?st.g24:st.g730;
-                            const base=(k>=999)?1000:730;
-                            let need=(Number(it.w)||0)*(k/base);
-                            for(let bi=0;bi<pool.length&&need>0.0000005;bi++){
-                                const bar=pool[bi];
-                                const bk=Number(bar.k)||base;
-                                const barEq=(Number(bar.w)||0)*(bk/base);
-                                if(barEq<=need+0.0000005){need=Math.round((need-barEq)*1e6)/1e6;pool.splice(bi,1);bi--;}
-                                else{const takeW=need*base/bk;bar.w=Math.round((bar.w-takeW)*1e6)/1e6;need=0;}
-                            }
+                            const idx=pool.findIndex(b=>(b.empOwner||null)===_own&&Math.abs((b.w||0)-w)<0.005&&Math.round(b.k||0)===Math.round(k));
+                            if(idx>=0)pool.splice(idx,1);
                         });
                     }
                     /* ⚱️ دفع لاكاص عند الشراء: عيار 1000 → يخرج من مخزون 24 · غيره → من مخزون 705
                        الدين دائماً في عمود «ذهب 705» بالمكافئ */
                     if(d.kass&&Array.isArray(d.kass.items)&&d.kass.items.length){
+                        const _ownK=d.empOwner||null;   /* 🔒 يُخصم من سبائك صاحب العملية فقط */
                         d.kass.items.forEach(it=>{
-                            const k=Number(it.k)||705;
-                            const pool=(k>=999)?st.g24:st.g730;
-                            const base=(k>=999)?1000:730;              /* وحدة المكافئ الداخلية للمخزن */
-                            let need=(Number(it.w)||0)*(k/base);
-                            for(let bi=0;bi<pool.length&&need>0.0000005;bi++){
-                                const bar=pool[bi];
-                                const bk=Number(bar.k)||base;
-                                const barEq=(Number(bar.w)||0)*(bk/base);
-                                if(barEq<=need+0.0000005){
-                                    need=Math.round((need-barEq)*1e6)/1e6;
-                                    pool.splice(bi,1); bi--;
-                                }else{
-                                    const takeW=need*base/bk;
-                                    bar.w=Math.round((bar.w-takeW)*1e6)/1e6;
-                                    need=0;
+                            const w=Number(it.w)||0, k=Number(it.k)||0;
+                            if(k<999){
+                                /* 🔒 705: حذف سبيكة مطابقة تماماً بالوزن والعيار — لا قصّ */
+                                const idx=st.g730.findIndex(b=>(b.empOwner||null)===_ownK&&Math.abs((b.w||0)-w)<0.005&&Math.round(b.k||0)===Math.round(k));
+                                if(idx>=0)st.g730.splice(idx,1);
+                            }else{
+                                /* 24: بالمكافئ (قصّ مسموح) */
+                                const pool=st.g24, base=1000;
+                                let need=w*(k/base);
+                                for(let bi=0;bi<pool.length&&need>0.0000005;bi++){
+                                    const bar=pool[bi];
+                                    if((bar.empOwner||null)!==_ownK)continue;
+                                    const bk=Number(bar.k)||base;
+                                    const barEq=(Number(bar.w)||0)*(bk/base);
+                                    if(barEq<=need+0.0000005){need=Math.round((need-barEq)*1e6)/1e6;pool.splice(bi,1);bi--;}
+                                    else{const takeW=need*base/bk;bar.w=Math.round((bar.w-takeW)*1e6)/1e6;need=0;}
                                 }
                             }
                         });

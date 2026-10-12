@@ -1087,6 +1087,8 @@ window.saveGT=()=>{
         if((B[m]||0)<finalAmount-0.001)return toast('⚠️ رصيد غير كافٍ','error');
         if(isG730||isG24){
             const r=_pickBarsToRemove(isG730?'730':'24',a);
+            if(isG730&&r.short>0.001)
+                return toast(`⚠️ لا توجد سبائك 705 كاملة بهذا الوزن — لا قصّ في مخزون 705 (عجز ${fmt(r.short,2)} غ). أعطِ سبائك كاملة.`,'error');
             barsRemove=r.barsRemove;barUpdates=r.barUpdates;
         }
     }else{
@@ -1817,9 +1819,12 @@ window.saveDollar=()=>{
     const cashiCash=_readCashiCash();
     const cashiFee=_readCashiFee();
     if(!items.length&&!rot&&!cash&&!kass.eq&&!cashiCash&&!cashiFee.eq&&!(_lkW>0))return toast('أدخل سطراً مكتملاً واحداً على الأقل','error');
-    /* المتاح بمكافئ 705 من كل مخزن (عيار 1000 يستعمل مخزون 24) */
-    const _av705=()=>(g730||[]).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
-    const _av24 =()=>(g24 ||[]).reduce((s,b)=>s+(b.w||0)*((b.k||1000)/705),0);
+    /* المتاح بمكافئ 705 من كل مخزن (عيار 1000 يستعمل مخزون 24)
+       🔒 يُحسب مخزون المستخدم الحالي فقط — الأدمين لا يَعُدّ سبائك الموظفين والعكس */
+    const _me=window._currentUser, _isEmp=window._userRole==='employee';
+    const _mineBar=(b)=> _isEmp ? (b.empOwner===_me) : (!b.empOwner);
+    const _av705=()=>(g730||[]).filter(_mineBar).reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
+    const _av24 =()=>(g24 ||[]).filter(_mineBar).reduce((s,b)=>s+(b.w||0)*((b.k||1000)/705),0);
     /* يفصل بنود الدفع حسب المخزن المستهدف */
     const _needByPool=(its)=>{
         let n705=0,n24=0;
@@ -1831,13 +1836,20 @@ window.saveDollar=()=>{
     };
     /* الشراء: أخذ الدينار يخرج من السيولة — تحقق من الكفاية */
     if(isBuy&&cash>0&&B.دينار<cash-0.001)return toast('⚠️ السيولة (الدينار) غير كافية لهذا الأخذ','error');
-    /* دفع أجرة بالكاصي عند الشراء: السبيكة تخرج من مخزون 705 — تحقق من الكفاية */
-    if(isBuy&&cashiFee.eq>0){
-        const nd=_needByPool(cashiFee.items);
-        if(nd.n705>_av705()+0.001)
-            return toast(`⚠️ مخزون 705 غير كافٍ لأجرة الكاصي — متاح ${fmt(_av705(),2)} غ (705) والمطلوب ${fmt(nd.n705,2)}`,'error');
-        if(nd.n24>_av24()+0.001)
-            return toast(`⚠️ مخزون 24 غير كافٍ لأجرة الكاصي — متاح ${fmt(_av24(),2)} غ (بمكافئ 705) والمطلوب ${fmt(nd.n24,2)}`,'error');
+    /* 🔒 دفع أجرة بالكاصي عند الشراء: كل سبيكة تُعطى يجب أن توجد في مخزونك بنفس
+       الوزن والعيار بالضبط — لا قصّ ولا خصم من سبيكة أخرى (كحارس الرافيناج) */
+    if(isBuy&&cashiFee.items&&cashiFee.items.length){
+        const _used=new Set();
+        const _wEq=(a,b)=>Math.abs((a||0)-(b||0))<0.005;
+        const _kEq=(a,b)=>Math.round(a||0)===Math.round(b||0);
+        for(const it of cashiFee.items){
+            const w=Number(it.w)||0, k=Number(it.k)||0;
+            const pool=(k>=999)?(g24||[]):(g730||[]);
+            const bar=pool.find(b=>!_used.has(b.id)&&_mineBar(b)&&_wEq(b.w,w)&&_kEq(b.k,k));
+            if(!bar)
+                return toast(`⚠️ أجرة الكاصي: لا توجد سبيكة بوزن ${fmt(w,2)} غ وعيار ${Math.round(k)} في مخزونك — لا يُقصّ من سبيكة أخرى`,'error');
+            _used.add(bar.id);
+        }
     }
     /* الشراء مع روتور: أنت تُرجع الروتور للزبون — يجب أن يكفي مخزون «روتور» */
     if(isBuy&&rot){
@@ -1845,13 +1857,23 @@ window.saveDollar=()=>{
         if(rot.w>_rAvail+0.0005)
             return toast(`⚠️ مخزون «روتور» غير كافٍ لإرجاعه — متاح ${fmt(_rAvail,2)} غ والمطلوب ${fmt(rot.w,2)} غ`,'error');
     }
-    /* الشراء مع لاكاص: السبيكة تخرج من مخزون 705 — يجب أن يكفي المخزون بالمكافئ */
+    /* الشراء مع لاكاص: السبيكة تخرج من المخزون
+       🔒 705 → مطابقة تامة بالوزن والعيار (لا قصّ) · 24 → كفاية بالمكافئ */
     if(isBuy&&kass.eq>0){
-        const nd=_needByPool(kass.items);
-        if(nd.n705>_av705()+0.001)
-            return toast(`⚠️ مخزون 705 غير كافٍ للاكاص — متاح ${fmt(_av705(),2)} غ (705) والمطلوب ${fmt(nd.n705,2)}`,'error');
-        if(nd.n24>_av24()+0.001)
-            return toast(`⚠️ مخزون 24 غير كافٍ للاكاص — متاح ${fmt(_av24(),2)} غ (بمكافئ 705) والمطلوب ${fmt(nd.n24,2)}`,'error');
+        const _usedK=new Set();
+        const _wEqK=(a,b)=>Math.abs((a||0)-(b||0))<0.005;
+        const _kEqK=(a,b)=>Math.round(a||0)===Math.round(b||0);
+        for(const it of (kass.items||[])){
+            const w=Number(it.w)||0, k=Number(it.k)||0;
+            if(k>=999)continue;   /* 24 يُفحص بالمكافئ أدناه */
+            const bar=(g730||[]).find(b=>!_usedK.has(b.id)&&_mineBar(b)&&_wEqK(b.w,w)&&_kEqK(b.k,k));
+            if(!bar)
+                return toast(`⚠️ لاكاص: لا توجد سبيكة بوزن ${fmt(w,2)} غ وعيار ${Math.round(k)} في مخزون 705 — لا يُقصّ من سبيكة أخرى`,'error');
+            _usedK.add(bar.id);
+        }
+        const nd24=_needByPool((kass.items||[]).filter(it=>(Number(it.k)||0)>=999));
+        if(nd24.n24>_av24()+0.001)
+            return toast(`⚠️ مخزون 24 غير كافٍ للاكاص — متاح ${fmt(_av24(),2)} غ (بمكافئ 705) والمطلوب ${fmt(nd24.n24,2)}`,'error');
     }
     const equiv=Math.round(items.reduce((s,it)=>s+it.eq,0)*1000)/1000;
     const fee=items.reduce((s,it)=>s+it.fv,0);
@@ -4219,7 +4241,11 @@ function _applySettle(type){
     if(type==='ذهب 730'&&net>0){const av=g730.reduce((s,b)=>s+(b.w||0),0);if(av<net-0.001){toast(`⚠️ مخزون 730 غير كافٍ للبيع (متاح: ${fmt(av,2)} غ)`,'error');return false;}}
     if(type==='ذهب 24' &&net>0){const av=g24.reduce((s,b)=>s+(b.w||0),0);if(av<net-0.001){toast(`⚠️ مخزون 24 غير كافٍ للبيع (متاح: ${fmt(av,2)} غ)`,'error');return false;}}
     let barsRemove=[],barUpdates=[];
-    if(type==='ذهب 730'&&net>0){const r=_pickBarsToRemove('730',net);barsRemove=r.barsRemove;barUpdates=r.barUpdates;}
+    if(type==='ذهب 730'&&net>0){
+        const r=_pickBarsToRemove('730',net);
+        if(r.short>0.001){toast(`⚠️ لا توجد سبائك 705 كاملة بهذا الوزن — لا قصّ في مخزون 705 (عجز ${fmt(r.short,2)} غ)`,'error');return false;}
+        barsRemove=r.barsRemove;barUpdates=r.barUpdates;
+    }
     if(type==='ذهب 24' &&net>0){const r=_pickBarsToRemove('24',net);barsRemove=r.barsRemove;barUpdates=r.barUpdates;}
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     emitEvent('SETTLE',

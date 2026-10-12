@@ -389,47 +389,55 @@ window.saveInvoice=()=>{
         /* محاكاة إزالة المخزون على نسخة مستنسخة لتفادي التكرار */
         let g730Clone=g730.map(b=>({...b}));
         let g24Clone=g24.map(b=>({...b}));
-        /* 🛡️ الاستهلاك من سبائك نفس العيار فقط — لا نأكل سبيكة عيار آخر */
-        function pickAndRemove(pool,w,k){
-            const bars=pool==='24'?g24Clone:g730Clone;
+        const me=window._currentUser, isEmp=window._userRole==='employee';
+        const _mine=(b)=> isEmp ? (b.empOwner===me) : (!b.empOwner);
+        const _wEq=(a,b)=>Math.abs((Number(a)||0)-(Number(b)||0))<0.005;
+        const _kEq=(a,b)=>Math.round(Number(a)||0)===Math.round(Number(b)||0);
+        /* 🔒 ذهب 705: لا يخرج إلا سبيكة مطابقة بالوزن والعيار بالضبط — لا قصّ إطلاقاً */
+        function pickExact705(w,k){
+            const idx=g730Clone.findIndex(b=>_mine(b)&&_wEq(b.w,w)&&_kEq(b.k,k));
+            if(idx<0)throw new Error(`لا توجد سبيكة بوزن ${fmt(w,2)} غ وعيار ${Math.round(Number(k)||0)} في مخزون 705 — لا يُقصّ من سبيكة أخرى`);
+            barsRemove.push(g730Clone[idx].id); g730Clone.splice(idx,1);
+        }
+        /* مخزون 24 يبقى بالسلوك السابق (قصّ مسموح) — الطلب يخصّ 705 فقط */
+        function pickAndRemove24(w,k){
+            const bars=g24Clone;
             const same=(b)=>Math.abs((Number(b.k)||0)-(Number(k)||0))<0.05;
-            /* 🔒 الأدمين لا يبيع سبائك موظفيه · الموظف لا يبيع إلا سبائكه هو */
-            const me=window._currentUser;
-            const isEmp=window._userRole==='employee';
-            const _mine=(b)=> isEmp ? (b.empOwner===me) : (!b.empOwner);
             let rem=w;
             for(let i=bars.length-1;i>=0&&rem>0.001;i--){
                 if(k!=null&&!same(bars[i]))continue;
-                if(!_mine(bars[i]))continue;   /* تخطَّ سبائك غير المالك */
-                if(bars[i].w<=rem+0.001){
-                    barsRemove.push(bars[i].id);rem-=bars[i].w;bars.splice(i,1);
-                }else{
-                    barUpdates.push({id:bars[i].id,pool,newW:parseFloat((bars[i].w-rem).toFixed(4))});
-                    bars[i].w-=rem;rem=0;
-                }
+                if(!_mine(bars[i]))continue;
+                if(bars[i].w<=rem+0.001){barsRemove.push(bars[i].id);rem-=bars[i].w;bars.splice(i,1);}
+                else{barUpdates.push({id:bars[i].id,pool:'24',newW:parseFloat((bars[i].w-rem).toFixed(4))});bars[i].w-=rem;rem=0;}
             }
-            /* لم تكفِ سبائك المالك؟ نبّه بدل بيع سبائك غيره */
             if(rem>0.001){
                 const _av=bars.filter(b=>(k==null||same(b))&&_mine(b)).reduce((s,b)=>s+b.w,0);
-                throw new Error(`مخزون 705 غير كافٍ من سبائكك — المتاح ${_av.toFixed(2)}غ${isEmp?'':' (سبائك الموظفين لا تُباع من حسابك)'}`);
+                throw new Error(`مخزون 24 غير كافٍ من سبائكك — المتاح ${_av.toFixed(2)}غ`);
             }
         }
         try{
         newItems.forEach(item=>{
+            const is24=item.is1000||item.sbt==='24';
             if(item.sbid){
-                const pool=item.sbt||'730';
-                const bars=pool==='24'?g24Clone:g730Clone;
-                const ex=bars.find(b=>b.id===item.sbid);
-                if(ex){
-                    /* 🔒 منع بيع سبيكة ليست ملك المستخدم الحالي */
-                    const me=window._currentUser, isEmp=window._userRole==='employee';
-                    const mine=isEmp?(ex.empOwner===me):(!ex.empOwner);
-                    if(!mine)throw new Error(isEmp?'لا يمكنك بيع سبيكة ليست في مخزونك':'هذه السبيكة ملك موظف — لا تُباع من حسابك');
-                    if(item.w>=ex.w-0.001){barsRemove.push(ex.id);bars.splice(bars.indexOf(ex),1);}
-                    else{barUpdates.push({id:ex.id,pool,newW:parseFloat((ex.w-item.w).toFixed(4))});ex.w-=item.w;}
+                if(is24){
+                    const ex=g24Clone.find(b=>b.id===item.sbid);
+                    if(ex){
+                        if(!_mine(ex))throw new Error(isEmp?'لا يمكنك بيع سبيكة ليست في مخزونك':'هذه السبيكة ملك موظف — لا تُباع من حسابك');
+                        if(item.w>=ex.w-0.001){barsRemove.push(ex.id);g24Clone.splice(g24Clone.indexOf(ex),1);}
+                        else{barUpdates.push({id:ex.id,pool:'24',newW:parseFloat((ex.w-item.w).toFixed(4))});ex.w-=item.w;}
+                    }
+                }else{
+                    /* 705 بسبيكة مختارة: يجب بيعها كاملة (لا قصّ) */
+                    const ex=g730Clone.find(b=>b.id===item.sbid);
+                    if(ex){
+                        if(!_mine(ex))throw new Error(isEmp?'لا يمكنك بيع سبيكة ليست في مخزونك':'هذه السبيكة ملك موظف — لا تُباع من حسابك');
+                        if(!_wEq(item.w,ex.w))throw new Error(`لا قصّ في مخزون 705 — بِع السبيكة كاملة (${fmt(ex.w,2)} غ عيار ${Math.round(Number(ex.k)||0)})`);
+                        barsRemove.push(ex.id);g730Clone.splice(g730Clone.indexOf(ex),1);
+                    }
                 }
             }else{
-                pickAndRemove(item.is1000?'24':'730',item.w,item.k);
+                if(is24)pickAndRemove24(item.w,item.k);
+                else pickExact705(item.w,item.k);
             }
         });
         }catch(err){ return toast('⚠️ '+(err&&err.message||err),'error'); }
