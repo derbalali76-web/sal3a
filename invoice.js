@@ -360,6 +360,17 @@ window.saveInvoice=()=>{
             if(ex&&it.w>ex.w+0.001&&!willRestore) return toast(`🚫 وزن هذه السبيكة في الكوفر ${fmt(ex.w,2)} غ فقط — لا يكفي`,'error');
         }
     }
+    /* ═══ 🛡️ حارس صوارد الكوفر: فاتورة الشراء تدفع نقداً من الكوفر — لا تسمح بأن يصبح سالباً ═══ */
+    if(t==='buy'){
+        const _tp=newItems.reduce((s,b)=>s+(b.total||0),0);
+        let _akhd=(ps==='full')?_tp:parseInvNum(document.getElementById('invAkhd')?.value);
+        if(!(_akhd>0))_akhd=0;
+        /* المتاح = صوارد الكوفر الحالية + ما ستعيده الفاتورة القديمة (عند التعديل) */
+        let _avail=Number(B.دينار)||0;
+        if(_isEdit){ const _old=invoices.find(x=>x.id===_editingInvId); if(_old&&_old.t==='buy')_avail+=(Number(_old.akhd)||0); }
+        if(_akhd>_avail+0.001)
+            return toast(`⚠️ صوارد الكوفر غير كافية — المتاح ${fmt(_avail,0)} دج والمطلوب دفعه ${fmt(_akhd,0)} دج`,'error');
+    }
     /* نجحت كل الفحوص → أبطِل القديمة الآن (تُستعاد الحسابات/المخزون) ثم تُبنى الجديدة */
     if(_isEdit){ _voidByInvId('invoice',_editingInvId); _editingInvId=null; if(typeof _hideEditBanner==='function')_hideEditBanner(); }
     const tp=newItems.reduce((s,b)=>s+(b.total||0),0);
