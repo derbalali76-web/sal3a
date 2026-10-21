@@ -27,6 +27,7 @@ window._saveSharedVisionKey=(v)=>{ try{return _db.ref('goldpro/_appcfg/visionKey
 /* 🏪 متعدد المستأجرين: إعدادات كل مستخدم (أسماء السلع + زبائن البوابة) في مساحته الخاصة goldpro/{user}/cfg */
 window._cfgRef=null; /* يُضبط عند الدخول من auth.js */
 window._saveGoodsNamesFb=(arr)=>{ try{return window._cfgRef?window._cfgRef.child('goodsNames').set(Array.isArray(arr)?arr:[]):Promise.resolve();}catch(e){return Promise.reject(e);} };
+window._saveGoodsCodesFb=(arr)=>{ try{return window._cfgRef?window._cfgRef.child('goodsCodes').set(Array.isArray(arr)?arr:[]):Promise.resolve();}catch(e){return Promise.reject(e);} };
 /* ── بوابة الزبائن ── */
 window._savePortalCustFb=(obj)=>{ try{return window._cfgRef?window._cfgRef.child('custPhones').set(obj||{}):Promise.resolve();}catch(e){return Promise.reject(e);} };
 /* 🏪 المسار يتضمّن هوية المحل: portal/{هاتف}/{كلمة السر}/{المحل}
@@ -56,6 +57,10 @@ window._attachUserCfg=()=>{
                 if(typeof renderGoodsNamesList==='function')try{renderGoodsNamesList();}catch(e){}
                 if(typeof _refreshGoodsSelects==='function')try{_refreshGoodsSelects();}catch(e){}
             }
+        });
+        window._cfgRef.child('goodsCodes').on('value',sn=>{
+            const v=sn.val();
+            if(Array.isArray(v)&&typeof window._applyGoodsCodes==='function')try{window._applyGoodsCodes(v);}catch(e){}
         });
         window._cfgRef.child('custPhones').on('value',sn=>{
             const v=sn.val();

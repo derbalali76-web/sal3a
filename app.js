@@ -592,7 +592,7 @@ function openSettings(){
     const ap=document.getElementById('adminPanel');
     if(ap)ap.style.display=isAdmin?'block':'none';
     if(isAdmin)renderUsersList();
-    if(!_isEmp){ renderGoodsNamesList(); renderPortalCustList(); }
+    if(!_isEmp){ renderGoodsNamesList(); if(typeof renderGoodsCodesList==='function')renderGoodsCodesList(); renderPortalCustList(); }
     document.getElementById('settingsModal').classList.add('active');
     if(!_isEmp)setTimeout(()=>{const e=document.getElementById('settingGoldPrice');if(e)e.focus();},320);
 }
@@ -1492,6 +1492,111 @@ window._handleGoodsSelect=(el)=>{
 window._refreshGoodsSelects=()=>{
     document.querySelectorAll('#goodsRows select.g-n').forEach(el=>{ const v=el.value; el.innerHTML=_goodsOptions(v); });
 };
+
+/* ═══════════ 🔖 أكواد السلع — مجموعة سلع تُملأ دفعة واحدة عند البيع/الشراء ═══════════ */
+window._goodsCodes=window._goodsCodes||[];
+(function(){ try{ const v=JSON.parse(localStorage.getItem('gp12_goodsCodes')||'[]'); if(Array.isArray(v))window._goodsCodes=v; }catch(e){} })();
+function _persistGoodsCodes(){
+    try{localStorage.setItem('gp12_goodsCodes',JSON.stringify(window._goodsCodes));}catch(e){}
+    if(window._saveGoodsCodesFb)try{window._saveGoodsCodesFb(window._goodsCodes);}catch(e){}
+    renderGoodsCodesList(); _refreshGoodsCodePicks();
+}
+window._applyGoodsCodes=(arr)=>{   /* من مزامنة فايرباز */
+    if(!Array.isArray(arr))return;
+    window._goodsCodes=arr;
+    try{localStorage.setItem('gp12_goodsCodes',JSON.stringify(arr));}catch(e){}
+    renderGoodsCodesList(); _refreshGoodsCodePicks();
+};
+window.renderGoodsCodesList=()=>{
+    const el=document.getElementById('goodsCodesList'); if(!el)return;
+    const L=window._goodsCodes||[];
+    if(!L.length){ el.innerHTML='<small style="color:var(--t3)">لا أكواد بعد — أضف أول كود</small>'; return; }
+    el.innerHTML=L.map((c,i)=>{
+        const names=(c.items||[]).map(it=>it.n+(it.p?` (${fmt(it.p,0)})`:'')).join(' · ');
+        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:.45rem .6rem">
+            <div style="flex:1;min-width:0;font-size:.78rem"><strong style="color:var(--g600)">🔖 ${String(c.code).replace(/</g,'&lt;')}</strong><small style="display:block;color:var(--t2);font-size:.64rem;white-space:normal">${names||'—'}</small></div>
+            <div style="display:flex;gap:.3rem;flex-shrink:0">
+                <button onclick="openCodeEditor(${i})" style="border:none;border-radius:8px;background:rgba(124,58,237,.12);color:#7c3aed;font-weight:800;font-size:.66rem;padding:.35rem .5rem;cursor:pointer;font-family:Tajawal,sans-serif">تعديل</button>
+                <button onclick="delGoodsCode(${i})" style="border:none;border-radius:8px;background:rgba(220,38,38,.12);color:#dc2626;font-weight:800;font-size:.66rem;padding:.35rem .5rem;cursor:pointer;font-family:Tajawal,sans-serif">حذف</button>
+            </div>
+        </div>`;
+    }).join('');
+};
+window.delGoodsCode=(i)=>{
+    const c=window._goodsCodes[i]; if(!c)return;
+    if(!confirm(`حذف الكود «${c.code}»؟`))return;
+    window._goodsCodes.splice(i,1); _persistGoodsCodes();
+};
+window._addCodeRow=(vals)=>{
+    const box=document.getElementById('codeRows'); if(!box||box.children.length>=40)return;
+    const div=document.createElement('div'); div.className='cr-row';
+    div.style.cssText='display:flex;gap:.35rem;align-items:center';
+    div.innerHTML=`
+        <select class="cr-n" style="flex:1.6;margin:0;min-width:0">${_goodsOptions(vals&&vals.n?String(vals.n):'')}</select>
+        <input type="text" inputmode="decimal" class="cr-p" placeholder="💰 أجرة/غ (اختياري)" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:center">
+        <button type="button" class="cr-del" style="width:26px;height:34px;flex-shrink:0;border:none;border-radius:8px;background:rgba(220,38,38,.1);color:#dc2626;font-size:.9rem;cursor:pointer;padding:0">✕</button>`;
+    div.querySelector('.cr-n').addEventListener('change',function(){ _handleGoodsSelect(this); _codeRowsChanged(); });
+    div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{ liveNum(inp); _codeRowsChanged(); }));
+    div.querySelector('.cr-del').addEventListener('click',()=>{ div.remove(); if(!box.children.length)_addCodeRow(); });
+    if(vals&&vals.p!=null)div.querySelector('.cr-p').value=vals.p||'';
+    box.appendChild(div);
+};
+function _codeRowsChanged(){
+    const box=document.getElementById('codeRows'); if(!box)return;
+    const last=box.lastElementChild;
+    const val=(r,c)=>{const e=r&&r.querySelector(c);return e?e.value.trim():'';};
+    if(last&&(val(last,'.cr-n')||val(last,'.cr-p')))_addCodeRow();
+}
+window.openCodeEditor=(idx)=>{
+    window._codeEditIdx=(idx==null?-1:idx);
+    const box=document.getElementById('codeRows'); if(box)box.innerHTML='';
+    const inp=document.getElementById('codeNameInp'); if(inp)inp.value='';
+    const ttl=document.getElementById('codeEditTitle');
+    if(idx!=null&&window._goodsCodes[idx]){
+        const c=window._goodsCodes[idx];
+        if(inp)inp.value=c.code||'';
+        (c.items||[]).forEach(it=>_addCodeRow(it));
+        if(ttl)ttl.textContent='تعديل الكود';
+    }else if(ttl)ttl.textContent='كود جديد';
+    _addCodeRow();
+    document.getElementById('codeEditModal').classList.add('active');
+};
+window.saveGoodsCode=()=>{
+    const code=(document.getElementById('codeNameInp').value||'').trim();
+    if(!code)return toast('أدخل اسم/رمز الكود','error');
+    const items=[];
+    document.querySelectorAll('#codeRows .cr-row').forEach(row=>{
+        const ns=row.querySelector('.cr-n'), ps=row.querySelector('.cr-p');
+        const n=(ns?ns.value:'').trim();
+        const p=ps?(parseFloat((ps.value||'').replace(/\s/g,'').replace(',','.'))||0):0;
+        if(n&&n!=='__new__')items.push({n,...(p>0?{p}:{})});
+    });
+    if(!items.length)return toast('أضف سلعة واحدة على الأقل للكود','error');
+    const idx=(window._codeEditIdx!=null)?window._codeEditIdx:-1;
+    const dup=window._goodsCodes.findIndex((c,j)=>c.code===code&&j!==idx);
+    if(dup>=0)return toast('يوجد كود بنفس الاسم','error');
+    const rec={code,items};
+    if(idx>=0&&window._goodsCodes[idx])window._goodsCodes[idx]=rec; else window._goodsCodes.push(rec);
+    _persistGoodsCodes();
+    closeModal('codeEditModal');
+    toast('✅ حُفظ الكود «'+code+'»');
+};
+/* 🔖 ملء أسطر السلعة من كود (الأسماء + الأجرة المقترحة) — الوزن والعيار يُدخلان يدوياً */
+window.applyGoodsCode=(codeName)=>{
+    const c=(window._goodsCodes||[]).find(x=>x.code===codeName);
+    if(!c||!c.items||!c.items.length)return;
+    const box=document.getElementById('goodsRows'); if(box)box.innerHTML='';
+    const head=document.getElementById('goodsColHead'); if(head)head.remove();
+    c.items.forEach(it=>_addGoodsRow({n:it.n,w:'',k:'',p:it.p!=null?it.p:''}));
+    _addGoodsRow();
+    if(typeof _gRowsChanged==='function')_gRowsChanged();
+    toast('🔖 عُبّئت سلع الكود «'+c.code+'» — أدخل الوزن والعيار');
+};
+window._refreshGoodsCodePicks=()=>{
+    const sel=document.getElementById('goodsCodePick'); if(!sel)return;
+    sel.innerHTML='<option value="">🔖 اختر كوداً لملء الأسطر…</option>'+(window._goodsCodes||[]).map(c=>`<option value="${String(c.code).replace(/"/g,'&quot;')}">🔖 ${c.code}</option>`).join('');
+    sel.style.display=(window._goodsCodes||[]).length?'':'none';
+};
 let _dollPaid=true; /* دائماً خالص في نظام السلعة */
 window.setDollPaid=(v)=>{ _dollPaid=true; }; /* مُحيَّدة — أزرار خالص/غير خالص أُزيلت */
 function _updDollarEq(){} /* مُحيَّدة — لا سعر صرف في نظام السلعة */
@@ -1598,6 +1703,7 @@ window.openDollar=(t,prefillName)=>{
     const _gn=document.getElementById('goodsNote'); if(_gn)_gn.value='';
     document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
     _addGoodsRow();
+    if(typeof _refreshGoodsCodePicks==='function')_refreshGoodsCodePicks();
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
     if(_cl)_cl.textContent=(t==='buy'?'دفع دينار':'أخذ دينار');

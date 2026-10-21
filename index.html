@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=206">
+    <link rel="stylesheet" href="./style.css?v=207">
 </head>
 <body>
 <script>
@@ -697,6 +697,11 @@
         style="font-weight:900;font-size:1.05rem;text-align:center;border:2px solid var(--g500)">
     <input type="text" id="goodsNote" placeholder="📝 ملاحظة (اختياري)"
         style="font-size:.85rem;text-align:right;margin-top:.35rem;border:1.5px solid var(--border)">
+    <!-- 🔖 اختيار كود السلعة لملء الأسطر دفعة واحدة -->
+    <select id="goodsCodePick" onchange="if(this.value){applyGoodsCode(this.value);this.value='';}"
+        style="display:none;font-size:.82rem;text-align:center;margin-top:.35rem;border:1.5px dashed var(--g500);color:var(--g600);font-weight:800;cursor:pointer">
+        <option value="">🔖 اختر كوداً لملء الأسطر…</option>
+    </select>
     <!-- السلع: القسم الأساسي دائم الظهور -->
     <div id="goodsRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:26vh;overflow-y:auto;padding:.1rem 0;margin-top:.4rem"></div>
 
@@ -754,6 +759,20 @@
     <div class="mactions">
         <button class="bgy" onclick="closeModal('dollarModal')">إلغاء</button>
         <button class="bg" onclick="saveDollar()">💾 حفظ</button>
+    </div>
+</div></div>
+
+<!-- 🔖 محرّر كود السلعة -->
+<div class="modal-overlay" id="codeEditModal" style="z-index:200"><div class="modal" style="max-width:600px">
+    <div class="modal-handle"></div>
+    <h3 id="codeEditTitle">كود جديد</h3>
+    <input type="text" id="codeNameInp" placeholder="🔖 اسم/رمز الكود (مثال: طقم ١)"
+        style="font-weight:900;font-size:1.05rem;text-align:center;border:2px solid var(--g500)">
+    <p style="font-size:.68rem;color:var(--t2);margin:.55rem 0 .2rem;text-align:right">اختر أنواع السلعة داخل الكود — والأجرة/غ اختيارية (تُقترح عند البيع):</p>
+    <div id="codeRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:40vh;overflow-y:auto;padding:.1rem 0"></div>
+    <div style="display:flex;gap:.5rem;margin-top:.7rem">
+        <button class="bgy" onclick="closeModal('codeEditModal')" style="flex:1">إلغاء</button>
+        <button onclick="saveGoodsCode()" style="flex:1;border:none;border-radius:10px;background:var(--gr);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer;padding:.6rem">💾 حفظ الكود</button>
     </div>
 </div></div>
 
@@ -970,6 +989,10 @@
             <button onclick="addGoodsName()" style="padding:.4rem .9rem;border:none;border-radius:8px;background:var(--gr);color:#fff;font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">＋</button>
         </div>
         <div id="goodsNamesList" style="display:flex;flex-wrap:wrap;gap:.35rem"></div>
+
+        <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:.9rem 0 .45rem;text-align:right">🔖 أكواد السلع (مجموعة سلع تُملأ دفعة واحدة عند البيع/الشراء)</p>
+        <div id="goodsCodesList" style="display:flex;flex-direction:column;gap:.35rem"></div>
+        <button onclick="openCodeEditor()" style="margin-top:.45rem;padding:.4rem .9rem;border:1.5px solid var(--g500);border-radius:8px;background:transparent;color:var(--g600);font-weight:900;font-family:Tajawal,sans-serif;cursor:pointer">＋ كود جديد</button>
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem;margin:.6rem 0">
         <p style="font-size:.75rem;font-weight:900;color:var(--g500);margin:0 0 .45rem;text-align:right">📱 زبائن البوابة — يدخلون برقم الهاتف ويرون كشف حسابهم</p>
@@ -1041,13 +1064,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=206"></script>
-<script src="./app.js?v=206"></script>
-<script src="./assistant.js?v=206"></script>
-<script src="./inventory.js?v=206"></script>
-<script src="./invoice.js?v=206"></script>
-<script src="./raffinage.js?v=206"></script>
-<script src="./auth.js?v=206"></script>
+<script src="./firebase.js?v=207"></script>
+<script src="./app.js?v=207"></script>
+<script src="./assistant.js?v=207"></script>
+<script src="./inventory.js?v=207"></script>
+<script src="./invoice.js?v=207"></script>
+<script src="./raffinage.js?v=207"></script>
+<script src="./auth.js?v=207"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
