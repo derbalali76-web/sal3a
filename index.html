@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=214">
+    <link rel="stylesheet" href="./style.css?v=215">
 </head>
 <body>
 <script>
@@ -692,9 +692,16 @@
 <!-- سلعة -->
 <div class="modal-overlay" id="dollarModal"><div class="modal" style="max-width:600px;position:relative">
     <div class="modal-handle"></div>
-    <h3 id="dollarTitle" class="dm-title">🛍️ سلعة</h3>
+    <button type="button" onclick="closeModal('dollarModal')" aria-label="إغلاق"
+        style="position:absolute;top:calc(.7rem + env(safe-area-inset-top,0px));left:.9rem;z-index:6;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;font-size:1rem;font-weight:900;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>
+    <h3 id="dollarTitle">سلعة</h3>
+    <div class="dm-lbl">اسم الزبون <span class="req">*</span> <span>👤</span></div>
     <input type="text" id="goodsCustomer" placeholder="👤 اسم الزبون — اشتريت منه"
         style="font-weight:800;text-align:right">
+    <div class="dm-lbl">ملاحظة <span class="opt">(اختياري)</span> <span>📋</span></div>
+    <input type="text" id="goodsNote" placeholder="📝 ملاحظة (اختياري)"
+        style="font-size:.85rem;text-align:right;border:1.5px solid var(--border)">
+    <div class="dm-lbl">السلع — الصنف · الوزن · العيار · الأجرة <span>🏷️</span></div>
     <!-- 🔖 اختيار كود السلعة لملء الأسطر دفعة واحدة -->
     <select id="goodsCodePick" onchange="if(this.value){applyGoodsCode(this.value);this.value='';}"
         style="display:none;font-size:.82rem;text-align:center;margin-top:.35rem;border:1.5px dashed var(--g500);color:var(--g600);font-weight:800;cursor:pointer">
@@ -703,8 +710,19 @@
     <!-- السلع: القسم الأساسي دائم الظهور -->
     <div id="goodsRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:26vh;overflow-y:auto;padding:.1rem 0;margin-top:.4rem"></div>
 
+    <!-- أزرار التبويب: كل قسم يظهر عند الضغط -->
+    <div class="dm-lbl">العملة <span>💱</span></div>
+    <div style="display:flex;gap:.4rem;margin:0 0 .3rem;justify-content:center">
+        <button type="button" class="gtab" data-sec="secRotor"    onclick="_toggleGoodsSec('secRotor',this)"    title="روتور"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid var(--g500);background:transparent;color:var(--g500);cursor:pointer"><i class="fas fa-arrows-rotate dm-ic"></i><span style="font-size:.82rem;font-weight:900">روتور</span></button>
+        <button type="button" class="gtab" data-sec="secCash"     onclick="_toggleGoodsSec('secCash',this)"     title="دينار"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;cursor:pointer"><i class="fas fa-coins dm-ic"></i><span style="font-size:.82rem;font-weight:900">دينار</span></button>
+        <button type="button" class="gtab" data-sec="secKass"     onclick="_toggleGoodsSec('secKass',this)"     title="لاكاص"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0d9488;background:transparent;color:#0d9488;cursor:pointer"><i class="fas fa-money-bill-wave dm-ic"></i><span style="font-size:.82rem;font-weight:900">لاكاص</span></button>
+        <button type="button" class="gtab" data-sec="secCashi"    onclick="_toggleGoodsSec('secCashi',this)"    title="كاصي بالدينار" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #b45309;background:transparent;color:#b45309;cursor:pointer"><i class="fas fa-money-bills dm-ic"></i><span style="font-size:.82rem;font-weight:900">كاصي</span></button>
+        <button type="button" class="gtab" data-sec="secCashiFee" onclick="_toggleGoodsSec('secCashiFee',this)" title="أجرة بالكاصي"  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;cursor:pointer"><i class="fas fa-hand-holding-dollar dm-ic"></i><span style="font-size:.82rem;font-weight:900">أجرة</span></button>
+        <button type="button" class="gtab" id="tabLiveKassi" data-sec="secLiveKassi" onclick="_toggleGoodsSec('secLiveKassi',this)" title="كاصي حي" style="flex:1;display:none;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #ea580c;background:transparent;color:#ea580c;cursor:pointer"><i class="fas fa-fire dm-ic"></i><span style="font-size:.82rem;font-weight:900">كاصي حي</span></button>
+    </div>
+
     <!-- ♻️ روتور -->
-    <div id="secRotor" class="gsec" style="margin-top:.3rem;padding:.5rem;border:1.5px dashed var(--g500);border-radius:9px;background:rgba(212,175,55,.05)">
+    <div id="secRotor" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed var(--g500);border-radius:9px;background:rgba(212,175,55,.05)">
         <span style="display:block;font-weight:900;font-size:.8rem;color:var(--g500);margin-bottom:.3rem">روتور</span>
         <div style="display:flex;gap:.35rem;align-items:center">
             <input type="text" inputmode="decimal" id="rotW" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
@@ -713,17 +731,17 @@
         </div>
     </div>
     <!-- 💵 دينار -->
-    <div id="secCash" class="gsec" style="margin-top:.3rem;padding:.5rem;border:1.5px dashed #0369a1;border-radius:9px;background:rgba(3,105,161,.05)">
+    <div id="secCash" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #0369a1;border-radius:9px;background:rgba(3,105,161,.05)">
         <span id="goodsCashLbl" style="display:block;font-weight:900;font-size:.8rem;color:#0369a1;margin-bottom:.3rem">أخذ دينار</span>
         <input type="text" inputmode="decimal" id="goodsCash" placeholder="💵 المبلغ (دج)" dir="ltr" style="width:100%;margin:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
     </div>
     <!-- ⚱️ لاكاص -->
-    <div id="secKass" class="gsec" style="margin-top:.3rem;padding:.5rem;border:1.5px dashed #0d9488;border-radius:9px;background:rgba(13,148,136,.05)">
+    <div id="secKass" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #0d9488;border-radius:9px;background:rgba(13,148,136,.05)">
         <span id="kassLbl" style="display:block;font-weight:900;font-size:.8rem;color:#0d9488;margin-bottom:.3rem">دفع لاكاص</span>
         <div id="kassRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:22vh;overflow-y:auto"></div>
     </div>
     <!-- 💵 كاصي بالدينار -->
-    <div id="secCashi" class="gsec" style="margin-top:.3rem;padding:.5rem;border:1.5px dashed #b45309;border-radius:9px;background:rgba(180,83,9,.05)">
+    <div id="secCashi" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #b45309;border-radius:9px;background:rgba(180,83,9,.05)">
         <span id="cashiLbl" style="display:block;font-weight:900;font-size:.8rem;color:#b45309;margin-bottom:.3rem">دفع كاصي بالدينار</span>
         <div style="display:flex;gap:.35rem;align-items:center">
             <input type="text" inputmode="decimal" id="cashiAmt" placeholder="💵 المبلغ (دج)" dir="ltr" style="flex:1.2;margin:0;min-width:0;text-align:right" oninput="liveNum(this);_updGoodsTotal()">
@@ -732,15 +750,11 @@
         </div>
     </div>
     <!-- ⚱️ أجرة بالكاصي -->
-    <div id="secCashiFee" class="gsec" style="margin-top:.3rem;padding:.5rem;border:1.5px dashed #7c3aed;border-radius:9px;background:rgba(124,58,237,.05)">
+    <div id="secCashiFee" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #7c3aed;border-radius:9px;background:rgba(124,58,237,.05)">
         <span id="cashiFeeLbl" style="display:block;font-weight:900;font-size:.8rem;color:#7c3aed;margin-bottom:.3rem">دفع أجرة بالكاصي</span>
         <div id="cashiFeeRows" style="display:flex;flex-direction:column;gap:.35rem;max-height:20vh;overflow-y:auto"></div>
     </div>
-    <!-- 🔥 زر إضافة كاصي حي — يظهر في البيع فقط -->
-    <div id="lkToggle" style="margin-top:.5rem">
-        <button type="button" onclick="_toggleLK(this)" style="width:100%;padding:.55rem;border-radius:12px;border:1.5px dashed #ea580c;background:rgba(234,88,12,.05);color:#ea580c;font-weight:800;font-size:.8rem;cursor:pointer;font-family:Tajawal,sans-serif">🔥 إضافة كاصي حي</button>
-    </div>
-    <div id="secLiveKassi" class="gsec" style="margin-top:.3rem;padding:.5rem;border:1.5px dashed #ea580c;border-radius:9px;background:rgba(234,88,12,.05)">
+    <div id="secLiveKassi" class="gsec" style="display:none;margin-top:.3rem;padding:.5rem;border:1.5px dashed #ea580c;border-radius:9px;background:rgba(234,88,12,.05)">
         <span style="display:block;font-weight:900;font-size:.8rem;color:#ea580c;margin-bottom:.3rem">كاصي حي — الوزن الخام الذي أعطاك الزبون</span>
         <input type="text" inputmode="decimal" id="liveKassiW" placeholder="⚖️ وزن الكاصي الحي (غ)" dir="ltr"
             style="width:100%;padding:.5rem .7rem;border-radius:8px;border:1.5px solid #ea580c;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:800;text-align:right;box-sizing:border-box"
@@ -753,8 +767,6 @@
         <span style="font-weight:800;font-size:.78rem;color:var(--t2)">⚙️ معلومات إضافية <span class="opt">(اختياري)</span></span>
     </div>
     <div id="goodsPhotoSec" style="display:none;margin-top:.4rem;padding:.6rem;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
-        <input type="text" id="goodsNote" placeholder="📝 ملاحظة (اختياري)"
-            style="width:100%;font-size:.85rem;text-align:right;border:1.5px solid var(--border);border-radius:11px;padding:.55rem .7rem;background:var(--card);box-sizing:border-box;margin-bottom:.6rem">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
             <span style="font-weight:800;font-size:.74rem;color:var(--t2)">📷 صورة السلعة</span>
             <div style="display:flex;gap:.35rem">
@@ -1076,13 +1088,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=214"></script>
-<script src="./app.js?v=214"></script>
-<script src="./assistant.js?v=214"></script>
-<script src="./inventory.js?v=214"></script>
-<script src="./invoice.js?v=214"></script>
-<script src="./raffinage.js?v=214"></script>
-<script src="./auth.js?v=214"></script>
+<script src="./firebase.js?v=215"></script>
+<script src="./app.js?v=215"></script>
+<script src="./assistant.js?v=215"></script>
+<script src="./inventory.js?v=215"></script>
+<script src="./invoice.js?v=215"></script>
+<script src="./raffinage.js?v=215"></script>
+<script src="./auth.js?v=215"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

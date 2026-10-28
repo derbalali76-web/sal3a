@@ -1069,36 +1069,34 @@ body.cal-locked #loginOverlay{ display:none !important; }
   :root:not([data-theme="light"]) .callock-wk span{ color:#64748b; }
 }
 
-/* ═══════════ 🛍️ نافذة السلعة — طبق الأصل للصورة (بصري فقط) ═══════════ */
+/* ═══════════ 🛍️ نافذة السلعة — طبق الأصل للمخطّط (بصري فقط) ═══════════ */
 #dollarModal .modal{border-radius:22px;max-width:620px}
-/* العنوان: نص ملوّن في الوسط — بدون رأس ملوّن */
-#dollarModal .dm-title{text-align:center;font-size:1.18rem;font-weight:900;color:#c2410c;
-    margin:.1rem 0 .85rem;padding:0;background:none;box-shadow:none;border-radius:0}
+/* رأس أخضر أصغر */
+#dollarModal #dollarTitle{display:flex;align-items:center;justify-content:center;gap:.5rem}
+#dollarModal #dollarTitle .dm-ttl{font-size:.98rem;font-weight:900;line-height:1.12}
+#dollarModal #dollarTitle .dm-sub{font-size:.66rem;font-weight:600;opacity:.92;margin-top:.08rem}
+#dollarModal .dm-cart{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+/* عناوين الحقول: أقصر وأخف */
+#dollarModal .dm-lbl{display:flex;align-items:center;justify-content:flex-end;gap:.3rem;font-size:.74rem;font-weight:800;color:var(--t2);margin:.55rem .15rem .2rem;text-align:right;line-height:1.1}
+#dollarModal .dm-lbl .req{color:#ef4444}
+#dollarModal .dm-lbl .opt{color:var(--t3);font-weight:600;font-size:.68rem}
 /* توحيد الحقول: نفس الحجم والزوايا وحدود أخف وخلفية ناعمة */
 #dollarModal #goodsCustomer,#dollarModal #goodsNote,#dollarModal #goodsCodePick,
 #dollarModal .g-row input,#dollarModal .g-row select,#dollarModal .cf-row input,#dollarModal .ks-row input,
 #dollarModal #rotW,#dollarModal #rotK,#dollarModal #rotP,#dollarModal #goodsCash,
 #dollarModal #cashiAmt,#dollarModal #cashiRate,#dollarModal #liveKassiW{
-    border-radius:12px;border:1.5px solid var(--border);background:var(--card2);
+    border-radius:12px;border:1px solid var(--border);background:var(--card2);
     padding:.6rem .7rem;font-size:.88rem;box-sizing:border-box;
 }
-#dollarModal #goodsCustomer{font-size:.95rem;font-weight:800;margin-top:.1rem}
-#dollarModal .g-row input,#dollarModal .g-row select{padding:.55rem .35rem;font-size:.82rem}
-/* بطاقات الأقسام: عنوان بمحاذاة اليمين وزوايا ناعمة */
+#dollarModal #goodsCustomer{font-size:.95rem;font-weight:800}
+#dollarModal #goodsNote{min-height:2.5rem}
+#dollarModal .g-row input,#dollarModal .g-row select{padding:.5rem .35rem;font-size:.82rem}
+/* شرائح العملة — أخف وأصغر */
+#dollarModal .gtab{border-width:1.5px;border-radius:14px;padding:.45rem .15rem;gap:.2rem;font-family:Tajawal,sans-serif;background:var(--card2)}
+#dollarModal .gtab .dm-ic{font-size:1.05rem;line-height:1}
+#dollarModal .gtab span:last-child{font-size:.66rem;font-weight:900}
+/* بطاقات الأقسام */
 #dollarModal .gsec{border-radius:14px}
-#dollarModal .gsec>span{text-align:right;font-size:.82rem}
-/* ⬇️ إظهار الأقسام حسب نوع النافذة (بدل أزرار التبويب) */
-#dollarModal .gsec{display:none}
-#dollarModal #lkToggle{display:none}
-#dollarModal.m-buy  #secRotor{display:block}
-#dollarModal.m-sell #secRotor,
-#dollarModal.m-sell #secCash,
-#dollarModal.m-sell #secKass,
-#dollarModal.m-sell #secCashi,
-#dollarModal.m-sell #secCashiFee{display:block}
-#dollarModal.m-sell #lkToggle{display:block}
-#dollarModal.show-lk #secLiveKassi{display:block}
-#dollarModal.show-lk #lkToggle{display:none}
 /* أزرار الأسفل: أنعم */
 #dollarModal .mactions{gap:.55rem;margin-top:.8rem}
 #dollarModal .mactions button{padding:.8rem;border-radius:14px;font-size:.92rem;font-weight:900;display:flex;align-items:center;justify-content:center;gap:.4rem}
