@@ -1069,30 +1069,36 @@ body.cal-locked #loginOverlay{ display:none !important; }
   :root:not([data-theme="light"]) .callock-wk span{ color:#64748b; }
 }
 
-/* ═══════════ 🛍️ نافذة السلعة — مظهر مطابق للمخطّط (بصري فقط · العناوين محفوظة) ═══════════ */
-#dollarModal .modal{border-radius:24px;max-width:620px}
-#dollarModal #dollarTitle{display:flex;align-items:center;justify-content:center;gap:.6rem}
-#dollarModal #dollarTitle .dm-ttl{font-size:1.1rem;font-weight:900;line-height:1.15}
-#dollarModal #dollarTitle .dm-sub{font-size:.72rem;font-weight:600;opacity:.92;margin-top:.12rem}
-#dollarModal .dm-cart{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:1.35rem;flex-shrink:0}
-/* عناوين الحقول فوق كل خانة */
-#dollarModal .dm-lbl{display:flex;align-items:center;justify-content:flex-end;gap:.35rem;font-size:.8rem;font-weight:900;color:var(--t);margin:.7rem .15rem .28rem;text-align:right}
-#dollarModal .dm-lbl .req{color:#ef4444;font-weight:900}
-#dollarModal .dm-lbl .opt{color:var(--t3);font-weight:600;font-size:.72rem}
-/* الخانات: زوايا أنعم */
+/* ═══════════ 🛍️ نافذة السلعة — طبق الأصل للمخطّط (بصري فقط) ═══════════ */
+#dollarModal .modal{border-radius:22px;max-width:620px}
+/* رأس أخضر أصغر */
+#dollarModal #dollarTitle{display:flex;align-items:center;justify-content:center;gap:.5rem}
+#dollarModal #dollarTitle .dm-ttl{font-size:.98rem;font-weight:900;line-height:1.12}
+#dollarModal #dollarTitle .dm-sub{font-size:.66rem;font-weight:600;opacity:.92;margin-top:.08rem}
+#dollarModal .dm-cart{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+/* عناوين الحقول: أقصر وأخف */
+#dollarModal .dm-lbl{display:flex;align-items:center;justify-content:flex-end;gap:.3rem;font-size:.74rem;font-weight:800;color:var(--t2);margin:.55rem .15rem .2rem;text-align:right;line-height:1.1}
+#dollarModal .dm-lbl .req{color:#ef4444}
+#dollarModal .dm-lbl .opt{color:var(--t3);font-weight:600;font-size:.68rem}
+/* توحيد الحقول: نفس الحجم والزوايا وحدود أخف وخلفية ناعمة */
 #dollarModal #goodsCustomer,#dollarModal #goodsNote,#dollarModal #goodsCodePick,
 #dollarModal .g-row input,#dollarModal .g-row select,#dollarModal .cf-row input,#dollarModal .ks-row input,
 #dollarModal #rotW,#dollarModal #rotK,#dollarModal #rotP,#dollarModal #goodsCash,
-#dollarModal #cashiAmt,#dollarModal #cashiRate,#dollarModal #liveKassiW{ border-radius:13px }
-#dollarModal #goodsCustomer{ border-radius:15px }
-/* شرائح العملة — صغيرة مع أيقونة فيكتور (FA) فوق النص */
-#dollarModal .gtab{border-width:1.5px;border-radius:12px;padding:.42rem .15rem;gap:.2rem;font-family:Tajawal,sans-serif;background:var(--card2)}
+#dollarModal #cashiAmt,#dollarModal #cashiRate,#dollarModal #liveKassiW{
+    border-radius:12px;border:1px solid var(--border);background:var(--card2);
+    padding:.6rem .7rem;font-size:.88rem;box-sizing:border-box;
+}
+#dollarModal #goodsCustomer{font-size:.95rem;font-weight:800}
+#dollarModal #goodsNote{min-height:2.5rem}
+#dollarModal .g-row input,#dollarModal .g-row select{padding:.5rem .35rem;font-size:.82rem}
+/* شرائح العملة — أخف وأصغر */
+#dollarModal .gtab{border-width:1.5px;border-radius:14px;padding:.45rem .15rem;gap:.2rem;font-family:Tajawal,sans-serif;background:var(--card2)}
 #dollarModal .gtab .dm-ic{font-size:1.05rem;line-height:1}
 #dollarModal .gtab span:last-child{font-size:.66rem;font-weight:900}
-/* بطاقات الأقسام القابلة للطي */
-#dollarModal .gsec{border-radius:16px}
-/* أزرار الأسفل كبيرة ومستديرة */
-#dollarModal .mactions{gap:.6rem;margin-top:.9rem}
-#dollarModal .mactions button{padding:.9rem;border-radius:16px;font-size:.98rem;font-weight:900;display:flex;align-items:center;justify-content:center;gap:.4rem}
+/* بطاقات الأقسام */
+#dollarModal .gsec{border-radius:14px}
+/* أزرار الأسفل: أنعم */
+#dollarModal .mactions{gap:.55rem;margin-top:.8rem}
+#dollarModal .mactions button{padding:.8rem;border-radius:14px;font-size:.92rem;font-weight:900;display:flex;align-items:center;justify-content:center;gap:.4rem}
 #dollarModal .mactions .bg{background:linear-gradient(135deg,#16a34a,#15803d);flex:2}
 #dollarModal .mactions .bgy{flex:1}

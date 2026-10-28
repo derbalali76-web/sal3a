@@ -1633,6 +1633,13 @@ window._onGoodsPhoto=(input)=>{
     input.value='';
 };
 window._clearGoodsPhoto=()=>{ window._stagedGoodsImg=null; _renderGoodsPhotoPreview(); };
+/* طيّ/فتح قسم «معلومات إضافية» */
+window._toggleMoreInfo=()=>{
+    const sec=document.getElementById('goodsPhotoSec'); const chev=document.getElementById('moreInfoChev');
+    if(!sec)return; const open=sec.style.display==='none';
+    sec.style.display=open?'':'none';
+    if(chev)chev.style.transform=open?'rotate(180deg)':'';
+};
 function _renderGoodsPhotoPreview(){
     const box=document.getElementById('goodsPhotoPreview'); if(!box)return;
     if(window._stagedGoodsImg){
@@ -1754,7 +1761,7 @@ window.openDollar=(t,prefillName)=>{
     const _grad=t==='buy'?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)';
     const _sub=t==='buy'?'أدخل معلومات السلعة الجديدة':'بيع سلعة من المخزون';
     _title.innerHTML='<span class="dm-cart">'+(t==='buy'?'🛒':'🏷️')+'</span><div><div class="dm-ttl">'+(t==='buy'?'شراء سلعة':'بيع سلعة')+'</div><div class="dm-sub">'+_sub+'</div></div>';
-    _title.style.cssText='margin:-1rem -1rem .7rem;padding:.9rem 1rem;padding-top:calc(.9rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:24px 24px 0 0;box-shadow:0 2px 12px rgba(0,0,0,.18)';
+    _title.style.cssText='margin:-1rem -1rem .6rem;padding:.6rem 1rem;padding-top:calc(.6rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:22px 22px 0 0;box-shadow:0 2px 10px rgba(0,0,0,.14)';
     const _gc=document.getElementById('goodsCustomer');
     _gc.value=prefillName||'';
     _gc.placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
@@ -1767,9 +1774,11 @@ window.openDollar=(t,prefillName)=>{
     document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
     _addGoodsRow();
     if(typeof _refreshGoodsCodePicks==='function')_refreshGoodsCodePicks();
-    /* 📷 صورة السلعة: تظهر في الشراء والبيع */
+    /* 📷 صورة السلعة: قسم «معلومات إضافية» مطويّ افتراضياً في الشراء والبيع */
     window._stagedGoodsImg=null; if(typeof _renderGoodsPhotoPreview==='function')_renderGoodsPhotoPreview();
-    const _ps=document.getElementById('goodsPhotoSec'); if(_ps)_ps.style.display='';
+    const _ps=document.getElementById('goodsPhotoSec'); if(_ps)_ps.style.display='none';
+    const _chev=document.getElementById('moreInfoChev'); if(_chev)_chev.style.transform='';
+    const _mib=document.getElementById('moreInfoBar'); if(_mib)_mib.style.display='';
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
     if(_cl)_cl.textContent=(t==='buy'?'دفع دينار':'أخذ دينار');
@@ -1799,12 +1808,12 @@ function _addGoodsRow(vals){
     if(!box.children.length && !document.getElementById('goodsColHead')){
         const head=document.createElement('div');
         head.id='goodsColHead';
-        head.style.cssText='display:flex;gap:.35rem;padding:0 .1rem .15rem;font-size:.56rem;font-weight:800;color:var(--t3)';
+        head.style.cssText='display:flex;gap:.4rem;padding:0 .15rem .2rem;font-size:.62rem;font-weight:800;color:var(--t2)';
         head.innerHTML=`
-            <span style="flex:1.4;text-align:center">الصنف</span>
-            <span style="flex:1;text-align:center">الوزن</span>
-            <span style="flex:.85;text-align:center">العيار</span>
-            <span style="flex:1.1;text-align:center">الأجرة/غ</span>
+            <span style="flex:1.4;text-align:center">🏷️ السلعة</span>
+            <span style="flex:1;text-align:center">⚖️ الوزن (غ)</span>
+            <span style="flex:.85;text-align:center">✨ العيار</span>
+            <span style="flex:1.1;text-align:center">🪙 الأجرة</span>
             <span style="width:26px"></span>`;
         box.parentNode.insertBefore(head,box);
     }

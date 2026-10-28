@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=212">
+    <link rel="stylesheet" href="./style.css?v=213">
 </head>
 <body>
 <script>
@@ -696,8 +696,8 @@
         style="position:absolute;top:calc(.7rem + env(safe-area-inset-top,0px));left:.9rem;z-index:6;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;font-size:1rem;font-weight:900;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>
     <h3 id="dollarTitle">سلعة</h3>
     <div class="dm-lbl">اسم الزبون <span class="req">*</span> <span>👤</span></div>
-    <input type="text" id="goodsCustomer" placeholder="👤 اسم الزبون"
-        style="font-weight:900;font-size:1.05rem;text-align:center;border:2px solid var(--g500)">
+    <input type="text" id="goodsCustomer" placeholder="👤 اسم الزبون — اشتريت منه"
+        style="font-weight:800;text-align:right">
     <div class="dm-lbl">ملاحظة <span class="opt">(اختياري)</span> <span>📋</span></div>
     <input type="text" id="goodsNote" placeholder="📝 ملاحظة (اختياري)"
         style="font-size:.85rem;text-align:right;border:1.5px solid var(--border)">
@@ -761,9 +761,12 @@
             oninput="liveNum(this)">
         <div style="font-size:.62rem;color:var(--t3);margin-top:.35rem;line-height:1.5">يُسجّل مؤقتاً في دين الزبون كوزن 705، ويدخل مخزون الكاصي الحي. عند تذويبه يُصحَّح الحساب حسب عياره الحقيقي.</div>
     </div>
-    <!-- ⚙️ معلومات إضافية — صورة السلعة -->
-    <div class="dm-lbl">معلومات إضافية <span class="opt">(اختياري)</span> <span>⚙️</span></div>
-    <div id="goodsPhotoSec" style="display:none;padding:.6rem;border:1.5px solid var(--border);border-radius:14px;background:var(--card2)">
+    <!-- ⚙️ معلومات إضافية — قابلة للطيّ -->
+    <div id="moreInfoBar" onclick="_toggleMoreInfo()" style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.55rem;padding:.6rem .7rem;border:1px solid var(--border);border-radius:12px;background:var(--card2);cursor:pointer">
+        <span id="moreInfoChev" style="color:var(--t3);font-size:.9rem;transition:transform .2s">⌄</span>
+        <span style="font-weight:800;font-size:.78rem;color:var(--t2)">⚙️ معلومات إضافية <span class="opt">(اختياري)</span></span>
+    </div>
+    <div id="goodsPhotoSec" style="display:none;margin-top:.4rem;padding:.6rem;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
             <span style="font-weight:800;font-size:.74rem;color:var(--t2)">📷 صورة السلعة</span>
             <div style="display:flex;gap:.35rem">
@@ -779,7 +782,7 @@
     <div id="goodsTotal" style="font-weight:900;margin-top:.6rem;padding:.6rem .7rem;border-radius:12px;background:linear-gradient(135deg,rgba(212,175,55,.14),rgba(212,175,55,.06));border:1.5px solid var(--g500);font-size:.82rem;text-align:center;color:var(--t)">المجموع: 0 غ · مكافئ 705: 0 غ · الأجرة: 0 دج</div>
     <div class="mactions">
         <button class="bgy" onclick="closeModal('dollarModal')">✕ إلغاء</button>
-        <button class="bg" onclick="saveDollar()">💾 حفظ السلعة</button>
+        <button class="bg" onclick="saveDollar()">💾 حفظ</button>
     </div>
 </div></div>
 
@@ -1085,13 +1088,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=212"></script>
-<script src="./app.js?v=212"></script>
-<script src="./assistant.js?v=212"></script>
-<script src="./inventory.js?v=212"></script>
-<script src="./invoice.js?v=212"></script>
-<script src="./raffinage.js?v=212"></script>
-<script src="./auth.js?v=212"></script>
+<script src="./firebase.js?v=213"></script>
+<script src="./app.js?v=213"></script>
+<script src="./assistant.js?v=213"></script>
+<script src="./inventory.js?v=213"></script>
+<script src="./invoice.js?v=213"></script>
+<script src="./raffinage.js?v=213"></script>
+<script src="./auth.js?v=213"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
