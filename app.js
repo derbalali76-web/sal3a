@@ -1470,7 +1470,7 @@ window.renderGoodsNamesList=()=>{
         :'<small style="color:var(--t3)">لا توجد أسماء بعد — أضف أول سلعة</small>';
 };
 function _goodsOptions(sel){
-    let opts=`<option value="">السلعة…</option>`+window._goodsNames.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
+    let opts=`<option value="">🛍️ السلعة…</option>`+window._goodsNames.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
     if(sel&&!window._goodsNames.includes(sel))opts+=`<option value="${sel}" selected>${sel}</option>`;
     opts+=`<option value="__new__">＋ اسم جديد…</option>`;
     return opts;
@@ -1683,8 +1683,15 @@ window._toggleGoodsSec=(secId,btn)=>{
     }
 };
 window._resetGoodsSecs=()=>{
-    ['secRotor','secCash','secKass','secCashi','secCashiFee','secLiveKassi'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
-    document.querySelectorAll('.gtab').forEach(b=>{const sec=b.getAttribute('data-sec');const c=_GTAB_COLORS[sec]||'#d4af37';b.style.background='transparent';b.style.color=c;});
+    /* امسح أي display مضمّن حتى تتحكّم CSS (m-buy/m-sell) بالإظهار */
+    ['secRotor','secCash','secKass','secCashi','secCashiFee','secLiveKassi'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
+    const dm=document.getElementById('dollarModal'); if(dm)dm.classList.remove('show-lk');
+};
+/* 🔥 إظهار قسم «كاصي حي» عند الطلب (بيع فقط) */
+window._toggleLK=(btn)=>{
+    const dm=document.getElementById('dollarModal'); if(!dm)return;
+    dm.classList.add('show-lk');
+    if(btn&&btn.parentNode)btn.parentNode.style.display='none';
 };
 /* 🪪 بطاقة الزبون الاحترافية عند الضغط على اسمه في الدفتر */
 window.openGoodsFor=(name)=>{
@@ -1757,18 +1764,20 @@ window.openGoodsFor=(name)=>{
 };
 window.openDollar=(t,prefillName)=>{
     const _title=document.getElementById('dollarTitle');
-    /* رأس ملوّن مع أيقونة وعنوان فرعي — أخضر للشراء · أحمر للبيع */
-    const _grad=t==='buy'?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)';
-    const _sub=t==='buy'?'أدخل معلومات السلعة الجديدة':'بيع سلعة من المخزون';
-    _title.innerHTML='<span class="dm-cart">'+(t==='buy'?'🛒':'🏷️')+'</span><div><div class="dm-ttl">'+(t==='buy'?'شراء سلعة':'بيع سلعة')+'</div><div class="dm-sub">'+_sub+'</div></div>';
-    _title.style.cssText='margin:-1rem -1rem .6rem;padding:.6rem 1rem;padding-top:calc(.6rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:22px 22px 0 0;box-shadow:0 2px 10px rgba(0,0,0,.14)';
+    /* عنوان نظيف في الوسط بدون رأس ملوّن — طبق الأصل للصورة */
+    _title.style.cssText='';
+    _title.className='dm-title';
+    _title.textContent=(t==='buy'?'🛍️ شراء سلعة':'🛍️ بيع سلعة');
+    /* نوع النافذة يتحكّم بإظهار الأقسام عبر CSS (m-buy / m-sell) */
+    const _dm=document.getElementById('dollarModal');
+    _dm.classList.remove('m-buy','m-sell','show-lk');
+    _dm.classList.add(t==='buy'?'m-buy':'m-sell');
     const _gc=document.getElementById('goodsCustomer');
     _gc.value=prefillName||'';
     _gc.placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
-    _gc.style.borderColor=t==='buy'?'#16a34a':'#dc2626';
-    /* 🔥 كاصي حي: يظهر عند البيع فقط (الزبون يعطيني خاماً) */
-    const _lkTab=document.getElementById('tabLiveKassi');
-    if(_lkTab)_lkTab.style.display=(t==='sell')?'flex':'none';
+    _gc.style.borderColor='';
+    /* 🔥 كاصي حي: زر إضافته يظهر عند البيع فقط (عبر CSS) */
+    const _lkt=document.getElementById('lkToggle'); if(_lkt)_lkt.style.display='';
     const _lkW=document.getElementById('liveKassiW'); if(_lkW)_lkW.value='';
     const _gn=document.getElementById('goodsNote'); if(_gn)_gn.value='';
     document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
@@ -1804,27 +1813,14 @@ window.openDollar=(t,prefillName)=>{
 function _addGoodsRow(vals){
     const box=document.getElementById('goodsRows');
     if(!box||box.children.length>=30)return;
-    /* عناوين الأعمدة مرة واحدة في الأعلى */
-    if(!box.children.length && !document.getElementById('goodsColHead')){
-        const head=document.createElement('div');
-        head.id='goodsColHead';
-        head.style.cssText='display:flex;gap:.4rem;padding:0 .15rem .2rem;font-size:.62rem;font-weight:800;color:var(--t2)';
-        head.innerHTML=`
-            <span style="flex:1.4;text-align:center">🏷️ السلعة</span>
-            <span style="flex:1;text-align:center">⚖️ الوزن (غ)</span>
-            <span style="flex:.85;text-align:center">✨ العيار</span>
-            <span style="flex:1.1;text-align:center">🪙 الأجرة</span>
-            <span style="width:26px"></span>`;
-        box.parentNode.insertBefore(head,box);
-    }
     const div=document.createElement('div');
     div.className='g-row';
     div.style.cssText='display:flex;gap:.35rem;align-items:center';
     div.innerHTML=`
         <select class="g-n" style="flex:1.4;margin:0;min-width:0">${_goodsOptions(vals&&vals.n?String(vals.n):'')}</select>
-        <input type="text" inputmode="decimal" class="g-w" placeholder="الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:center">
-        <input type="text" inputmode="decimal" class="g-k" placeholder="العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:center">
-        <input type="text" inputmode="decimal" class="g-p" placeholder="الأجرة" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-w" placeholder="⚖️ الوزن" dir="ltr" style="flex:1;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-k" placeholder="🏷️ العيار" dir="ltr" style="flex:.85;margin:0;min-width:0;text-align:center">
+        <input type="text" inputmode="decimal" class="g-p" placeholder="💰 الأجرة/غ" dir="ltr" style="flex:1.1;margin:0;min-width:0;text-align:center">
         <button type="button" class="g-del" style="width:26px;height:34px;flex-shrink:0;border:none;border-radius:8px;background:rgba(220,38,38,.1);color:#dc2626;font-size:.9rem;cursor:pointer;padding:0" title="حذف السطر">✕</button>`;
     div.querySelector('select.g-n').addEventListener('change',function(){_handleGoodsSelect(this);_gRowsChanged();});
     div.querySelectorAll('input').forEach(inp=>{
