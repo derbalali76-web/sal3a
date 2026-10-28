@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=216">
+    <link rel="stylesheet" href="./style.css?v=217">
 </head>
 <body>
 <script>
@@ -701,7 +701,6 @@
     <div class="dm-lbl">ملاحظة <span class="opt">(اختياري)</span> <span>📋</span></div>
     <input type="text" id="goodsNote" placeholder="📝 ملاحظة (اختياري)"
         style="font-size:.85rem;text-align:right;border:1.5px solid var(--border)">
-    <div class="dm-lbl">السلع — الصنف · الوزن · العيار · الأجرة <span>🏷️</span></div>
     <!-- 🔖 اختيار كود السلعة لملء الأسطر دفعة واحدة -->
     <select id="goodsCodePick" onchange="if(this.value){applyGoodsCode(this.value);this.value='';}"
         style="display:none;font-size:.82rem;text-align:center;margin-top:.35rem;border:1.5px dashed var(--g500);color:var(--g600);font-weight:800;cursor:pointer">
@@ -711,7 +710,7 @@
     <div id="goodsRows" style="display:flex;flex-direction:column;gap:.4rem;max-height:26vh;overflow-y:auto;padding:.1rem 0;margin-top:.4rem"></div>
 
     <!-- أزرار التبويب: كل قسم يظهر عند الضغط -->
-    <div style="display:flex;gap:.4rem;margin:.3rem 0 .3rem;justify-content:center">
+    <div id="goodsTabs" style="display:flex;gap:.4rem;margin:.3rem 0 .3rem;justify-content:center">
         <button type="button" class="gtab" data-sec="secRotor"    onclick="_toggleGoodsSec('secRotor',this)"    title="روتور"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid var(--g500);background:transparent;color:var(--g500);cursor:pointer"><i class="fas fa-arrows-rotate dm-ic"></i><span style="font-size:.82rem;font-weight:900">روتور</span></button>
         <button type="button" class="gtab" data-sec="secCash"     onclick="_toggleGoodsSec('secCash',this)"     title="دينار"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;cursor:pointer"><i class="fas fa-coins dm-ic"></i><span style="font-size:.82rem;font-weight:900">دينار</span></button>
         <button type="button" class="gtab" data-sec="secKass"     onclick="_toggleGoodsSec('secKass',this)"     title="لاكاص"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0d9488;background:transparent;color:#0d9488;cursor:pointer"><i class="fas fa-money-bill-wave dm-ic"></i><span style="font-size:.82rem;font-weight:900">لاكاص</span></button>
@@ -1087,13 +1086,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=216"></script>
-<script src="./app.js?v=216"></script>
-<script src="./assistant.js?v=216"></script>
-<script src="./inventory.js?v=216"></script>
-<script src="./invoice.js?v=216"></script>
-<script src="./raffinage.js?v=216"></script>
-<script src="./auth.js?v=216"></script>
+<script src="./firebase.js?v=217"></script>
+<script src="./app.js?v=217"></script>
+<script src="./assistant.js?v=217"></script>
+<script src="./inventory.js?v=217"></script>
+<script src="./invoice.js?v=217"></script>
+<script src="./raffinage.js?v=217"></script>
+<script src="./auth.js?v=217"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

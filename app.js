@@ -1804,19 +1804,6 @@ window.openDollar=(t,prefillName)=>{
 function _addGoodsRow(vals){
     const box=document.getElementById('goodsRows');
     if(!box||box.children.length>=30)return;
-    /* عناوين الأعمدة مرة واحدة في الأعلى */
-    if(!box.children.length && !document.getElementById('goodsColHead')){
-        const head=document.createElement('div');
-        head.id='goodsColHead';
-        head.style.cssText='display:flex;gap:.4rem;padding:0 .15rem .2rem;font-size:.62rem;font-weight:800;color:var(--t2)';
-        head.innerHTML=`
-            <span style="flex:1.4;text-align:center">🏷️ السلعة</span>
-            <span style="flex:1;text-align:center">⚖️ الوزن (غ)</span>
-            <span style="flex:.85;text-align:center">✨ العيار</span>
-            <span style="flex:1.1;text-align:center">🪙 الأجرة</span>
-            <span style="width:26px"></span>`;
-        box.parentNode.insertBefore(head,box);
-    }
     const div=document.createElement('div');
     div.className='g-row';
     div.style.cssText='display:flex;gap:.35rem;align-items:center';
