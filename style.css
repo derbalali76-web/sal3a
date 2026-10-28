@@ -1068,3 +1068,31 @@ body.cal-locked #loginOverlay{ display:none !important; }
   :root:not([data-theme="light"]) .callock-day:hover{ background:#334155; }
   :root:not([data-theme="light"]) .callock-wk span{ color:#64748b; }
 }
+
+/* ═══════════ 🛍️ نافذة السلعة — مظهر مطابق للمخطّط (بصري فقط · العناوين محفوظة) ═══════════ */
+#dollarModal .modal{border-radius:24px;max-width:620px}
+#dollarModal #dollarTitle{display:flex;align-items:center;justify-content:center;gap:.6rem}
+#dollarModal #dollarTitle .dm-ttl{font-size:1.1rem;font-weight:900;line-height:1.15}
+#dollarModal #dollarTitle .dm-sub{font-size:.72rem;font-weight:600;opacity:.92;margin-top:.12rem}
+#dollarModal .dm-cart{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:1.35rem;flex-shrink:0}
+/* عناوين الحقول فوق كل خانة */
+#dollarModal .dm-lbl{display:flex;align-items:center;justify-content:flex-end;gap:.35rem;font-size:.8rem;font-weight:900;color:var(--t);margin:.7rem .15rem .28rem;text-align:right}
+#dollarModal .dm-lbl .req{color:#ef4444;font-weight:900}
+#dollarModal .dm-lbl .opt{color:var(--t3);font-weight:600;font-size:.72rem}
+/* الخانات: زوايا أنعم */
+#dollarModal #goodsCustomer,#dollarModal #goodsNote,#dollarModal #goodsCodePick,
+#dollarModal .g-row input,#dollarModal .g-row select,#dollarModal .cf-row input,#dollarModal .ks-row input,
+#dollarModal #rotW,#dollarModal #rotK,#dollarModal #rotP,#dollarModal #goodsCash,
+#dollarModal #cashiAmt,#dollarModal #cashiRate,#dollarModal #liveKassiW{ border-radius:13px }
+#dollarModal #goodsCustomer{ border-radius:15px }
+/* شرائح العملة — أكبر مع أيقونة فوق النص */
+#dollarModal .gtab{border-width:2px;border-radius:16px;padding:.62rem .2rem;gap:.3rem;font-family:Tajawal,sans-serif;background:var(--card2)}
+#dollarModal .gtab .dm-ic{font-size:1.45rem;line-height:1}
+#dollarModal .gtab span:last-child{font-size:.76rem;font-weight:900}
+/* بطاقات الأقسام القابلة للطي */
+#dollarModal .gsec{border-radius:16px}
+/* أزرار الأسفل كبيرة ومستديرة */
+#dollarModal .mactions{gap:.6rem;margin-top:.9rem}
+#dollarModal .mactions button{padding:.9rem;border-radius:16px;font-size:.98rem;font-weight:900;display:flex;align-items:center;justify-content:center;gap:.4rem}
+#dollarModal .mactions .bg{background:linear-gradient(135deg,#16a34a,#15803d);flex:2}
+#dollarModal .mactions .bgy{flex:1}

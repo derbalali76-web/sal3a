@@ -1597,6 +1597,68 @@ window._refreshGoodsCodePicks=()=>{
     sel.innerHTML='<option value="">🔖 اختر كوداً لملء الأسطر…</option>'+(window._goodsCodes||[]).map(c=>`<option value="${String(c.code).replace(/"/g,'&quot;')}">🔖 ${c.code}</option>`).join('');
     sel.style.display=(window._goodsCodes||[]).length?'':'none';
 };
+
+/* ═══════════ 📷 صورة السلعة — التقاط/تحميل مع ضغط قوي قبل الرفع (حفظ الحصة) ═══════════ */
+window._stagedGoodsImg=null;
+/* ضغط الصورة: تصغير لأقصى بُعد ~1000px ثم JPEG بجودة تنخفض تدريجياً حتى تحت ~90KB */
+window._compressImage=(file,maxDim=1000,quality=0.55)=>new Promise((resolve,reject)=>{
+    try{
+        const img=new Image(); const url=URL.createObjectURL(file);
+        img.onload=()=>{ try{
+            URL.revokeObjectURL(url);
+            let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+            if(w>=h && w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; }
+            else if(h>w && h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; }
+            else if(w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; }
+            const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+            cv.getContext('2d').drawImage(img,0,0,w,h);
+            let q=quality, out=cv.toDataURL('image/jpeg',q);
+            while(out.length>120000 && q>0.3){ q=Math.round((q-0.1)*100)/100; out=cv.toDataURL('image/jpeg',q); }
+            resolve(out);
+        }catch(e){ reject(e); } };
+        img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('img')); };
+        img.src=url;
+    }catch(e){ reject(e); }
+});
+window._onGoodsPhoto=(input)=>{
+    const f=input&&input.files&&input.files[0]; if(!f){return;}
+    if(!/^image\//.test(f.type)){ toast('اختر صورة صحيحة','error'); input.value=''; return; }
+    toast('⏳ جارٍ ضغط الصورة…','info');
+    _compressImage(f).then(dataURL=>{
+        window._stagedGoodsImg=dataURL;
+        _renderGoodsPhotoPreview();
+        const kb=Math.round(dataURL.length*0.75/1024);
+        toast('✅ صورة جاهزة ('+kb+' ك.ب تقريباً)','success');
+    }).catch(()=>toast('تعذّر تجهيز الصورة','error'));
+    input.value='';
+};
+window._clearGoodsPhoto=()=>{ window._stagedGoodsImg=null; _renderGoodsPhotoPreview(); };
+function _renderGoodsPhotoPreview(){
+    const box=document.getElementById('goodsPhotoPreview'); if(!box)return;
+    if(window._stagedGoodsImg){
+        box.innerHTML=`<img src="${window._stagedGoodsImg}" style="max-width:110px;max-height:110px;border-radius:10px;border:1.5px solid var(--g500);object-fit:cover">
+            <button type="button" onclick="_clearGoodsPhoto()" style="border:none;border-radius:8px;background:rgba(220,38,38,.12);color:#dc2626;font-weight:800;font-size:.7rem;padding:.35rem .6rem;cursor:pointer;font-family:Tajawal,sans-serif">✕ إزالة الصورة</button>`;
+        box.style.display='flex';
+    }else{ box.innerHTML=''; box.style.display='none'; }
+}
+/* 🔍 عرض صورة سلعة من المخزون (محليّاً أولاً ثم من فايرباز عند الاتصال) */
+window._viewGoodsImg=(imgId)=>{
+    if(!imgId)return;
+    const show=(dataURL)=>{
+        if(!dataURL){ toast('الصورة غير متاحة دون اتصال','error'); return; }
+        let ov=document.getElementById('imgViewOverlay');
+        if(!ov){ ov=document.createElement('div'); ov.id='imgViewOverlay';
+            ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:18px';
+            ov.onclick=()=>ov.remove(); document.body.appendChild(ov); }
+        ov.innerHTML=`<img src="${dataURL}" style="max-width:96%;max-height:90%;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6)">`;
+        ov.style.display='flex';
+    };
+    let local=null; try{ local=localStorage.getItem('gp12_img_'+imgId); }catch(e){}
+    if(local){ show(local); return; }
+    toast('⏳ جارٍ تحميل الصورة…','info');
+    if(window._loadGoodsImgFb){ window._loadGoodsImgFb(imgId).then(d=>{ if(d){try{localStorage.setItem('gp12_img_'+imgId,d);}catch(e){}} show(d); }).catch(()=>show(null)); }
+    else show(null);
+};
 let _dollPaid=true; /* دائماً خالص في نظام السلعة */
 window.setDollPaid=(v)=>{ _dollPaid=true; }; /* مُحيَّدة — أزرار خالص/غير خالص أُزيلت */
 function _updDollarEq(){} /* مُحيَّدة — لا سعر صرف في نظام السلعة */
@@ -1688,10 +1750,11 @@ window.openGoodsFor=(name)=>{
 };
 window.openDollar=(t,prefillName)=>{
     const _title=document.getElementById('dollarTitle');
-    _title.textContent=t==='buy'?'شراء سلعة':'بيع سلعة';
-    /* رأس ملوّن: أخضر للشراء · أحمر للبيع */
+    /* رأس ملوّن مع أيقونة وعنوان فرعي — أخضر للشراء · أحمر للبيع */
     const _grad=t==='buy'?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)';
-    _title.style.cssText='margin:-1rem -1rem .6rem;padding:.85rem 1rem;padding-top:calc(.85rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:18px 18px 0 0;font-size:1.05rem;font-weight:900;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15)';
+    const _sub=t==='buy'?'أدخل معلومات السلعة الجديدة':'بيع سلعة من المخزون';
+    _title.innerHTML='<span class="dm-cart">'+(t==='buy'?'🛒':'🏷️')+'</span><div><div class="dm-ttl">'+(t==='buy'?'شراء سلعة':'بيع سلعة')+'</div><div class="dm-sub">'+_sub+'</div></div>';
+    _title.style.cssText='margin:-1rem -1rem .7rem;padding:.9rem 1rem;padding-top:calc(.9rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:24px 24px 0 0;box-shadow:0 2px 12px rgba(0,0,0,.18)';
     const _gc=document.getElementById('goodsCustomer');
     _gc.value=prefillName||'';
     _gc.placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
@@ -1704,6 +1767,9 @@ window.openDollar=(t,prefillName)=>{
     document.getElementById('goodsRows').innerHTML='';{const _h=document.getElementById('goodsColHead');if(_h)_h.remove();}
     _addGoodsRow();
     if(typeof _refreshGoodsCodePicks==='function')_refreshGoodsCodePicks();
+    /* 📷 صورة السلعة: تظهر في الشراء والبيع */
+    window._stagedGoodsImg=null; if(typeof _renderGoodsPhotoPreview==='function')_renderGoodsPhotoPreview();
+    const _ps=document.getElementById('goodsPhotoSec'); if(_ps)_ps.style.display='';
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
     if(_cl)_cl.textContent=(t==='buy'?'دفع دينار':'أخذ دينار');
@@ -2022,10 +2088,19 @@ window.saveDollar=()=>{
     }
     const _gnote=(document.getElementById('goodsNote')?.value||'').trim();
     const _gEmp=(window._userRole==='employee'?_currentUser:null);
+    /* 📷 صورة السلعة (شراء وبيع): تُرفع مضغوطة في عقدة منفصلة · تُوسم بها بنود المخزون (شراء) والفاتورة (للعرض في الأرشيف) */
+    const _imgId=(window._stagedGoodsImg)?('IMG-'+uid()):null;
+    if(_imgId)_di.img=_imgId;
     emitEvent('DOLLAR',
-        {gv:2,c:cust,isBuy,items,equiv,fee,a:equiv,r:0,rot:rot||null,cash:cash||0,kass:kass.eq>0?kass:null,cashiCash:cashiCash||null,cashiFee:cashiFee.eq>0?cashiFee:null,liveKassi:liveKassi||null,note:_gnote||null,empOwner:_gEmp},
+        {gv:2,c:cust,isBuy,items,equiv,fee,a:equiv,r:0,rot:rot||null,cash:cash||0,kass:kass.eq>0?kass:null,cashiCash:cashiCash||null,cashiFee:cashiFee.eq>0?cashiFee:null,liveKassi:liveKassi||null,note:_gnote||null,empOwner:_gEmp,imgId:_imgId||undefined},
         {dollInvoice:_di,op:{c:cust,t:_opName,m:_opM,a:_opA,fee,_ts:Date.now(),dt:nowStr,did,gItems:items.length,rotW:rot?rot.w:0,note:_gnote||undefined,empOwner:(window._userRole==='employee'?_currentUser:undefined)}}
     );
+    if(_imgId){
+        const _d=window._stagedGoodsImg;
+        try{localStorage.setItem('gp12_img_'+_imgId,_d);}catch(e){}
+        if(window._saveGoodsImgFb)try{window._saveGoodsImgFb(_imgId,_d).catch(()=>{});}catch(e){}
+    }
+    window._stagedGoodsImg=null;
     window._editRestore=null;
     closeModal('dollarModal');
     const _netEq=Math.round((equiv-(rot?rot.eq:0))*1000)/1000,_netFee=fee-(rot?rot.fv:0);
@@ -2141,6 +2216,8 @@ window.renderGoodsStock=()=>{
                 ${g.k?`<span style="color:var(--pu);font-weight:800;margin-right:.3rem">🏷️ عيار ${fmt(g.k,0)}</span>`:''}
                 <small style="color:var(--t2);display:block;font-size:.62rem">المصدر: ${g.src||'—'} · الأجرة: ${fmt(g.p||0,0)} دج/غ${g.dt?' · '+g.dt:''}</small>
             </div>
+            ${g.img?`<button onclick="_viewGoodsImg('${g.img}')" title="عرض صورة السلعة"
+                style="flex-shrink:0;background:rgba(59,130,246,.12);color:#2563eb;border:none;border-radius:9px;padding:.45rem .6rem;font-family:Tajawal,sans-serif;font-weight:900;font-size:.9rem;cursor:pointer">📷</button>`:''}
             <button onclick="openMeltGoods('${g.id}')" title="تذويب السلعة → سبيكة 705"
                 style="flex-shrink:0;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;border:none;border-radius:9px;padding:.45rem .7rem;font-family:Tajawal,sans-serif;font-weight:900;font-size:.72rem;cursor:pointer">🔥 تذويب</button>
         </div>`).join(''):'<div style="text-align:center;color:var(--t3);padding:1.2rem">لا توجد سلع في المخزون</div>';
@@ -4840,6 +4917,7 @@ function renderArchive(){
                 ${(d.by||d.empOwner)?`<small style="color:var(--t3);font-style:italic;display:block;font-size:.62rem">✍️ ${d.by||d.empOwner}</small>`:''}
             </div>
             <div style="display:flex;gap:.3rem">
+                ${d.img?`<button class="btn-pdf" onclick="_viewGoodsImg('${d.img}')" style="background:rgba(59,130,246,.12);color:#2563eb" title="صورة السلعة">📷</button>`:''}
                 <button class="btn-pdf" onclick="editDoll('${d.id}')" style="background:rgba(124,58,237,.12);color:#7c3aed" title="تعديل"><i class="fas fa-pen"></i></button>
                 <button class="btn-pdf" onclick="viewDoc('doll','${d.id}')" title="عرض"><i class="fas fa-eye"></i></button>
                 <button class="btn-wa"  onclick="waDoll('${d.id}')"><i class="fab fa-whatsapp"></i></button>

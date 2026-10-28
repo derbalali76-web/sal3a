@@ -28,6 +28,9 @@ window._saveSharedVisionKey=(v)=>{ try{return _db.ref('goldpro/_appcfg/visionKey
 window._cfgRef=null; /* يُضبط عند الدخول من auth.js */
 window._saveGoodsNamesFb=(arr)=>{ try{return window._cfgRef?window._cfgRef.child('goodsNames').set(Array.isArray(arr)?arr:[]):Promise.resolve();}catch(e){return Promise.reject(e);} };
 window._saveGoodsCodesFb=(arr)=>{ try{return window._cfgRef?window._cfgRef.child('goodsCodes').set(Array.isArray(arr)?arr:[]):Promise.resolve();}catch(e){return Promise.reject(e);} };
+/* 📷 صور السلع — تُخزَّن منفصلة عن سجل الأحداث (goodsImg) ولا تُحمَّل إلا عند الطلب، حفاظاً على الحصة */
+window._saveGoodsImgFb=(id,dataURL)=>{ try{ return (_baseRef&&id&&dataURL)?_baseRef.child('goodsImg/'+id).set(dataURL):Promise.resolve(); }catch(e){ return Promise.reject(e); } };
+window._loadGoodsImgFb=(id)=>{ try{ if(!_baseRef||!id)return Promise.resolve(null); return _baseRef.child('goodsImg/'+id).once('value').then(s=>s.val()||null); }catch(e){ return Promise.resolve(null); } };
 /* ── بوابة الزبائن ── */
 window._savePortalCustFb=(obj)=>{ try{return window._cfgRef?window._cfgRef.child('custPhones').set(obj||{}):Promise.resolve();}catch(e){return Promise.reject(e);} };
 /* 🏪 المسار يتضمّن هوية المحل: portal/{هاتف}/{كلمة السر}/{المحل}
@@ -476,7 +479,8 @@ function _applyEvt(st,evt){
                         st.goodsStock.unshift({
                             id:(evt.id||'')+'_g'+i,
                             n:it.n||'؟', w:Number(it.w)||0, k:Number(it.k)||0, p:Number(it.p)||0,
-                            src:d.c||'', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'', ts:evt.ts||0
+                            src:d.c||'', dt:(disp.dollInvoice&&disp.dollInvoice.dt)||'', ts:evt.ts||0,
+                            ...(d.imgId?{img:d.imgId}:{})   /* 📷 معرّف صورة السلعة إن وُجدت */
                         });
                     });
                     /* ♻️ الروتور مرتجع للزبون: يخرج من مخزون «روتور» وينقص دينه (سلعة + أجرة) */
