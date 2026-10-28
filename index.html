@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=211">
+    <link rel="stylesheet" href="./style.css?v=212">
 </head>
 <body>
 <script>
@@ -713,12 +713,12 @@
     <!-- أزرار التبويب: كل قسم يظهر عند الضغط -->
     <div class="dm-lbl">العملة <span>💱</span></div>
     <div style="display:flex;gap:.4rem;margin:0 0 .3rem;justify-content:center">
-        <button type="button" class="gtab" data-sec="secRotor"    onclick="_toggleGoodsSec('secRotor',this)"    title="روتور"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid var(--g500);background:transparent;color:var(--g500);cursor:pointer"><span class="dm-ic">🔄</span><span style="font-size:.82rem;font-weight:900">روتور</span></button>
-        <button type="button" class="gtab" data-sec="secCash"     onclick="_toggleGoodsSec('secCash',this)"     title="دينار"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;cursor:pointer"><span class="dm-ic">🪙</span><span style="font-size:.82rem;font-weight:900">دينار</span></button>
-        <button type="button" class="gtab" data-sec="secKass"     onclick="_toggleGoodsSec('secKass',this)"     title="لاكاص"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0d9488;background:transparent;color:#0d9488;cursor:pointer"><span class="dm-ic">💵</span><span style="font-size:.82rem;font-weight:900">لاكاص</span></button>
-        <button type="button" class="gtab" data-sec="secCashi"    onclick="_toggleGoodsSec('secCashi',this)"    title="كاصي بالدينار" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #b45309;background:transparent;color:#b45309;cursor:pointer"><span class="dm-ic">🧱</span><span style="font-size:.82rem;font-weight:900">كاصي</span></button>
-        <button type="button" class="gtab" data-sec="secCashiFee" onclick="_toggleGoodsSec('secCashiFee',this)" title="أجرة بالكاصي"  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;cursor:pointer"><span class="dm-ic">🤲</span><span style="font-size:.82rem;font-weight:900">أجرة</span></button>
-        <button type="button" class="gtab" id="tabLiveKassi" data-sec="secLiveKassi" onclick="_toggleGoodsSec('secLiveKassi',this)" title="كاصي حي" style="flex:1;display:none;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #ea580c;background:transparent;color:#ea580c;cursor:pointer"><span class="dm-ic">🔥</span><span style="font-size:.82rem;font-weight:900">كاصي حي</span></button>
+        <button type="button" class="gtab" data-sec="secRotor"    onclick="_toggleGoodsSec('secRotor',this)"    title="روتور"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid var(--g500);background:transparent;color:var(--g500);cursor:pointer"><i class="fas fa-arrows-rotate dm-ic"></i><span style="font-size:.82rem;font-weight:900">روتور</span></button>
+        <button type="button" class="gtab" data-sec="secCash"     onclick="_toggleGoodsSec('secCash',this)"     title="دينار"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0369a1;background:transparent;color:#0369a1;cursor:pointer"><i class="fas fa-coins dm-ic"></i><span style="font-size:.82rem;font-weight:900">دينار</span></button>
+        <button type="button" class="gtab" data-sec="secKass"     onclick="_toggleGoodsSec('secKass',this)"     title="لاكاص"        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #0d9488;background:transparent;color:#0d9488;cursor:pointer"><i class="fas fa-money-bill-wave dm-ic"></i><span style="font-size:.82rem;font-weight:900">لاكاص</span></button>
+        <button type="button" class="gtab" data-sec="secCashi"    onclick="_toggleGoodsSec('secCashi',this)"    title="كاصي بالدينار" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #b45309;background:transparent;color:#b45309;cursor:pointer"><i class="fas fa-money-bills dm-ic"></i><span style="font-size:.82rem;font-weight:900">كاصي</span></button>
+        <button type="button" class="gtab" data-sec="secCashiFee" onclick="_toggleGoodsSec('secCashiFee',this)" title="أجرة بالكاصي"  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #7c3aed;background:transparent;color:#7c3aed;cursor:pointer"><i class="fas fa-hand-holding-dollar dm-ic"></i><span style="font-size:.82rem;font-weight:900">أجرة</span></button>
+        <button type="button" class="gtab" id="tabLiveKassi" data-sec="secLiveKassi" onclick="_toggleGoodsSec('secLiveKassi',this)" title="كاصي حي" style="flex:1;display:none;flex-direction:column;align-items:center;gap:.22rem;padding:.5rem .2rem;border-radius:10px;border:1.5px solid #ea580c;background:transparent;color:#ea580c;cursor:pointer"><i class="fas fa-fire dm-ic"></i><span style="font-size:.82rem;font-weight:900">كاصي حي</span></button>
     </div>
 
     <!-- ♻️ روتور -->
@@ -1085,13 +1085,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=211"></script>
-<script src="./app.js?v=211"></script>
-<script src="./assistant.js?v=211"></script>
-<script src="./inventory.js?v=211"></script>
-<script src="./invoice.js?v=211"></script>
-<script src="./raffinage.js?v=211"></script>
-<script src="./auth.js?v=211"></script>
+<script src="./firebase.js?v=212"></script>
+<script src="./app.js?v=212"></script>
+<script src="./assistant.js?v=212"></script>
+<script src="./inventory.js?v=212"></script>
+<script src="./invoice.js?v=212"></script>
+<script src="./raffinage.js?v=212"></script>
+<script src="./auth.js?v=212"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

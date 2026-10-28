@@ -1085,10 +1085,10 @@ body.cal-locked #loginOverlay{ display:none !important; }
 #dollarModal #rotW,#dollarModal #rotK,#dollarModal #rotP,#dollarModal #goodsCash,
 #dollarModal #cashiAmt,#dollarModal #cashiRate,#dollarModal #liveKassiW{ border-radius:13px }
 #dollarModal #goodsCustomer{ border-radius:15px }
-/* شرائح العملة — أكبر مع أيقونة فوق النص */
-#dollarModal .gtab{border-width:2px;border-radius:16px;padding:.62rem .2rem;gap:.3rem;font-family:Tajawal,sans-serif;background:var(--card2)}
-#dollarModal .gtab .dm-ic{font-size:1.45rem;line-height:1}
-#dollarModal .gtab span:last-child{font-size:.76rem;font-weight:900}
+/* شرائح العملة — صغيرة مع أيقونة فيكتور (FA) فوق النص */
+#dollarModal .gtab{border-width:1.5px;border-radius:12px;padding:.42rem .15rem;gap:.2rem;font-family:Tajawal,sans-serif;background:var(--card2)}
+#dollarModal .gtab .dm-ic{font-size:1.05rem;line-height:1}
+#dollarModal .gtab span:last-child{font-size:.66rem;font-weight:900}
 /* بطاقات الأقسام القابلة للطي */
 #dollarModal .gsec{border-radius:16px}
 /* أزرار الأسفل كبيرة ومستديرة */
