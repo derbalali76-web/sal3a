@@ -1757,15 +1757,15 @@ window.openGoodsFor=(name)=>{
 };
 window.openDollar=(t,prefillName)=>{
     const _title=document.getElementById('dollarTitle');
-    /* رأس موحّد المظهر — بيع السلعة يطابق شراء السلعة بصريًا (نفس اللون والأيقونة) */
-    const _grad='linear-gradient(135deg,#16a34a,#15803d)';
+    /* رأس مصغّر — أخضر للشراء · أحمر للبيع · بنفس الأبعاد في الاثنين */
+    const _grad=t==='buy'?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)';
     const _sub=t==='buy'?'أدخل معلومات السلعة الجديدة':'بيع سلعة من المخزون';
-    _title.innerHTML='<span class="dm-cart">🛒</span><div><div class="dm-ttl">'+(t==='buy'?'شراء سلعة':'بيع سلعة')+'</div><div class="dm-sub">'+_sub+'</div></div>';
-    _title.style.cssText='margin:-1rem -1rem .6rem;padding:.6rem 1rem;padding-top:calc(.6rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:22px 22px 0 0;box-shadow:0 2px 10px rgba(0,0,0,.14)';
+    _title.innerHTML='<span class="dm-cart">'+(t==='buy'?'🛒':'🏷️')+'</span><div><div class="dm-ttl">'+(t==='buy'?'شراء سلعة':'بيع سلعة')+'</div><div class="dm-sub">'+_sub+'</div></div>';
+    _title.style.cssText='margin:-1rem -1rem .55rem;padding:.4rem .9rem;padding-top:calc(.4rem + env(safe-area-inset-top,0px));background:'+_grad+';color:#fff;border-radius:22px 22px 0 0;box-shadow:0 2px 8px rgba(0,0,0,.12)';
     const _gc=document.getElementById('goodsCustomer');
     _gc.value=prefillName||'';
     _gc.placeholder=t==='buy'?'👤 اسم الزبون — اشتريت منه':'👤 اسم الزبون — بعت له (اختياري)';
-    _gc.style.borderColor='#16a34a';
+    _gc.style.borderColor=t==='buy'?'#16a34a':'#dc2626';
     /* 🔥 كاصي حي: يظهر عند البيع فقط (الزبون يعطيني خاماً) */
     const _lkTab=document.getElementById('tabLiveKassi');
     if(_lkTab)_lkTab.style.display=(t==='sell')?'flex':'none';
