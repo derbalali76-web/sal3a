@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=210">
+    <link rel="stylesheet" href="./style.css?v=211">
 </head>
 <body>
 <script>
@@ -690,8 +690,10 @@
 </div></div>
 
 <!-- سلعة -->
-<div class="modal-overlay" id="dollarModal"><div class="modal" style="max-width:600px">
+<div class="modal-overlay" id="dollarModal"><div class="modal" style="max-width:600px;position:relative">
     <div class="modal-handle"></div>
+    <button type="button" onclick="closeModal('dollarModal')" aria-label="إغلاق"
+        style="position:absolute;top:calc(.7rem + env(safe-area-inset-top,0px));left:.9rem;z-index:6;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;font-size:1rem;font-weight:900;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>
     <h3 id="dollarTitle">سلعة</h3>
     <div class="dm-lbl">اسم الزبون <span class="req">*</span> <span>👤</span></div>
     <input type="text" id="goodsCustomer" placeholder="👤 اسم الزبون"
@@ -759,17 +761,20 @@
             oninput="liveNum(this)">
         <div style="font-size:.62rem;color:var(--t3);margin-top:.35rem;line-height:1.5">يُسجّل مؤقتاً في دين الزبون كوزن 705، ويدخل مخزون الكاصي الحي. عند تذويبه يُصحَّح الحساب حسب عياره الحقيقي.</div>
     </div>
-    <!-- 📷 صورة السلعة (معلومات إضافية) — عند الشراء فقط -->
-    <div id="goodsPhotoSec" style="display:none;margin-top:.5rem;padding:.55rem;border:1.5px dashed #2563eb;border-radius:9px;background:rgba(59,130,246,.05)">
-        <span style="display:block;font-weight:900;font-size:.8rem;color:#2563eb;margin-bottom:.4rem">📷 صورة السلعة (اختياري)</span>
-        <div style="display:flex;gap:.4rem">
-            <label style="flex:1;text-align:center;padding:.5rem;border-radius:9px;border:1.5px solid #2563eb;color:#2563eb;font-weight:800;font-size:.78rem;cursor:pointer;background:transparent">📸 التقاط صورة
-                <input type="file" accept="image/*" capture="environment" onchange="_onGoodsPhoto(this)" style="display:none"></label>
-            <label style="flex:1;text-align:center;padding:.5rem;border-radius:9px;border:1.5px solid #2563eb;color:#2563eb;font-weight:800;font-size:.78rem;cursor:pointer;background:transparent">🖼️ من المعرض
-                <input type="file" accept="image/*" onchange="_onGoodsPhoto(this)" style="display:none"></label>
+    <!-- ⚙️ معلومات إضافية — صورة السلعة -->
+    <div class="dm-lbl">معلومات إضافية <span class="opt">(اختياري)</span> <span>⚙️</span></div>
+    <div id="goodsPhotoSec" style="display:none;padding:.6rem;border:1.5px solid var(--border);border-radius:14px;background:var(--card2)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
+            <span style="font-weight:800;font-size:.74rem;color:var(--t2)">📷 صورة السلعة</span>
+            <div style="display:flex;gap:.35rem">
+                <label style="padding:.3rem .6rem;border-radius:8px;border:1.5px solid #2563eb;color:#2563eb;font-weight:800;font-size:.68rem;cursor:pointer;background:transparent;white-space:nowrap">📸 تصوير
+                    <input type="file" accept="image/*" capture="environment" onchange="_onGoodsPhoto(this)" style="display:none"></label>
+                <label style="padding:.3rem .6rem;border-radius:8px;border:1.5px solid #2563eb;color:#2563eb;font-weight:800;font-size:.68rem;cursor:pointer;background:transparent;white-space:nowrap">🖼️ المعرض
+                    <input type="file" accept="image/*" onchange="_onGoodsPhoto(this)" style="display:none"></label>
+            </div>
         </div>
         <div id="goodsPhotoPreview" style="display:none;align-items:center;gap:.6rem;margin-top:.5rem;flex-wrap:wrap"></div>
-        <div style="font-size:.6rem;color:var(--t3);margin-top:.35rem">تُضغط الصورة تلقائياً قبل الرفع حتى لا تستهلك الحصة المجانية في فايرباز.</div>
+        <div style="font-size:.58rem;color:var(--t3);margin-top:.35rem">تُضغط الصورة تلقائياً قبل الرفع حتى لا تستهلك الحصة المجانية.</div>
     </div>
     <div id="goodsTotal" style="font-weight:900;margin-top:.6rem;padding:.6rem .7rem;border-radius:12px;background:linear-gradient(135deg,rgba(212,175,55,.14),rgba(212,175,55,.06));border:1.5px solid var(--g500);font-size:.82rem;text-align:center;color:var(--t)">المجموع: 0 غ · مكافئ 705: 0 غ · الأجرة: 0 دج</div>
     <div class="mactions">
@@ -1080,13 +1085,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=210"></script>
-<script src="./app.js?v=210"></script>
-<script src="./assistant.js?v=210"></script>
-<script src="./inventory.js?v=210"></script>
-<script src="./invoice.js?v=210"></script>
-<script src="./raffinage.js?v=210"></script>
-<script src="./auth.js?v=210"></script>
+<script src="./firebase.js?v=211"></script>
+<script src="./app.js?v=211"></script>
+<script src="./assistant.js?v=211"></script>
+<script src="./inventory.js?v=211"></script>
+<script src="./invoice.js?v=211"></script>
+<script src="./raffinage.js?v=211"></script>
+<script src="./auth.js?v=211"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
