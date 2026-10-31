@@ -580,6 +580,44 @@ document.addEventListener('fullscreenchange',()=>{
         :'<i class="fas fa-expand"></i>';
 });
 
+/* ═══════════ 🖥️ وضع الكشك (Kiosk) — ملء الشاشة الدائم على الحاسوب ═══════════ */
+window._kioskOn=(()=>{try{return localStorage.getItem('gp_kiosk')==='1';}catch(e){return false;}})();
+function _isDesktopDev(){ return !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||''); }
+function _enterFs(){ try{ if(document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){} }
+function _updKioskUI(){
+    const b=document.getElementById('kioskToggleBtn'); if(!b)return;
+    b.innerHTML=window._kioskOn?'🖥️ وضع الكشك: مُفعّل ✓':'🖥️ وضع الكشك: متوقّف';
+    b.style.background=window._kioskOn?'rgba(22,163,74,.12)':'transparent';
+    b.style.borderColor=window._kioskOn?'#16a34a':'var(--border)';
+    b.style.color=window._kioskOn?'#16a34a':'var(--t2)';
+}
+window._updKioskUI=_updKioskUI;
+window.toggleKiosk=function(){
+    window._kioskOn=!window._kioskOn;
+    try{localStorage.setItem('gp_kiosk',window._kioskOn?'1':'0');}catch(e){}
+    _updKioskUI();
+    if(window._kioskOn){ _enterFs(); if(window.toast)toast('🖥️ وضع الكشك مُفعّل — ملء الشاشة'); }
+    else{ try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}catch(e){} if(window.toast)toast('أُلغي وضع الكشك'); }
+};
+(function(){
+    function arm(){
+        _updKioskUI();
+        if(!window._kioskOn||!_isDesktopDev())return;
+        /* ملء الشاشة يتطلّب تفاعلاً: ادخله عند أوّل نقرة/ضغطة */
+        const once=()=>{ _enterFs(); window.removeEventListener('pointerdown',once); window.removeEventListener('keydown',once); };
+        window.addEventListener('pointerdown',once); window.addEventListener('keydown',once);
+        /* كشك دائم: إن خرج المستخدم، أعد الدخول عند أوّل تفاعل تالٍ (زر الإعدادات يُطفئه) */
+        document.addEventListener('fullscreenchange',()=>{
+            if(window._kioskOn&&_isDesktopDev()&&!document.fullscreenElement){
+                const re=()=>{ if(window._kioskOn&&!document.fullscreenElement)_enterFs(); window.removeEventListener('pointerdown',re); };
+                window.addEventListener('pointerdown',re,{once:true});
+            }
+        });
+    }
+    if(document.readyState!=='loading') arm(); else document.addEventListener('DOMContentLoaded',arm);
+    setTimeout(_updKioskUI,700);
+})();
+
 /* ═══════════ SETTINGS ═══════════ */
 function openSettings(){
     document.getElementById('settingGoldPrice').value=goldPrice;
@@ -5517,8 +5555,15 @@ async function fetchSpotPrice(){
            الاقتراح يبقى في القائمة المنسدلة، لكن لا نغيّر ما يكتبه المستخدم. */
         return;
     }
-    function _box(){ if(!_acEl){ _acEl=document.createElement('div'); _acEl.className='ac-box'; _acEl.style.cssText='position:fixed;display:none;z-index:99999'; document.body.appendChild(_acEl);} return _acEl; }
-    function _hide(){ if(_acEl)_acEl.style.display='none'; }
+    function _box(){ if(!_acEl){ _acEl=document.createElement('div'); _acEl.className='ac-box'; _acEl.style.cssText='position:fixed;display:none;z-index:2147483000'; document.body.appendChild(_acEl);} return _acEl; }
+    function _hide(){ if(_acEl)_acEl.style.display='none'; _acInp=null; }
+    /* يضبط موضع الصندوق أسفل الحقل (يتبعه عند تمرير iOS بدل أن يختفي) */
+    function _reposition(){
+        if(!_acInp||!_acEl||_acEl.style.display==='none')return;
+        const r=_acInp.getBoundingClientRect();
+        if(r.width===0&&r.height===0){ _hide(); return; }
+        _acEl.style.left=r.left+'px'; _acEl.style.top=(r.bottom+2)+'px'; _acEl.style.width=r.width+'px';
+    }
     /* قائمة صغيرة (اقتراحان كحدّ أقصى) أسفل الحقل — لا تغطّي الكتابة ولا تسرق التركيز */
     function _show(inp){
         const v=(inp.value||'').trim().toLowerCase(); const box=_box();
@@ -5526,25 +5571,34 @@ async function fetchSpotPrice(){
         const all=_acNames();
         let m=all.filter(n=>n.toLowerCase().startsWith(v)&&n.toLowerCase()!==v);
         if(m.length<2){ all.forEach(n=>{ const ln=n.toLowerCase(); if(ln.includes(v)&&ln!==v&&!m.includes(n))m.push(n); }); }
-        m=m.slice(0,2);
+        m=m.slice(0,3);
         if(!m.length){ _hide(); return; }
         box.innerHTML=m.map(n=>`<div class="ac-item">${String(n).replace(/</g,'&lt;')}</div>`).join('');
-        Array.from(box.children).forEach((el,k)=>{ el.onmousedown=ev=>{ ev.preventDefault(); inp.value=m[k]; _hide(); inp.dispatchEvent(new Event('input',{bubbles:true})); }; });
-        const r=inp.getBoundingClientRect();
-        box.style.left=r.left+'px'; box.style.top=(r.bottom+2)+'px'; box.style.width=r.width+'px'; box.style.display='block';
+        /* pointerdown يعمل على اللمس (آيفون) والفأرة معاً، ويمنع فقدان التركيز قبل الاختيار */
+        Array.from(box.children).forEach((el,k)=>{
+            const pick=ev=>{ ev.preventDefault(); ev.stopPropagation(); inp.value=m[k]; inp.dispatchEvent(new Event('input',{bubbles:true})); _hide(); };
+            el.addEventListener('pointerdown',pick);
+            el.addEventListener('touchstart',pick,{passive:false});
+            el.addEventListener('mousedown',pick);
+        });
         _acInp=inp;
+        box.style.display='block';
+        _reposition();
     }
     function _attach(id){ const inp=document.getElementById(id); if(!inp||inp._acOn) return; inp._acOn=true;
         inp.removeAttribute('list'); inp.setAttribute('autocomplete','off');
         inp.addEventListener('input',()=>_show(inp));
-        inp.addEventListener('focus',()=>_show(inp));
-        inp.addEventListener('blur',()=>{ setTimeout(_hide,160); _snapName(inp); });
+        inp.addEventListener('focus',()=>setTimeout(()=>_show(inp),30));
+        inp.addEventListener('blur',()=>{ setTimeout(_hide,220); _snapName(inp); });
     }
     function init(){ ['invCustomer','rafCustomer','loanCustomer','sellCustomer','gtCustomer','goodsCustomer','expCustomer','sendLogCustomer','shipOffice','dubaiOffice'].forEach(_attach); }
     window._acAttach=_attach;
     if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
     setTimeout(init,800);
-    window.addEventListener('scroll',_hide,true);
+    /* 📱 آيفون: عند فتح لوحة المفاتيح يُمرِّر النظام الحقل تلقائياً → نُعيد وضع الصندوق بدل إخفائه */
+    window.addEventListener('scroll',_reposition,true);
+    window.addEventListener('resize',_reposition);
+    if(window.visualViewport){ visualViewport.addEventListener('resize',_reposition); visualViewport.addEventListener('scroll',_reposition); }
 })();
 
 /* ═══════════ حزمة الميزات المنقولة (v49) ═══════════ */

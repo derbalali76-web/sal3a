@@ -863,10 +863,43 @@ window.VA = (() => {
                         <span style="font-size:.9rem;font-weight:900">الفائدة</span>
                         <b style="color:${pc};font-size:1.2rem">${profit >= 0 ? '+' : ''}${f0(profit)} دج</b></div>
                 </div>
-                <div style="text-align:center;margin-top:.6rem"><button class="va-card-btn va-card-btn-red" onclick="closeCard()">إغلاق</button></div>
+                <div style="display:flex;gap:.5rem;margin-top:.7rem;justify-content:center">
+                    <button class="va-card-btn" style="background:#dc2626;color:#fff" onclick="_wkStart(${Math.round(profit)})">💸 سحب الفائدة</button>
+                    <button class="va-card-btn va-card-btn-red" onclick="closeCard()">إغلاق</button></div>
             `);
         } catch (e) {}
     }
+    /* 💸 سحب فائدة السبائك: مبلغ حر يُسجَّل كمصروف ويخرج من سيولة الكوفر (الصوارد) */
+    window._wkStart = function(def){
+        const d = Math.max(0, Math.round(Number(def)||0));
+        showCard(`
+            <div class="va-card-title" style="color:#dc2626">💸 سحب فائدة السبائك</div>
+            <div class="va-card-sub">المبلغ يُسجَّل كمصروف ويخرج من سيولة الكوفر (الصوارد)</div>
+            <input id="_wkAmt" type="text" inputmode="decimal" value="${d}"
+                style="width:100%;margin-top:.7rem;padding:.75rem;border:1.5px solid var(--border);border-radius:10px;text-align:center;font-size:1.15rem;font-weight:900;font-family:Tajawal,sans-serif;background:var(--card2);color:var(--t);box-sizing:border-box">
+            <div style="display:flex;gap:.5rem;margin-top:.7rem;justify-content:center">
+                <button class="va-card-btn" style="background:#dc2626;color:#fff" onclick="_wkDo()">✅ تأكيد السحب</button>
+                <button class="va-card-btn va-card-btn-red" onclick="closeCard()">إلغاء</button></div>
+        `);
+        setTimeout(()=>{ const el=document.getElementById('_wkAmt'); if(el){ el.focus(); try{el.select();}catch(e){} } }, 120);
+    };
+    window._wkDo = function(){
+        const el=document.getElementById('_wkAmt'); if(!el) return;
+        const a=Math.round(parseFloat(String(el.value).replace(/\s/g,'').replace(/,/g,'.'))||0);
+        if(!a || a<=0){ if(window.toast)toast('أدخل مبلغاً صحيحاً','error'); return; }
+        try{ if(typeof B!=='undefined' && B.دينار < a-0.001){ if(window.toast)toast('⚠️ السيولة غير كافية','error'); return; } }catch(e){}
+        const _isEmp=window._userRole==='employee';
+        const _emp=_isEmp?window._currentUser:null;
+        const kind=_isEmp?'قوبال':'حانوت';
+        const note='سحب فائدة السبائك';
+        const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        try{
+            emitEvent('EXPENSE',{cur:'دينار',a,n:note,kind,empOwner:_emp},
+                {op:{c:note,t:'مصاريف',m:'دينار',a,_ts:Date.now(),dt:nowStr,note,expKind:kind,empOwner:_emp}});
+            if(window.toast)toast(`💸 سُحبت الفائدة ${a.toLocaleString('fr-FR')} دج — خرجت من الصوارد`);
+        }catch(e){ if(window.toast)toast('تعذّر تسجيل السحب','error'); }
+        if(window.closeCard)closeCard();
+    };
 
     function _custBalance(name) {
         const di  = window.getCustBal ? getCustBal(name, 'دينار')   : 0;

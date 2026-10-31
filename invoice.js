@@ -161,6 +161,8 @@ function calcInvRow(i){
     /* صفّ تلقائي: ما إن يمتلئ الصفّ الأخير بوزن حتى يُضاف صفّ فارغ تحته */
     if(i===invRows && w>0 && invRows<300) addInvRow(true);
     calcInvTotals();
+    /* حرّر السبيكة إن فُرِّغ سطرها وأعد رسم القائمة */
+    if(Object.keys(invRowBar).length && window._refreshInvSellList) _refreshInvSellList();
 }
 
 function _checkInvDupes(){
@@ -223,20 +225,46 @@ window.onInvTypeChange=function(){
     const panel=document.getElementById('invSellPanel');
     if(!isSell){panel.style.display='none';return;}
     panel.style.display='block';
-    /* 🔒 كل مستخدم يرى سبائكه للبيع: الأدمين سبائكه (بلا الموظفين) · الموظف سبائكه */
+    _refreshInvSellList();
+};
+/* 🔁 السبائك المختارة حالياً في الفاتورة (مع تحرير السطر المُفرَّغ) */
+function _invUsedBarSet(){
+    const s=new Set();
+    Object.keys(invRowBar).forEach(r=>{
+        const rb=invRowBar[r];
+        const wEl=document.getElementById(`inv_w_${r}`);
+        if(rb && wEl && parseInvNum(wEl.value)>0) s.add(rb.btype+'|'+rb.barId);
+        else delete invRowBar[r];   /* فُرِّغ السطر → حرّر السبيكة */
+    });
+    return s;
+}
+/* 🔒 إعادة رسم قائمة السبائك مع تعطيل المختارة (لا تُختار مرتين) */
+window._refreshInvSellList=function(){
+    const sel=document.getElementById('invType');
+    if(!sel||sel.value!=='sell')return;
+    const listEl=document.getElementById('invSellList'); if(!listEl)return;
     const _me=window._currentUser, _isEmp=window._userRole==='employee';
     const _mine=(b)=> _isEmp ? (b.empOwner===_me) : (!b.empOwner);
     const all=[...g24.filter(_mine).map(b=>({...b,btype:'24'})),...g730.filter(_mine).map(b=>({...b,btype:'730'}))];
-    document.getElementById('invSellList').innerHTML=!all.length
+    const used=_invUsedBarSet();
+    listEl.innerHTML=!all.length
         ?'<div style="color:var(--t3);font-size:.68rem;padding:.3rem"><i class="fas fa-inbox"></i> المخزون فارغ</div>'
-        :all.map(b=>`<div class="bar-item" onclick="fillInvRowFromBar('${b.btype}','${b.id}')">
+        :all.map(b=>{
+            const u=used.has(b.btype+'|'+b.id);
+            return `<div class="bar-item${u?' bar-used':''}" ${u?'':`onclick="fillInvRowFromBar('${b.btype}','${b.id}')"`} style="${u?'opacity:.45;pointer-events:none':''}">
             <div><strong>${fmt(b.w,2)} غ</strong>
             <span style="font-size:.62rem;color:var(--t2)"> — عيار ${fmt(b.k||0,1)}</span>
             ${b.desc?`<span style="font-size:.6rem;color:var(--t3)"> — ${b.desc}</span>`:''}
-            </div><button class="bsm sell" style="pointer-events:none">بيع</button></div>`).join('');
+            </div><button class="bsm ${u?'':'sell'}" style="pointer-events:none">${u?'✓ مُختارة':'بيع'}</button></div>`;
+        }).join('');
 };
 
 window.fillInvRowFromBar=function(btype,barId){
+    /* 🚫 منع اختيار نفس السبيكة مرتين */
+    if(_invUsedBarSet().has(btype+'|'+barId)){
+        if(window.toast)toast('✓ هذه السبيكة مُختارة مسبقاً في الفاتورة','info');
+        return;
+    }
     const bars=btype==='24'?g24:g730;
     const bar=bars.find(b=>b.id===barId);
     if(!bar)return;
@@ -250,6 +278,7 @@ window.fillInvRowFromBar=function(btype,barId){
     document.getElementById(`inv_k_${emptyRow}`).value=String(bar.k||730);
     invRowBar[emptyRow]={barId,btype};
     calcInvRow(emptyRow);
+    if(window._refreshInvSellList)_refreshInvSellList();
     document.getElementById(`inv_p_${emptyRow}`)?.focus();
 };
 
