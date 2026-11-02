@@ -37,7 +37,7 @@ window._tName=(t)=>({
     'دولار صادر':'سلعة صادرة',
     'دولار':'سلعة',
     'دفع دينار':'دفعت دينار',
-    'قبض دينار':'قبضت دينار',
+    'قبض دينار':'أخذت دينار',
     'أخذ دينار':'أخذت دينار'
 }[t]||t||'');
 
@@ -61,10 +61,10 @@ window._realOpName=(o)=>{
                     if(hasCash)comps.push('دينار');
                     return comps.join(' + ');
                 }
-                if(hasCash)return t==='شراء سلعة'?'دفعت دينار':'قبضت دينار';
+                if(hasCash)return t==='شراء سلعة'?'دفعت دينار':'أخذت دينار';
             }
         }else if(Math.abs(o.a||0)<0.001){
-            return t==='شراء سلعة'?'دفعت دينار':'قبضت دينار';
+            return t==='شراء سلعة'?'دفعت دينار':'أخذت دينار';
         }
     }
     return _tName(t);
@@ -3559,7 +3559,7 @@ function opDetailLines(o,custView){
             });
             if(inv.rot&&(inv.rot.w||0)>0.001)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
             if(inv.kass&&inv.kass.eq>0.001)lines.push(`⚱️ ${isBuy?'دفعت':'أخذت'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
-            if(inv.cash>0.001)lines.push(`💵 ${isBuy?'أخذت':'دفعت'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
+            if(inv.cash>0.001)lines.push(`💵 ${isBuy?'دفعت':'أخذت'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
             if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705)`);
             if(inv.cashiFee&&inv.cashiFee.items&&(inv.cashiFee.din||0)>0.001)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج`);
             /* 🔥 كاصي حي: وزن خام مؤقّت (705) · يُصحَّح عند التذويب */
@@ -5013,7 +5013,7 @@ function renderArchive(){
                     ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n} · ⚖️ ${fmt(it.w||0,2)} غ · 🏷️ ${fmt(it.k||0,0)}${it.p?' · 💰 '+fmt(it.p,0)+' دج/غ = '+fmt(it.fv!=null?it.fv:(it.w*it.p),0)+' دج':''}</small>`).join('')
                     :''}
                 ${d.rot?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">♻️ روتور (مرتجع): ⚖️ ${fmt(d.rot.w,2)} غ · 🏷️ ${fmt(d.rot.k,0)}${d.rot.p?' · 💰 '+fmt(d.rot.p,0)+' دج/غ = '+fmt(d.rot.fv||0,0)+' دج':''}</small>`:''}
-                ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'أخذت':'دفعت'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
+                ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'دفعت':'أخذت'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
                 ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ ${d.isBuy?'دفعت':'أخذت'} لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
                 ${d.cashiCash&&(d.cashiCash.amt||0)>0.001?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالدينار: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
                 ${d.cashiFee&&d.cashiFee.items&&(d.cashiFee.din||0)>0.001?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
@@ -5351,7 +5351,7 @@ function buildDollHtml(d,custView){
     const col=d.isBuy?'#16a34a':'#0369a1';
     /* لاكاص: المحل يأخذه عند البيع ويدفعه عند الشراء — والزبون بالعكس */
     const kassLbl=custView?(d.isBuy?'أخذ لاكاص':'دفع لاكاص'):(d.isBuy?'دفع لاكاص':'أخذ لاكاص');
-    const cashLbl=custView?(d.isBuy?'دفع دينار':'أخذ دينار'):(d.isBuy?'أخذ دينار':'دفع دينار');
+    const cashLbl=custView?(d.isBuy?'أخذت دينار':'دفعت دينار'):(d.isBuy?'دفعت دينار':'أخذت دينار');
     const cashiCashLbl=custView?(d.isBuy?'قبض كاصي بالدينار':'دفع كاصي بالدينار'):(d.isBuy?'دفع كاصي بالدينار':'قبض كاصي بالدينار');
     const cashiFeeLbl='أجرة بالكاصي';
     /* 🛍️ السلع الفعلية فقط (وزن > 0) — مع توافق الصيغة القديمة */
