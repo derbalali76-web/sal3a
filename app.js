@@ -3547,12 +3547,14 @@ function opDetailLines(o,custView){
     if(t==='شراء سلعة'||t==='بيع سلعة'){
         const isBuy=t==='شراء سلعة';
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
-        if(!inv||!Array.isArray(inv.items)){
+        if(!inv){
             /* لا فاتورة مفصّلة — سطر واحد موجز فقط إن كان فيه قيمة */
             if(Math.abs(o.a||0)>0.001)lines.push(`⚖️ صافي المكافئ (705): ${f(o.a||0,2)} غ${o.fee?` · 💰 الأجرة: ${f(o.fee,0)} دج`:''}`);
         }else{
-            /* 🎯 اعرض فقط الأقسام التي فيها قيمة فعلية — لا سطور صفرية */
-            const realItems=inv.items.filter(it=>(it.w||0)>0.001);
+            /* 🎯 اعرض فقط الأقسام التي فيها قيمة فعلية — لا سطور صفرية.
+               ملاحظة: نقرأ المكوّنات (دينار/لاكاص/كاصي حي...) دائماً ما دامت الفاتورة موجودة،
+               حتى لو كان حقل items مفقوداً أو ليس مصفوفة (فواتير كاصي حي / دينار صرف القديمة) */
+            const realItems=(Array.isArray(inv.items)?inv.items:[]).filter(it=>(it.w||0)>0.001);
             realItems.forEach(it=>{
                 const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));
                 lines.push(`${it.n==='روتور'?'♻️':'🛍️'} ${it.n} — ${f(it.w,2)}غ عيار ${f(it.k,0)}${it.p?` × ${f(it.p,0)} دج/غ = ${f(fv,0)} دج`:''}`);
@@ -3577,6 +3579,8 @@ function opDetailLines(o,custView){
             if(Math.abs(_nEq)>0.001){
                 lines.push(`⚖️ صافي المكافئ (705): ${f(_nEq,2)} غ${_nFee?` · 💰 الأجرة: ${f(_nFee,0)} دج`:''}`);
             }
+            /* إن لم يُنتَج أي سطر (فاتورة بلا مكوّنات معروفة) اعرض ملخّصاً من قيمة العملية */
+            if(!lines.length&&Math.abs(o.a||0)>0.001)lines.push(`⚖️ صافي المكافئ (705): ${f(o.a||0,2)} غ`);
         }
     } else if(t==='تذويب كاصي حي'){
         if(o.note)lines.push('🔥 '+o.note);
