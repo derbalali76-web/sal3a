@@ -63,6 +63,23 @@ window._realOpName=(o)=>{
     }
     return _tName(t);
 };
+/* 🔢 المبلغ المعروض لعملية السلعة: إن خُزّن 0 (كاصي حي/لاكاص/أجرة بالكاصي وحدها) نستخرج الوزن من الفاتورة */
+window._opDispAmt=(o)=>{
+    let a=Number(o&&o.a)||0;
+    let unit=(o&&o.m==='دينار')?'DZD':'g';
+    const t=(o&&o.t)||'';
+    if((t==='بيع سلعة'||t==='شراء سلعة')&&Math.abs(a)<0.001){
+        const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
+        if(inv){
+            const lk =(inv.liveKassi&&(inv.liveKassi.w||0)>0.001)?Number(inv.liveKassi.w):0;
+            const kEq=(inv.kass&&inv.kass.eq>0.001)?Number(inv.kass.eq):0;
+            const cfEq=(inv.cashiFee&&inv.cashiFee.eq>0.001)?Number(inv.cashiFee.eq):0;
+            const comp=Math.round((lk+kEq+cfEq)*1000)/1000;
+            if(comp>0.001){ a=comp; unit='g'; }
+        }
+    }
+    return {a,unit};
+};
 
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
 let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
@@ -3667,7 +3684,8 @@ function renderLog(){
     list.innerHTML=fl.map(o=>{
         const out=outTypes.has(o.t);
         const bg=colors[o.t]||(out?'var(--rd)':'var(--gr)');
-        const unit=o.m==='دينار'?'DZD':'g';
+        const _da=window._opDispAmt?_opDispAmt(o):{a:o.a||0,unit:(o.m==='دينار'?'DZD':'g')};
+        const unit=_da.unit;
         const dlines=opDetailLines(o);
         const detailHtml=dlines.length
             ?dlines.map(l=>`<br><span style="color:var(--t2);font-size:.6rem;line-height:1.6">${l}</span>`).join('')
@@ -3683,7 +3701,7 @@ function renderLog(){
                 <br><small style="color:var(--t2)">${o.dt||''} · <span style="color:${bg};font-weight:700">${_realOpName(o)}</span></small>${detailHtml}${byHtml}
             </span>
             <span style="color:${out?'var(--rd)':'var(--gr)'};font-weight:900;font-size:.7rem;white-space:nowrap;margin-top:.1rem">
-                ${out?'−':'+'}${fmt(o.a||0,2)} ${unit}
+                ${out?'−':'+'}${fmt(_da.a||0,2)} ${unit}
             </span>
             <button class="btndel" onclick="delOp('${o.id}')" style="margin-top:.1rem"><i class="fas fa-trash-alt"></i></button>
         </div>`;
@@ -3907,7 +3925,8 @@ function buildCustomerLogHtml(c,custOps,custView){
     const rows=custOps.map((o,i)=>{
         const outRaw=outTypes.has(o.t);
         const out=custView?!outRaw:outRaw;      /* الزبون يرى الاتجاه معكوساً */
-        const unit=o.m==='دينار'?'DZD':'g';
+        const _da=window._opDispAmt?_opDispAmt(o):{a:o.a||0,unit:(o.m==='دينار'?'DZD':'g')};
+        const unit=_da.unit;
         const amtColor=out?'#dc2626':'#16a34a';
         const amtSign=out?'−':'+';
         const tc=tColor[o.t]||'#374151';
@@ -3920,7 +3939,7 @@ function buildCustomerLogHtml(c,custOps,custView){
             <td style="padding:7px 5px;text-align:center;color:#9ca3af;font-size:12px;border-bottom:1px solid #e5e7eb">${custOps.length-i}</td>
             <td style="padding:7px 6px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">${o.dt||'—'}</td>
             <td style="padding:7px 6px;font-size:12px;font-weight:700;color:${tc};border-bottom:1px solid #e5e7eb">${_nameOf(o)}${!custView?`<br><span style="font-size:9px;color:#9ca3af;font-weight:600;font-style:italic">✍️ ${o.by||o.empOwner||user||''}</span>`:''}</td>
-            <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(o.a,2)} ${unit}</td>
+            <td style="padding:7px 6px;font-size:13px;font-weight:900;color:${amtColor};border-bottom:1px solid #e5e7eb;white-space:nowrap">${amtSign}${f(_da.a,2)} ${unit}</td>
             <td style="padding:7px 6px;font-size:11px;border-bottom:1px solid #e5e7eb">${detailHtml}</td>
         </tr>`;}).join('');
 
