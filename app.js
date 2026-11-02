@@ -86,6 +86,20 @@ window._opDispAmt=(o)=>{
     }
     return {a,unit};
 };
+/* 🏷️ اسم ومبلغ عرض فاتورة السلعة في الأرشيف (يعكس المكوّن الفعلي بدل «بيع سلعة 0») */
+window._dollDispName=(d)=>{
+    try{ return _realOpName({t:(d.isBuy?'شراء سلعة':'بيع سلعة'), did:d.id, a:d.a||0}); }
+    catch(e){ return d.isBuy?'شراء سلعة':'بيع سلعة'; }
+};
+window._dollDispAmt=(d)=>{
+    if(Math.abs(d.a||0)>0.001) return fmt(d.a||0,2)+' غ (705)';   /* سلع فعلية */
+    const goldComp=(d.kass&&d.kass.eq>0?d.kass.eq:0)+(d.cashiFee&&d.cashiFee.eq>0?d.cashiFee.eq:0)
+        +(d.liveKassi&&d.liveKassi.w>0?Number(d.liveKassi.w):0)+(d.cashiCash&&d.cashiCash.eq>0?d.cashiCash.eq:0);
+    if(goldComp>0.001) return fmt(goldComp,2)+' غ (705)';
+    const cashTot=(d.cash||0)+((d.cashiCash&&d.cashiCash.amt)||0);
+    if(cashTot>0.001) return fmt(cashTot,0)+' دج';
+    return fmt(d.a||0,2)+' غ (705)';
+};
 
 let B={دينار:0,'ذهب 730':0,'ذهب 24':0,دولار:0,vg730:0,vg24:0};
 let ops=[],invoices=[],debts=[],loans=[],rafInvoices=[],dollInvoices=[],dubaiInvoices=[],goodsStock=[];
@@ -4992,18 +5006,19 @@ function renderArchive(){
         <div class="saved-card">
             <div>
                 <strong>👤 ${d.c}</strong>
-                <span style="color:${d.isBuy?'var(--gr)':'#0369a1'};font-weight:800;margin-right:.25rem">${d.isBuy?'شراء سلعة':'بيع سلعة'}</span>
-                <span style="color:var(--g600);font-weight:900">${fmt(d.a||0,2)} غ (705)</span>
+                <span style="color:${d.isBuy?'var(--gr)':'#0369a1'};font-weight:800;margin-right:.25rem">${_dollDispName(d)}</span>
+                <span style="color:var(--g600);font-weight:900">${_dollDispAmt(d)}</span>
                 ${d.fee?`<span style="color:var(--t2);font-weight:800;font-size:.7rem"> · أجرة ${fmt(d.fee,0)} دج</span>`:''}
                 ${Array.isArray(d.items)&&d.items.length
                     ?d.items.map(it=>`<small style="color:var(--t2);display:block;font-size:.62rem">🛍️ ${it.n} · ⚖️ ${fmt(it.w||0,2)} غ · 🏷️ ${fmt(it.k||0,0)}${it.p?' · 💰 '+fmt(it.p,0)+' دج/غ = '+fmt(it.fv!=null?it.fv:(it.w*it.p),0)+' دج':''}</small>`).join('')
                     :''}
                 ${d.rot?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">♻️ روتور (مرتجع): ⚖️ ${fmt(d.rot.w,2)} غ · 🏷️ ${fmt(d.rot.k,0)}${d.rot.p?' · 💰 '+fmt(d.rot.p,0)+' دج/غ = '+fmt(d.rot.fv||0,0)+' دج':''}</small>`:''}
-                ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'أخذ':'دفع'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
-                ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ ${d.isBuy?'دفع':'أخذ'} لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
-                ${d.cashiCash?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالدينار: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
-                ${d.cashiFee&&d.cashiFee.items?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
-                ${(d.rot||d.cash||(d.kass&&d.kass.eq))?`<small style="color:var(--g600);display:block;font-size:.62rem;font-weight:900">= الصافي: ${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0),2)} غ (705) · ${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0),0)} دج</small>`:''}
+                ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'أخذت':'دفعت'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
+                ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ ${d.isBuy?'دفعت':'أخذت'} لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
+                ${d.cashiCash&&(d.cashiCash.amt||0)>0.001?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالدينار: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
+                ${d.cashiFee&&d.cashiFee.items&&(d.cashiFee.din||0)>0.001?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
+                ${d.liveKassi&&(d.liveKassi.w||0)>0.001?`<small style="color:#ea580c;display:block;font-size:.62rem;font-weight:800">🔥 كاصي حي: ${fmt(d.liveKassi.w,2)} غ خام (مؤقت 705)</small>`:''}
+                ${(d.rot||d.cash||(d.kass&&d.kass.eq)||(d.cashiCash&&d.cashiCash.amt)||(d.cashiFee&&d.cashiFee.din)||(d.liveKassi&&d.liveKassi.w))?`<small style="color:var(--g600);display:block;font-size:.62rem;font-weight:900">= الصافي: ${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0)-(d.cashiCash?d.cashiCash.eq||0:0)-(d.liveKassi?d.liveKassi.w||0:0),2)} غ (705) · ${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0)-(d.cashiFee?d.cashiFee.din||0:0),0)} دج</small>`:''}
                 <small style="color:var(--t3);display:block;font-size:.58rem">${d.dt}</small>
                 ${(d.by||d.empOwner)?`<small style="color:var(--t3);font-style:italic;display:block;font-size:.62rem">✍️ ${d.by||d.empOwner}</small>`:''}
             </div>
@@ -5543,6 +5558,9 @@ window._renderEmpHome=()=>{
     }
 };
 window.switchPage=(p)=>{
+    /* 🎤 زر الميكروفون: يظهر في الصفحة الرئيسية فقط */
+    const _mic=document.getElementById('vaMicWrap');
+    if(_mic)_mic.style.display=(p==='home')?'':'none';
     /* 🔐 الموظف: فاتورة فقط */
     if(window._userRole==='employee'&&!['invoice','empHome','log','archive'].includes(p)){
         /* زر الرئيسية للموظف → صفحته الخاصة */
