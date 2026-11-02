@@ -35,7 +35,10 @@ window._tName=(t)=>({
     'شراء دولار':'شراء سلعة',
     'دولار وارد':'سلعة واردة',
     'دولار صادر':'سلعة صادرة',
-    'دولار':'سلعة'
+    'دولار':'سلعة',
+    'دفع دينار':'دفعت دينار',
+    'قبض دينار':'قبضت دينار',
+    'أخذ دينار':'أخذت دينار'
 }[t]||t||'');
 
 /* 🏷️ الاسم الحقيقي للعملية حسب محتواها — يصحّح العمليات القديمة «بيع/شراء سلعة»
@@ -58,10 +61,10 @@ window._realOpName=(o)=>{
                     if(hasCash)comps.push('دينار');
                     return comps.join(' + ');
                 }
-                if(hasCash)return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
+                if(hasCash)return t==='شراء سلعة'?'دفعت دينار':'قبضت دينار';
             }
         }else if(Math.abs(o.a||0)<0.001){
-            return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
+            return t==='شراء سلعة'?'دفعت دينار':'قبضت دينار';
         }
     }
     return _tName(t);
@@ -441,7 +444,7 @@ window.showPeriodSummary=(scope)=>{
         <div class="modal-header"><h3 style="font-size:.95rem">📊 حصيلة ${lbl}</h3><button class="close-btn" onclick="closeModal('periodSumModal')">✕</button></div>
         <div style="padding:.9rem;font-family:Tajawal,sans-serif;text-align:right;direction:rtl">
           <table style="width:100%;border-collapse:collapse;font-size:.84rem">
-            <tr><td style="padding:.35rem 0">🏙️ مبيعات دبي${r.dubaiCount?` (${r.dubaiCount})`:''}</td><td style="text-align:left;font-weight:800">${f0(r.dubaiDZD)} دج <span style="color:var(--t3);font-size:.74rem">(${f0(r.dubaiUSD)} $)</span></td></tr>
+            ${r.dubaiCount?`<tr><td style="padding:.35rem 0">🏙️ مبيعات دبي (${r.dubaiCount})</td><td style="text-align:left;font-weight:800">${f0(r.dubaiDZD)} دج <span style="color:var(--t3);font-size:.74rem">(${f0(r.dubaiUSD)} $)</span></td></tr>`:''}
             ${r.sellGlocal?`<tr><td style="padding:.35rem 0">🟡 مبيعات محلية</td><td style="text-align:left;font-weight:800">${f0(r.sellGlocal)} دج</td></tr>`:''}
             <tr><td style="padding:.35rem 0">🛒 مشتريات الذهب${r.buyCount?` (${r.buyCount})`:''}</td><td style="text-align:left;font-weight:800;color:#dc2626">− ${f0(r.buyG)} دج</td></tr>
             ${(r.expDZD||r.expUSD)?`<tr><td style="padding:.35rem 0">💸 مصاريف</td><td style="text-align:left;font-weight:800;color:#dc2626">− ${f0(r.expDZD+r.expUSDtoDZD)} دج</td></tr>`:''}
@@ -926,6 +929,14 @@ function upd(){
     document.getElementById('g730Bal').innerHTML=fmt((B['ذهب 730']+(B.vg730||0))*(730/705),2)+'<small> غ (705)</small>';
     document.getElementById('g24Bal').innerHTML=fmt(B['ذهب 24']+(B.vg24||0),2)+'<small> g</small>';
     document.getElementById('usdBal').innerHTML=fmt(B.دولار,2)+'<small> غ</small>';
+    /* 👁️ إخفاء البطاقات الفارغة (قيمتها ≈ 0) في الصفحة الرئيسية */
+    try{
+        const _hideIf=(sel,empty)=>{const el=document.querySelector(sel);if(el)el.style.display=empty?'none':'';};
+        _hideIf('.bcard-din',  Math.abs(Number(B.دينار)||0)<1);
+        _hideIf('.bcard-g730', Math.abs((Number(B['ذهب 730'])||0)+(Number(B.vg730)||0))<0.001);
+        _hideIf('.bcard-g24',  Math.abs((Number(B['ذهب 24'])||0)+(Number(B.vg24)||0))<0.001);
+        _hideIf('.bcard-dol',  Math.abs(Number(B.دولار)||0)<0.001);
+    }catch(e){}
     /* 🔥 بطاقة الكاصي الحي: تظهر فقط إن كان فيه قطع غير مذوّبة */
     try{
         const lk=(window._liveKassi||[]).filter(x=>!x.melted);
@@ -1781,7 +1792,7 @@ window.openGoodsFor=(name)=>{
     const tagColor=isWorkshop?'#c2410c':'#0369a1';
     const tagBg=isWorkshop?'rgba(194,65,12,.12)':'rgba(3,105,161,.12)';
     const tagLabel=isWorkshop?'🔧 ورشة':'🏪 سوق';
-    const actLabel=isWorkshop?'🛍️ شراء سلعة':'🏷️ بيع سلعة';
+    const actLabel='➕ إضافة معاملة';
     const actType=isWorkshop?'buy':'sell';
 
     let ov=document.getElementById('custCardOverlay');
@@ -1849,16 +1860,16 @@ window.openDollar=(t,prefillName)=>{
     const _mib=document.getElementById('moreInfoBar'); if(_mib)_mib.style.display='';
     ['rotW','rotK','rotP','goodsCash'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _cl=document.getElementById('goodsCashLbl');
-    if(_cl)_cl.textContent=(t==='buy'?'دفع دينار':'أخذ دينار');
+    if(_cl)_cl.textContent=(t==='buy'?'دفعت دينار':'أخذت دينار');
     const _kl=document.getElementById('kassLbl');
-    if(_kl)_kl.textContent=(t==='buy'?'دفع لاكاص (تدفعه للزبون)':'أخذ لاكاص (تأخذه من الزبون)');
+    if(_kl)_kl.textContent=(t==='buy'?'دفعت لاكاص (تدفعه للزبون)':'أخذت لاكاص (تأخذه من الزبون)');
     const _kb=document.getElementById('kassRows');
     if(_kb){_kb.innerHTML='';window._addKassRow();}
     ['cashiAmt','cashiRate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const _ccl=document.getElementById('cashiLbl');
-    if(_ccl)_ccl.textContent=(t==='buy'?'دفع كاصي بالدينار (منه)':'قبض كاصي بالدينار (له)');
+    if(_ccl)_ccl.textContent=(t==='buy'?'دفعت كاصي بالدينار (منه)':'قبضت كاصي بالدينار (له)');
     const _cfl=document.getElementById('cashiFeeLbl');
-    if(_cfl)_cfl.textContent=(t==='buy'?'دفع أجرة بالكاصي (منه)':'أجرة بالكاصي (له)');
+    if(_cfl)_cfl.textContent=(t==='buy'?'دفعت أجرة بالكاصي (منه)':'أجرة بالكاصي (له)');
     const _cfb=document.getElementById('cashiFeeRows');
     if(_cfb){_cfb.innerHTML='';window._addCashiFeeRow();}
     const _ce=document.getElementById('cashiEq'); if(_ce)_ce.textContent='';
@@ -3539,8 +3550,8 @@ function opDetailLines(o,custView){
                 lines.push(`${it.n==='روتور'?'♻️':'🛍️'} ${it.n} — ${f(it.w,2)}غ عيار ${f(it.k,0)}${it.p?` × ${f(it.p,0)} دج/غ = ${f(fv,0)} دج`:''}`);
             });
             if(inv.rot&&(inv.rot.w||0)>0.001)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
-            if(inv.kass&&inv.kass.eq>0.001)lines.push(`⚱️ ${isBuy?'دفع':'أخذ'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
-            if(inv.cash>0.001)lines.push(`💵 ${isBuy?'أخذ':'دفع'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
+            if(inv.kass&&inv.kass.eq>0.001)lines.push(`⚱️ ${isBuy?'دفعت':'أخذت'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
+            if(inv.cash>0.001)lines.push(`💵 ${isBuy?'أخذت':'دفعت'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
             if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705)`);
             if(inv.cashiFee&&inv.cashiFee.items&&(inv.cashiFee.din||0)>0.001)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج`);
             /* 🔥 كاصي حي: وزن خام مؤقّت (705) · يُصحَّح عند التذويب */
@@ -3891,6 +3902,7 @@ function buildCustomerLogHtml(c,custOps,custView){
     const _flipName=(t)=>({
         'شراء سلعة':'بعت سلعة للمحل','بيع سلعة':'اشتريت سلعة من المحل',
         'قبض دينار':'دفعت للمحل','دفع دينار':'قبضت من المحل',
+        'قبضت دينار':'دفعت للمحل','دفعت دينار':'قبضت من المحل','أخذت دينار':'دفعت للمحل',
         'شراء':'بعت للمحل','بيع':'اشتريت من المحل',
         'أعطيت':'استلمت من المحل','استلمت':'سلّمت للمحل',
         'تسليم':'استلمت من المحل','استلام':'سلّمت للمحل',
@@ -4105,7 +4117,7 @@ function renderDebts(){
     const tb=document.getElementById('debtsBody');
     const tf=document.getElementById('debtsFoot');
     const _adminDebts=debts.filter(d=>!d.empOwner);
-    if(!_adminDebts.length){tb.innerHTML='<tr><td colspan="4" style="padding:2rem;color:var(--t3)">لا توجد ديون</td></tr>';if(tf)tf.innerHTML='';return}
+    if(!_adminDebts.length){tb.innerHTML='<tr><td colspan="4" style="padding:2rem;color:var(--t3)">لا توجد ديون</td></tr>';if(tf)tf.innerHTML='';const _t1=document.getElementById('debtsTh24');if(_t1)_t1.style.display='none';return}
     const cd={};
     debts.forEach(d=>{
         /* 👤 ديون الموظفين لا تُجمع مع ديون الأدمين — تظهر في بطاقة لاقوبال فقط */
@@ -4129,7 +4141,10 @@ function renderDebts(){
         const shown=isDin?fmtDin(v):fmt(v,d);
         return`<span class="${v>0?'debt-pos':'debt-neg'}">${shown}</span>${unit?`<small style="font-size:.65rem;color:var(--t3);margin-right:.15rem"> ${unit}</small>`:''}`;
     };
-    if(!entries.length){tb.innerHTML='<tr><td colspan="4" style="padding:2rem;color:var(--t3)">لا توجد ديون في هذا القسم</td></tr>';if(tf)tf.innerHTML='';return;}
+    if(!entries.length){tb.innerHTML='<tr><td colspan="4" style="padding:2rem;color:var(--t3)">لا توجد ديون في هذا القسم</td></tr>';if(tf)tf.innerHTML='';const _t0=document.getElementById('debtsTh24');if(_t0)_t0.style.display='none';return;}
+    /* 🙈 عمود ذهب 24: يظهر فقط إن كان هناك رصيد 24 لأحد الزبائن */
+    const has24=entries.some(([,v])=>Math.abs(v.g2||0)>0.001);
+    const _th24=document.getElementById('debtsTh24'); if(_th24)_th24.style.display=has24?'':'none';
     tb.innerHTML=entries
         .sort((a,b)=>{
             const ta=lastTx[a[0]]||0, tb2=lastTx[b[0]]||0;
@@ -4146,14 +4161,14 @@ function renderDebts(){
             return`<tr>
             <td><strong style="cursor:pointer;color:var(--g600);text-decoration:underline;text-decoration-style:dotted" onclick="openGoodsFor('${n.replace(/'/g,"\\'")}')" title="فتح بطاقة الزبون">${n}</strong> ${filter==='all'?tag:''}</td>
             <td>${fD(v.di,0,'Da')}</td><td>${fD(v.do,2,'غ')}</td>
-            <td>${fD(v.g2,2,'غ (24)')}</td>
+            ${has24?`<td>${fD(v.g2,2,'غ (24)')}</td>`:''}
         </tr>`;}).join('');
     /* الإجمالي */
     const tot=entries.reduce((s,[,v])=>({di:s.di+v.di,do:s.do+v.do,g2:s.g2+v.g2}),{di:0,do:0,g2:0});
     if(tf)tf.innerHTML=`<tr style="border-top:2px solid var(--g600);font-weight:900;background:var(--card2)">
         <td style="font-weight:900">الإجمالي (${entries.length})</td>
         <td>${fD(tot.di,0,'Da')}</td><td>${fD(tot.do,2,'غ')}</td>
-        <td>${fD(tot.g2,2,'غ (24)')}</td>
+        ${has24?`<td>${fD(tot.g2,2,'غ (24)')}</td>`:''}
     </tr>`;
 }
 window.exportDebtsPdf=function(){
@@ -5790,7 +5805,7 @@ window.showMonthlyProfit=(mKey)=>{
     let m=document.getElementById('monthProfitModal');
     if(!m){m=document.createElement('div');m.id='monthProfitModal';m.className='modal-overlay';document.body.appendChild(m);}
     m.innerHTML=`<div class="modal-box" style="max-width:440px">
-      <div class="modal-header"><h3 style="font-size:.95rem">📈 الفائدة (قيمة الأصول + شحن دبي)</h3><button class="close-btn" onclick="closeModal('monthProfitModal')">✕</button></div>
+      <div class="modal-header"><h3 style="font-size:.95rem">📈 الفائدة (قيمة الأصول${dubW>0.001?' + شحن دبي':''})</h3><button class="close-btn" onclick="closeModal('monthProfitModal')">✕</button></div>
       <div style="padding:.9rem;direction:rtl;text-align:right">
         <div style="text-align:center;background:var(--card2);border-radius:14px;padding:.9rem;margin-bottom:.6rem">
           <div style="font-size:.72rem;color:var(--t3)">الفائدة الكلية</div>
@@ -5802,12 +5817,12 @@ window.showMonthlyProfit=(mKey)=>{
             ${Math.abs(bk.din)>1?`💵 ${f0(bk.din)} · `:''}${Math.abs(bk.dol)>1?`💲 ${f0(bk.dol)} · `:''}${Math.abs(bk.g730)>1?`🏅 ${f0(bk.g730)} · `:''}${Math.abs(bk.g24)>1?`💎 ${f0(bk.g24)}`:''}
           </div>
         </div>
-        <div style="background:var(--card2);border-radius:12px;padding:.7rem">
+        ${dubW>0.001?`<div style="background:var(--card2);border-radius:12px;padding:.7rem">
           <div style="display:flex;justify-content:space-between;font-size:.8rem;font-weight:800"><span>🚢 شحن ميزان دبي</span><span style="color:#16a34a">+ ${f0(shipDubai)}</span></div>
           <div style="font-size:.64rem;color:var(--t3);margin-top:.35rem">${fmt(dubW,2)} غ × ${fmt(_shipSp,2)}$ × ${f0(_buyR/100)} (سعر شراء الدولار)</div>
-        </div>
+        </div>`:''}
         <div style="font-size:.64rem;color:var(--t3);margin-top:.6rem;line-height:1.7">
-          الفائدة = القيمة الإجمالية لأصولك الآن (نقد + ذهب مخزون + سلعة مقوّمة بسعر الذهب) + قيمة شحن الذهب الموجود حالياً في دبي. رقم لحظي يعكس صافي ثروتك.
+          الفائدة = القيمة الإجمالية لأصولك الآن (نقد + ذهب مخزون + سلعة مقوّمة بسعر الذهب)${dubW>0.001?' + قيمة شحن الذهب الموجود حالياً في دبي':''}. رقم لحظي يعكس صافي ثروتك.
         </div>
       </div></div>`;
     m.classList.add('active');
