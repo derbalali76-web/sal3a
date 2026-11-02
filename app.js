@@ -45,9 +45,18 @@ window._realOpName=(o)=>{
     if(t==='شراء سلعة'||t==='بيع سلعة'){
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
         if(inv){
-            const hasGoods=(Array.isArray(inv.items)&&inv.items.some(it=>(it.w||0)>0.001))||(inv.kass&&inv.kass.eq>0.001)||(inv.cashiFee&&(inv.cashiFee.din||0)>0.001);
+            const goodsEq=((Array.isArray(inv.items)?inv.items:[]).reduce((s,it)=>s+(((it.w||0)>0.001)?(Number(it.eq)||((Number(it.w)||0)*(Number(it.k)||705)/705)):0),0))-((inv.rot&&inv.rot.eq)||0);
+            const hasGoods=goodsEq>0.001;
             const hasCash=(inv.cash||0)>0.001||(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001);
-            if(!hasGoods&&hasCash)return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
+            if(!hasGoods){
+                if(hasCash)return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
+                /* بلا سلع ولا دينار → اعرض نوع المكوّن المُدخَل */
+                const comps=[];
+                if(inv.kass&&inv.kass.eq>0.001)comps.push('لاكاص');
+                if(inv.cashiFee&&inv.cashiFee.eq>0.001)comps.push('أجرة بالكاصي');
+                if(inv.liveKassi&&(inv.liveKassi.w||0)>0.001)comps.push('كاصي حي');
+                if(comps.length)return comps.join(' + ');
+            }
         }else if(Math.abs(o.a||0)<0.001){
             return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
         }
@@ -1738,11 +1747,12 @@ window.openGoodsFor=(name)=>{
         if(Math.abs(v)<0.001)return'';
         const owed=v>0;
         const shown=isDin?fmtDin(Math.abs(v)):_f(v,d);
-        return`<div style="flex:1;min-width:88px;background:${owed?'rgba(220,38,38,.08)':'rgba(22,163,74,.08)'};
-            border:1.5px solid ${owed?'rgba(220,38,38,.35)':'rgba(22,163,74,.35)'};border-radius:12px;padding:.55rem .4rem;text-align:center">
-            <div style="font-size:1.05rem;font-weight:900;color:${owed?'#dc2626':'#16a34a'};direction:ltr">${shown}</div>
+        /* 🎨 نفس اصطلاح دفتر الديون: يسالك (موجب) = أخضر · تسالو (سالب) = أحمر */
+        return`<div style="flex:1;min-width:88px;background:${owed?'rgba(22,163,74,.08)':'rgba(220,38,38,.08)'};
+            border:1.5px solid ${owed?'rgba(22,163,74,.35)':'rgba(220,38,38,.35)'};border-radius:12px;padding:.55rem .4rem;text-align:center">
+            <div style="font-size:1.05rem;font-weight:900;color:${owed?'#16a34a':'#dc2626'};direction:ltr">${shown}</div>
             <div style="font-size:.58rem;color:var(--t3);font-weight:700;margin-top:.1rem">${unit}</div>
-            <div style="font-size:.56rem;font-weight:800;color:${owed?'#dc2626':'#16a34a'}">${owed?'يسالك':'تسالو'}</div>
+            <div style="font-size:.56rem;font-weight:800;color:${owed?'#16a34a':'#dc2626'}">${owed?'نسالو':'يسالي'}</div>
         </div>`;
     };
     const balCards=[_bal(di,'دينار',0,true),_bal(dO,'ذهب 705 (غ)',2,false),_bal(g2,'ذهب 24 (غ)',2,false)].filter(Boolean).join('')
@@ -2108,17 +2118,25 @@ window.saveDollar=()=>{
     const liveKassi=_lkW>0?{id:'LK-'+uid(),w:_lkW,c:cust,did,dt:nowStr,melted:false}:null;
     /* gv:2 — دائماً غير خالص: الشراء يُسجّل ديناً بالأحمر (سلعة مكافئ 705 + الأجرة بالدينار)، والبيع بالعكس */
     const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined,cashiCash:cashiCash||undefined,cashiFee:cashiFee.eq>0?cashiFee:undefined,liveKassi:liveKassi||undefined,empOwner:(window._userRole==='employee'?_currentUser:undefined),by:(window._currentUser||'')};
-    /* 🏷️ اسم العملية يعكس ما حدث فعلاً — لا «بيع سلعة» على عملية دينار صرفة */
+    /* 🏷️ اسم العملية ومبلغها يعكسان ما أُدخل فعلاً — لا «بيع سلعة 0» على عملية بلا سلع */
     const _hasGoods=items.some(it=>(it.w||0)>0.001)||(kass.eq>0)||(cashiFee&&cashiFee.eq>0)||(liveKassi&&liveKassi.w>0);
     const _cashAmt=(cash||0)+((cashiCash&&cashiCash.amt)||0);
     const _hasCash=_cashAmt>0.001;
+    const _mainGoodsEq=Math.round((equiv-(rot?rot.eq:0))*1000)/1000;   /* صافي السلع (705) */
+    const _compEq=Math.round(((kass&&kass.eq>0?kass.eq:0)+(cashiFee&&cashiFee.eq>0?cashiFee.eq:0)+(liveKassi&&liveKassi.w>0?liveKassi.w:0))*1000)/1000;
     let _opName=isBuy?'شراء سلعة':'بيع سلعة';
-    let _opM='دولار', _opA=Math.round((equiv-(rot?rot.eq:0))*1000)/1000;
-    if(!_hasGoods&&_hasCash){
-        /* دينار فقط بلا ذهب: المبلغ بالدينار، والاسم معكوس (شراء→دفع · بيع→قبض) */
-        _opName=isBuy?'دفع دينار':'قبض دينار';
-        _opM='دينار';
-        _opA=_cashAmt;
+    let _opM='دولار', _opA=_mainGoodsEq;
+    if(_mainGoodsEq<=0.001){
+        if(_hasCash){
+            /* دينار فقط بلا ذهب: المبلغ بالدينار، والاسم معكوس (شراء→دفع · بيع→قبض) */
+            _opName=isBuy?'دفع دينار':'قبض دينار';
+            _opM='دينار';
+            _opA=_cashAmt;
+        }else if(_compEq>0.001){
+            /* بلا سلع ولا دينار → مكوّن (لاكاص/أجرة بالكاصي/كاصي حي): اعرض وزنه · الاسم الوصفي يُحسم عند العرض */
+            _opM='دولار';
+            _opA=_compEq;
+        }
     }
     const _gnote=(document.getElementById('goodsNote')?.value||'').trim();
     const _gEmp=(window._userRole==='employee'?_currentUser:null);
@@ -4213,7 +4231,7 @@ window.exportDebtsPdf=function(){
             </tfoot>
         </table>
         <div style="margin-top:9px;font-size:9.5px;color:#888;text-align:center">
-            إيجابي (أخضر) = يسالك · سالب (أحمر) = تسالو &nbsp;|&nbsp; سعر الذهب: ${f0(goldPrice)} دج/غ
+            أخضر = نسالو · أحمر = يسالي &nbsp;|&nbsp; سعر الذهب: ${f0(goldPrice)} دج/غ
         </div>
     </div>`;
 
