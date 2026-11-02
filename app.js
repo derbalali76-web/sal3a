@@ -916,9 +916,12 @@ function _netBuckets(){
         goldValue, cashValue, gold705Total
     };
 }
+/* 🔥 إجمالي كاصي حي (الخام غير المُذوّب) كوزن 705 */
+window._liveKassiTotal=()=>{ let w=0; try{(window._liveKassi||[]).forEach(x=>{if(x&&!x.melted)w+=Number(x.w)||0;});}catch(e){} return Math.round(w*1000)/1000; };
 function net(){
     const b=_netBuckets();
-    return b.goldValue + b.cashValue;
+    /* مجموع الأصول = (ذهب 705 بدون ترباح + كاصي حي) × سعر الإعدادات + ديون الرصيد + صوارد الكوفر */
+    return b.goldValue + (_liveKassiTotal()*goldPrice) + b.cashValue;
 }
 function getCustBal(c,metal){return debts.filter(d=>d.c===c&&d.type===metal).reduce((s,d)=>s+(d.a||0),0)}
 
@@ -963,34 +966,24 @@ function upd(){
         }else if(card)card.style.display='none';
     }catch(e){}
     const _bk=_netBuckets();
-    /* ═══ ذهب البيع (الكاصي): لاكاص يجب شراؤه/بيعه من صافي حركة الكاصي ═══ */
+    /* ═══ ذهب البيع = إجمالي الذهب بمكافئ 705 ═══
+       ديون 705 + ديون 24 محوّلة + سلعة + مخزون 705 + مخزون 24  (كلها في gold705Total)
+       + صافي الترباح + كاصي حي (يُحسب كأنه 705) */
     const _gsc=document.getElementById('goldSaleContent');
     if(_gsc){
-        const tr=window._cashiTracker||{buyW:0,buyDin:0,soldW:0,soldDin:0};
-        /* صافي اللاكاص المطلوب = ما قبضته كاصي بالدينار − ما اشتريته فعلاً (أجرة بالكاصي) */
-        const netW705=Math.round((tr.buyW-tr.soldW)*1000)/1000;
-        /* 📒 ميزانات ترباح تدخل في ذهب البيع:
-           شراء 100غ ⟵ يزيد «ذهب البيع» (−وزن = المزيد للبيع) · بيع ⟵ يُنقصه */
-        let _tbW=0,_tbDin=0;
-        try{
-            const _num=v=>{const n=parseFloat(String(v||'').replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0;};
-            (window._tarbahList||[]).forEach(x=>{ const w=_num(x.weight),p=_num(x.price);
-                if(w>0){ if(x.type==='buy'){_tbW-=w;_tbDin-=w*p;} else if(x.type==='sell'){_tbW+=w;_tbDin+=w*p;} } });
-        }catch(e){}
-        const netW=Math.round((netW705*(705/730)+_tbW)*1000)/1000;   /* 🔄 كاصي بمكافئ 730 + ترباح */
-        const netDin=Math.round((tr.buyDin-tr.soldDin)+_tbDin);
-        /* ═══ بطاقة مُدمجة بجانب الأصول: القيمة · السعر · عيار 730 ═══ */
-        if(Math.abs(netW)<0.001){
-            _gsc.innerHTML=`<div class="gs-val" style="font-size:1.3rem;color:var(--t3)">0<small style="font-size:.7rem"> غ</small></div>
-                <div class="gs-lbl" style="margin-top:.2rem">لا يوجد كاصي معلّق</div>`;
-        } else {
-            const price=Math.round(Math.abs(netDin)/Math.abs(netW));
-            /* سالب = لاكاص تبيعه (أحمر) · موجب = لاكاص تشتريه (أخضر) */
-            const col=netW<0?'#f87171':'#34d399';
-            _gsc.innerHTML=`<div class="gs-val" style="font-size:1.4rem;color:${col};line-height:1.05;word-break:break-word" dir="ltr">${fmt(netW,2)}<small style="font-size:.72rem"> غ</small></div>
-                <div class="gs-val" style="font-size:.72rem;color:#d97706;margin-top:.3rem;font-weight:800;word-break:break-word" dir="ltr">${fmt(price,0)} دج/غ</div>
-                <div class="gs-lbl" style="margin-top:.25rem">عيار 730</div>`;
-        }
+        const _num=v=>{const n=parseFloat(String(v||'').replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0;};
+        /* صافي الترباح: شراء = +وزن (تملكه للبيع) · بيع = −وزن */
+        let _tbNet=0;
+        try{ (window._tarbahList||[]).forEach(x=>{ const w=_num(x.weight);
+            if(w>0){ if(x.type==='buy')_tbNet+=w; else if(x.type==='sell')_tbNet-=w; } }); }catch(e){}
+        /* كاصي حي (الخام غير المُذوّب) يُحسب كوزن 705 */
+        const _lkW=_liveKassiTotal();
+        const _total705=Math.round(((_bk.gold705Total||0)+_tbNet+_lkW)*1000)/1000;
+        const _val=Math.round(_total705*goldPrice);
+        const col=_total705<0?'#f87171':'#34d399';
+        _gsc.innerHTML=`<div class="gs-val" style="font-size:1.4rem;color:${col};line-height:1.05;word-break:break-word" dir="ltr">${fmt(_total705,2)}<small style="font-size:.72rem"> غ</small></div>
+            <div class="gs-val" style="font-size:.7rem;color:#d97706;margin-top:.25rem;font-weight:800;word-break:break-word" dir="ltr">${fmtDin(_val)} دج</div>
+            <div class="gs-lbl" style="margin-top:.2rem">مكافئ 705</div>`;
     }
     const _nv=net();
     const _nwEl=document.getElementById('netWorth');
@@ -998,7 +991,8 @@ function upd(){
     _nwEl.style.color=_nv<0?'var(--rd)':'var(--g400)';
     /* تفاصيل كل وعاء بالدينار */
     const _parts=[];
-    _parts.push(`🥇 الذهب (705): ${fmt(_bk.gold705Total,2)} غ = ${fmtDin(_bk.goldValue)} دج`);
+    const _lkG=_liveKassiTotal();
+    _parts.push(`🥇 الذهب (705): ${fmt((_bk.gold705Total||0)+_lkG,2)} غ = ${fmtDin(_bk.goldValue+_lkG*goldPrice)} دج`);
     _parts.push(`💵 السيولة+الديون: ${fmtDin(_bk.cashValue)} دج`);
     document.getElementById('netWorthDetails').textContent=_parts.join(' | ');
     document.getElementById('goldPriceDisplay').textContent=fmt(goldPrice,0);
