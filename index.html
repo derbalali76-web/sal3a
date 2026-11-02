@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=224">
+    <link rel="stylesheet" href="./style.css?v=225">
 </head>
 <body>
 <script>
@@ -197,20 +197,6 @@
                     <span class="cv" id="usdBal">0<small> دج</small></span>
                     <span class="hint">👆 المخزون</span>
                 </div>
-                <div class="bcard clickable pt-card" onclick="openPayTake('pay')">
-                    <div class="bcard-accent" style="background:#dc2626"></div>
-                    <div class="ci" style="color:#dc2626"><i class="fas fa-arrow-up"></i></div>
-                    <span class="cl">دفع</span>
-                    <span class="cv" style="font-size:.7rem">دينار · ذهب 24</span>
-                    <span class="hint">👆 للزبون</span>
-                </div>
-                <div class="bcard clickable pt-card" onclick="openPayTake('take')">
-                    <div class="bcard-accent" style="background:#16a34a"></div>
-                    <div class="ci" style="color:#16a34a"><i class="fas fa-arrow-down"></i></div>
-                    <span class="cl">أخذ</span>
-                    <span class="cv" style="font-size:.7rem">دينار · ذهب 24</span>
-                    <span class="hint">👆 من الزبون</span>
-                </div>
                 <div class="bcard clickable" id="liveKassiCard" onclick="openLiveKassi()" style="display:none">
                     <div class="bcard-accent" style="background:#ea580c"></div>
                     <div class="ci" style="color:#ea580c"><i class="fas fa-fire"></i></div>
@@ -225,6 +211,17 @@
                     <span class="cv" id="laGobalBal">0<small> موظف</small></span>
                     <span class="hint">👆 التفاصيل</span>
                 </div>
+            </div>
+            <!-- 💵 أخذت / دفعت (دينار · ذهب 24 مع الزبون) — فوق أزرار السلعة مباشرة -->
+            <div style="display:flex;gap:.6rem;margin:.1rem 0 .6rem">
+                <button onclick="openPayTake('take')" style="flex:1;padding:.85rem;border:none;border-radius:14px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.95rem;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,.3);display:flex;flex-direction:column;align-items:center;gap:.15rem">
+                    <span><i class="fas fa-arrow-down"></i> أخذت</span>
+                    <span style="font-size:.6rem;font-weight:700;opacity:.92">دينار · ذهب 24 من الزبون</span>
+                </button>
+                <button onclick="openPayTake('pay')" style="flex:1;padding:.85rem;border:none;border-radius:14px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.95rem;cursor:pointer;box-shadow:0 4px 14px rgba(220,38,38,.3);display:flex;flex-direction:column;align-items:center;gap:.15rem">
+                    <span><i class="fas fa-arrow-up"></i> دفعت</span>
+                    <span style="font-size:.6rem;font-weight:700;opacity:.92">دينار · ذهب 24 للزبون</span>
+                </button>
             </div>
             <div class="astrip">
                 <button class="btn buy"  onclick="openDollar('buy')"> <i class="fas fa-cart-plus"></i>شراء سلعة</button>
@@ -1091,13 +1088,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=224"></script>
-<script src="./app.js?v=224"></script>
-<script src="./assistant.js?v=224"></script>
-<script src="./inventory.js?v=224"></script>
-<script src="./invoice.js?v=224"></script>
-<script src="./raffinage.js?v=224"></script>
-<script src="./auth.js?v=224"></script>
+<script src="./firebase.js?v=225"></script>
+<script src="./app.js?v=225"></script>
+<script src="./assistant.js?v=225"></script>
+<script src="./inventory.js?v=225"></script>
+<script src="./invoice.js?v=225"></script>
+<script src="./raffinage.js?v=225"></script>
+<script src="./auth.js?v=225"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
