@@ -3524,6 +3524,15 @@ function opDetailLines(o,custView){
             if(inv.cash>0.001)lines.push(`💵 ${isBuy?'أخذ':'دفع'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
             if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705)`);
             if(inv.cashiFee&&inv.cashiFee.items&&(inv.cashiFee.din||0)>0.001)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج`);
+            /* 🔥 كاصي حي: وزن خام مؤقّت (705) · يُصحَّح عند التذويب */
+            if(inv.liveKassi&&(inv.liveKassi.w||0)>0.001){
+                const _lkRec=(window._liveKassi||[]).find(x=>x.id===inv.liveKassi.id);
+                if(_lkRec&&_lkRec.melted){
+                    lines.push(`🔥 كاصي حي: ${f(inv.liveKassi.w,2)}غ خام → ذُوّب ${f(_lkRec.meltW||0,2)}غ عيار ${f(_lkRec.meltK||0,0)} = ${f(_lkRec.real705||0,2)}غ (705) · فرق العيار ${(_lkRec.diff||0)>0?'+':''}${f(_lkRec.diff||0,2)}غ`);
+                }else{
+                    lines.push(`🔥 كاصي حي: ${f(inv.liveKassi.w,2)}غ خام (سُجّل مؤقتاً 705) — ⏳ بانتظار التذويب`);
+                }
+            }
             /* سطر المكافئ الإجمالي: فقط إن كان فيه ذهب فعلي (لا في عملية دينار صرفة) */
             const _nEq=(inv.a||0)-(inv.rot?inv.rot.eq||0:0)-(inv.kass?inv.kass.eq||0:0);
             const _nFee=(inv.fee||0)-(inv.rot?inv.rot.fv||0:0);
