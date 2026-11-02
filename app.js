@@ -49,13 +49,16 @@ window._realOpName=(o)=>{
             const hasGoods=goodsEq>0.001;
             const hasCash=(inv.cash||0)>0.001||(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001);
             if(!hasGoods){
-                if(hasCash)return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
-                /* بلا سلع ولا دينار → اعرض نوع المكوّن المُدخَل */
+                /* اعرض كل المكوّنات الذهبية المُدخَلة، ومعها «دينار» إن وُجد دينار صرف */
                 const comps=[];
                 if(inv.kass&&inv.kass.eq>0.001)comps.push('لاكاص');
                 if(inv.cashiFee&&inv.cashiFee.eq>0.001)comps.push('أجرة بالكاصي');
                 if(inv.liveKassi&&(inv.liveKassi.w||0)>0.001)comps.push('كاصي حي');
-                if(comps.length)return comps.join(' + ');
+                if(comps.length){
+                    if(hasCash)comps.push('دينار');
+                    return comps.join(' + ');
+                }
+                if(hasCash)return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
             }
         }else if(Math.abs(o.a||0)<0.001){
             return t==='شراء سلعة'?'دفع دينار':'قبض دينار';
@@ -2143,17 +2146,16 @@ window.saveDollar=()=>{
     const _compEq=Math.round(((kass&&kass.eq>0?kass.eq:0)+(cashiFee&&cashiFee.eq>0?cashiFee.eq:0)+(liveKassi&&liveKassi.w>0?liveKassi.w:0))*1000)/1000;
     let _opName=isBuy?'شراء سلعة':'بيع سلعة';
     let _opM='دولار', _opA=_mainGoodsEq;
-    if(_mainGoodsEq<=0.001){
-        if(_hasCash){
-            /* دينار فقط بلا ذهب: المبلغ بالدينار، والاسم معكوس (شراء→دفع · بيع→قبض) */
-            _opName=isBuy?'دفع دينار':'قبض دينار';
-            _opM='دينار';
-            _opA=_cashAmt;
-        }else if(_compEq>0.001){
-            /* بلا سلع ولا دينار → مكوّن (لاكاص/أجرة بالكاصي/كاصي حي): اعرض وزنه · الاسم الوصفي يُحسم عند العرض */
-            _opM='دولار';
-            _opA=_compEq;
-        }
+    if(!_hasGoods && _hasCash){
+        /* دينار صرف فقط (بلا أي ذهب: لا سلع/لاكاص/أجرة بالكاصي/كاصي حي) → قبض/دفع دينار */
+        _opName=isBuy?'دفع دينار':'قبض دينار';
+        _opM='دينار';
+        _opA=_cashAmt;
+    }else if(_mainGoodsEq<=0.001 && _compEq>0.001){
+        /* بلا سلع فعلية لكن فيه مكوّن ذهبي (لاكاص/أجرة بالكاصي/كاصي حي ± دينار):
+           تبقى «بيع/شراء سلعة» ويُظهر المكافئ الذهبي · الاسم والتفاصيل تُحسم عند العرض (كل المكوّنات) */
+        _opM='دولار';
+        _opA=_compEq;
     }
     const _gnote=(document.getElementById('goodsNote')?.value||'').trim();
     const _gEmp=(window._userRole==='employee'?_currentUser:null);
