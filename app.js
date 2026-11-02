@@ -5337,6 +5337,8 @@ function buildDollHtml(d,custView){
     /* لاكاص: المحل يأخذه عند البيع ويدفعه عند الشراء — والزبون بالعكس */
     const kassLbl=custView?(d.isBuy?'أخذ لاكاص':'دفع لاكاص'):(d.isBuy?'دفع لاكاص':'أخذ لاكاص');
     const cashLbl=custView?(d.isBuy?'دفع دينار':'أخذ دينار'):(d.isBuy?'أخذ دينار':'دفع دينار');
+    const cashiCashLbl=custView?(d.isBuy?'قبض كاصي بالدينار':'دفع كاصي بالدينار'):(d.isBuy?'دفع كاصي بالدينار':'قبض كاصي بالدينار');
+    const cashiFeeLbl='أجرة بالكاصي';
     const items=Array.isArray(d.items)&&d.items.length?d.items:[{n:d.c,w:d.gw||0,k:d.gk||0,p:d.a||0}];
     const rows=items.map(it=>{
         const fv=it.fv!=null?it.fv:((it.w||0)*(it.p||0));
@@ -5374,10 +5376,13 @@ function buildDollHtml(d,custView){
         </table>
         ${d.kass&&d.kass.eq?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:5px;color:#0d9488;font-weight:800"><span>⚱️ ${kassLbl}:</span><span>− ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</span></div>`:''}
         ${d.cash?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:3px;color:#0369a1;font-weight:800"><span>💵 ${cashLbl}:</span><span>− ${fmt(d.cash,0)} دج</span></div>`:''}
+        ${d.cashiCash&&(d.cashiCash.amt||0)>0.001?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:3px;color:#b45309;font-weight:800"><span>💵 ${cashiCashLbl}:</span><span>${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</span></div>`:''}
+        ${d.cashiFee&&(d.cashiFee.din||0)>0.001?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:3px;color:#7c3aed;font-weight:800"><span>⚱️ ${cashiFeeLbl}:</span><span>${d.cashiFee.items?d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')+' = ':''}− ${fmt(d.cashiFee.din,0)} دج</span></div>`:''}
+        ${d.liveKassi&&(d.liveKassi.w||0)>0.001?`<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:3px;color:#ea580c;font-weight:800"><span>🔥 كاصي حي:</span><span>− ${fmt(d.liveKassi.w,2)} غ خام (مؤقت 705)</span></div>`:''}
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:900;font-size:16px;border-top:2px solid ${col};padding-top:6px">
-            <span>صافي المكافئ (705):</span><span>${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0),2)} غ</span>
+            <span>صافي المكافئ (705):</span><span>${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0)-(d.cashiCash?d.cashiCash.eq||0:0)-(d.liveKassi?d.liveKassi.w||0:0),2)} غ</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;padding-top:4px"><span>صافي الدينار:</span><span>${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0),0)} دج</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;padding-top:4px"><span>صافي الدينار:</span><span>${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0)-(d.cashiFee?d.cashiFee.din||0:0),0)} دج</span></div>
         <div style="text-align:center;margin-top:12px;font-size:12px;color:#666"><p>توقيع: _______________</p></div>
         </div>
     </div>`;
