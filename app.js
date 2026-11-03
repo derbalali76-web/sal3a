@@ -2386,6 +2386,150 @@ window.saveMeltGoods=(id)=>{
     setTimeout(()=>{ renderGoodsStock(); toast('🔥 تم التذويب — دخلت السبيكة مخزون 705','success'); },250);
 };
 
+/* 🔥 تذويب سبيكة من مخزون 705 (g730) → سبيكة جديدة بوزنها وعيارها الفعلي بعد التذويب */
+window.openMeltBar=(type,id)=>{
+    const arr=type==='24'?g24:g730;
+    const b=arr.find(x=>x.id===id); if(!b)return toast('السبيكة غير موجودة','error');
+    if(type==='730'&&window._rafSentIds&&_rafSentIds.has(id))return toast('هذه السبيكة في الرافيناج — لا يمكن تذويبها','error');
+    let ov=document.getElementById('meltBarOverlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='meltBarOverlay'; ov.className='modal-overlay'; document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');}); }
+    ov.innerHTML=`<div class="modal" style="max-width:380px">
+        <div class="modal-handle"></div>
+        <h3 style="text-align:center;color:#ea580c">🔥 تذويب سبيكة 705</h3>
+        <div style="font-size:.72rem;color:var(--t3);text-align:center;margin-bottom:.6rem">
+            الأصل: ${fmt(b.w,2)} غ عيار ${fmt(b.k,0)} = ${fmt(b.w*b.k/705,2)} غ (705)
+        </div>
+        <input type="text" inputmode="decimal" id="mbW" placeholder="⚖️ الوزن بعد التذويب (غ)" value="${fmt(b.w,2)}" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #ea580c;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box" oninput="liveNum(this);_mbPreview('${type}','${id}')">
+        <input type="text" inputmode="decimal" id="mbK" placeholder="🏷️ العيار بعد التذويب" value="${fmt(b.k,0)}" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box" oninput="liveNum(this);_mbPreview('${type}','${id}')">
+        <div id="mbPreview" style="font-size:.72rem;text-align:center;color:var(--g600);font-weight:800;margin-bottom:.6rem"></div>
+        <div style="display:flex;gap:.5rem">
+            <button onclick="document.getElementById('meltBarOverlay').classList.remove('active')"
+                style="flex:1;padding:.65rem;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">إلغاء</button>
+            <button onclick="saveMeltBar('${type}','${id}')"
+                style="flex:2;padding:.65rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;cursor:pointer">🔥 تذويب</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
+    _mbPreview(type,id);
+    setTimeout(()=>{const e=document.getElementById('mbW');if(e)e.focus();},300);
+};
+window._mbPreview=(type,id)=>{
+    const arr=type==='24'?g24:g730;
+    const b=arr.find(x=>x.id===id); if(!b)return;
+    const w=readNum('mbW'),k=readNum('mbK');
+    const el=document.getElementById('mbPreview'); if(!el)return;
+    if(w>0&&k>0){
+        const eq=w*k/705, orig=b.w*b.k/705, diff=eq-orig;
+        el.innerHTML=`السبيكة الناتجة: ${fmt(eq,2)} غ (705)`+(Math.abs(diff)>0.01?` · فرق ${diff>0?'+':''}${fmt(diff,2)} غ`:'')+(k>=999?' · ➡️ تدخل سبائك 24':'');
+    }else el.textContent='';
+};
+window.saveMeltBar=(type,id)=>{
+    const arr=type==='24'?g24:g730;
+    const b=arr.find(x=>x.id===id); if(!b)return toast('السبيكة غير موجودة','error');
+    if(type==='730'&&window._rafSentIds&&_rafSentIds.has(id))return toast('هذه السبيكة في الرافيناج','error');
+    const w=readNum('mbW'),k=readNum('mbK');
+    if(!w||w<=0)return toast('أدخل الوزن بعد التذويب','error');
+    if(!k||k<=0)return toast('أدخل العيار','error');
+    const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    emitEvent('MELT_BAR',
+        {id,type,origW:b.w,origK:b.k,meltW:w,meltK:k,empOwner:b.empOwner||null,dt:nowStr},
+        {op:{c:'المخزون',t:'تذويب سبيكة',m:'دولار',a:Math.round(w*k/705*1000)/1000,_ts:Date.now(),dt:nowStr,
+            note:`تذويب سبيكة ${fmt(b.w,2)}غ/${fmt(b.k,0)} → ${fmt(w,2)}غ عيار ${fmt(k,0)} = ${fmt(w*k/705,2)}غ (705)`+(k>=999?' · دخلت سبائك 24':''),empOwner:b.empOwner||undefined}}
+    );
+    document.getElementById('meltBarOverlay').classList.remove('active');
+    setTimeout(()=>{ if(typeof renderInvModal==='function')renderInvModal(); toast('🔥 تم تذويب السبيكة','success'); },250);
+};
+
+/* 🔥 تذويب مجموعة سبائك من مخزون 705 → سبيكة واحدة (تُستعمل لـ«الكل» و«المحدد») */
+window._openMeltBars=(type,bars)=>{
+    type=type||'730';
+    if(!bars||!bars.length)return toast('لا توجد سبائك محددة','error');
+    const totW=bars.reduce((s,b)=>s+(b.w||0),0);
+    const totEq=bars.reduce((s,b)=>s+(b.w||0)*((b.k||730)/705),0);
+    window._meltAllIds=bars.map(b=>b.id);
+    window._meltAllType=type;
+    window._meltAllOrigEq=Math.round(totEq*1000)/1000;
+    window._meltAllCount=bars.length;
+    let ov=document.getElementById('meltAllOverlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='meltAllOverlay'; ov.className='modal-overlay'; document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');}); }
+    ov.innerHTML=`<div class="modal" style="max-width:380px">
+        <div class="modal-handle"></div>
+        <h3 style="text-align:center;color:#ea580c">🔥 تذويب السبائك</h3>
+        <div style="font-size:.74rem;color:var(--t3);text-align:center;margin-bottom:.6rem;line-height:1.7">
+            ستُدمج <strong style="color:var(--t)">${bars.length}</strong> سبيكة<br>
+            الوزن الكلي: <strong style="color:var(--t)">${fmt(totW,2)} غ</strong> · المكافئ: <strong style="color:var(--t)">${fmt(totEq,2)} غ (705)</strong>
+        </div>
+        <input type="text" inputmode="decimal" id="mbaW" placeholder="⚖️ الوزن الكلي بعد التذويب (غ)" value="${fmt(totW,2)}" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #ea580c;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box" oninput="liveNum(this);_mbaPreview()">
+        <input type="text" inputmode="decimal" id="mbaK" placeholder="🏷️ العيار بعد التذويب" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box" oninput="liveNum(this);_mbaPreview()">
+        <div id="mbaPreview" style="font-size:.72rem;text-align:center;color:var(--g600);font-weight:800;margin-bottom:.6rem"></div>
+        <div style="display:flex;gap:.5rem">
+            <button onclick="document.getElementById('meltAllOverlay').classList.remove('active')"
+                style="flex:1;padding:.65rem;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">إلغاء</button>
+            <button onclick="saveMeltAllBars()"
+                style="flex:2;padding:.65rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;cursor:pointer">🔥 تذويب الكل</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
+    _mbaPreview();
+    setTimeout(()=>{const e=document.getElementById('mbaK');if(e)e.focus();},300);
+};
+/* تذويب كل السبائك القابلة للتذويب للمستخدم الحالي */
+window.openMeltAllBars=(type)=>{
+    type=type||'730';
+    const arr=type==='24'?g24:g730;
+    const _me=window._currentUser,_isEmp=window._userRole==='employee';
+    const bars=arr.filter(b=>(_isEmp?(b.empOwner===_me):(!b.empOwner)) && !(window._rafSentIds&&_rafSentIds.has(b.id)));
+    _openMeltBars(type,bars);
+};
+/* تذويب السبائك المحدّدة (مربّعات الاختيار في قائمة المخزون) */
+window.openMeltSelected=(type)=>{
+    type=type||'730';
+    const arr=type==='24'?g24:g730;
+    const ids=[...document.querySelectorAll('.melt-chk:checked')].map(c=>c.value);
+    if(!ids.length)return toast('اختر سبيكة واحدة على الأقل','error');
+    const bars=ids.map(id=>arr.find(b=>b.id===id)).filter(Boolean).filter(b=>!(window._rafSentIds&&_rafSentIds.has(b.id)));
+    _openMeltBars(type,bars);
+};
+/* تحديث زرّ «تذويب المحدد» حسب عدد المربّعات المؤشَّرة */
+window._updMeltSel=()=>{
+    const n=document.querySelectorAll('.melt-chk:checked').length;
+    const btn=document.getElementById('meltSelBtn'), cnt=document.getElementById('meltSelCount');
+    if(cnt)cnt.textContent=n;
+    if(btn){ btn.disabled=n<1;
+        btn.style.background=n<1?'#9ca3af':'linear-gradient(135deg,#ea580c,#c2410c)';
+        btn.style.cursor=n<1?'not-allowed':'pointer'; btn.style.opacity=n<1?'.7':'1'; }
+};
+window._mbaPreview=()=>{
+    const w=readNum('mbaW'),k=readNum('mbaK');
+    const el=document.getElementById('mbaPreview'); if(!el)return;
+    if(w>0&&k>0){
+        const eq=w*k/705, diff=eq-(window._meltAllOrigEq||0);
+        el.innerHTML=`السبيكة الناتجة: ${fmt(eq,2)} غ (705)`+(Math.abs(diff)>0.01?` · فرق ${diff>0?'+':''}${fmt(diff,2)} غ`:'')+(k>=999?' · ➡️ تدخل سبائك 24':'');
+    }else el.textContent='';
+};
+window.saveMeltAllBars=()=>{
+    const ids=window._meltAllIds||[], type=window._meltAllType||'730';
+    if(!ids.length)return toast('لا توجد سبائك','error');
+    const w=readNum('mbaW'),k=readNum('mbaK');
+    if(!w||w<=0)return toast('أدخل الوزن الكلي بعد التذويب','error');
+    if(!k||k<=0)return toast('أدخل العيار','error');
+    const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const _emp=window._userRole==='employee'?_currentUser:null;
+    emitEvent('MELT_BAR_ALL',
+        {ids,type,meltW:w,meltK:k,empOwner:_emp,dt:nowStr},
+        {op:{c:'المخزون',t:'تذويب سبائك',m:'دولار',a:Math.round(w*k/705*1000)/1000,_ts:Date.now(),dt:nowStr,
+            note:`تذويب ${ids.length} سبيكة (مكافئ ${fmt(window._meltAllOrigEq||0,2)}غ 705) → سبيكة واحدة ${fmt(w,2)}غ عيار ${fmt(k,0)} = ${fmt(w*k/705,2)}غ (705)`+(k>=999?' · دخلت سبائك 24':''),empOwner:_emp||undefined}}
+    );
+    document.getElementById('meltAllOverlay').classList.remove('active');
+    setTimeout(()=>{ if(typeof renderInvModal==='function')renderInvModal(); toast('🔥 تم تذويب كل السبائك في سبيكة واحدة','success'); },250);
+};
+
 /* ═══════════ تعديل الفواتير (دولار/دبي/رافيناج) — إبطال ثم فتح معبّأ، مع استرجاع عند الإلغاء ═══════════ */
 window._editRestore=null;
 window._flushPendingEdit=()=>{

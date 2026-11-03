@@ -700,6 +700,43 @@ function _applyEvt(st,evt){
             break;
         }
 
+        case 'MELT_BAR':{
+            /* 🔥 تذويب سبيكة من مخزون 705 (g730) أو 24 → سبيكة جديدة بوزنها وعيارها الفعلي.
+               الرصيد مُشتقّ من مصفوفة السبائك في syncBal، فيكفي استبدال القطعة. */
+            const arr=d.type==='24'?st.g24:st.g730;
+            const gi=arr.findIndex(x=>x.id===d.id);
+            if(gi>=0){
+                const old=arr[gi];
+                arr.splice(gi,1);
+                const w=Number(d.meltW)||0, k=Number(d.meltK)||(old.k||730);
+                const bar={id:(evt.id||'')+'_mb',w,k,
+                    desc:'سبيكة مذوّبة'+(old.src?' · '+old.src:''),
+                    src:old.src||'تذويب',origin:'تذويب',dt:d.dt||'',_ts:evt.ts||0};
+                if(old.empOwner)bar.empOwner=old.empOwner;   /* تبقى ملكية الموظف */
+                if(k>=999)st.g24.push(bar); else st.g730.push(bar);
+            }
+            break;
+        }
+
+        case 'MELT_BAR_ALL':{
+            /* 🔥 تذويب عدّة سبائك من مخزون 705 دفعة واحدة → سبيكة واحدة ناتجة.
+               نحذف كل السبائك المحدّدة بـ ids ونضيف سبيكة واحدة بوزنها وعيارها الفعلي. */
+            const arr=d.type==='24'?st.g24:st.g730;
+            const ids=Array.isArray(d.ids)?d.ids:[];
+            let empOwner=null, found=0;
+            for(let i=arr.length-1;i>=0;i--){
+                if(ids.indexOf(arr[i].id)>=0){ if(arr[i].empOwner)empOwner=arr[i].empOwner; arr.splice(i,1); found++; }
+            }
+            if(found>0){
+                const w=Number(d.meltW)||0, k=Number(d.meltK)||730;
+                const bar={id:(evt.id||'')+'_mba',w,k,
+                    desc:'تذويب '+found+' سبيكة',src:'تذويب',origin:'تذويب',dt:d.dt||'',_ts:evt.ts||0};
+                if(empOwner||d.empOwner)bar.empOwner=empOwner||d.empOwner;
+                if(k>=999)st.g24.push(bar); else st.g730.push(bar);
+            }
+            break;
+        }
+
         case 'ADMIN_BUY_EMP_BAR':{
             /* الأدمين يشتري سبيكة الموظف: تُنقل ملكيتها للأدمين */
             const bar=st.g730.find(b=>b.id===d.barId);

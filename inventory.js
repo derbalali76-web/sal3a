@@ -30,8 +30,17 @@ function renderInvModal(){
     document.getElementById('invTotalW').textContent=fmt(tw,2)+' g';
     const c=document.getElementById('invBarsList');
     if(!bars.length){c.innerHTML='<div style="text-align:center;padding:2rem;color:var(--t3)"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>المخزون فارغ</div>';return}
-    c.innerHTML=[...bars].reverse().map(b=>`
+    /* 🔥 شريط التذويب: «تذويب المحدد» (حسب المربّعات) و«تذويب الكل» — لسبائك 705 القابلة للتذويب */
+    const _meltable=invType==='730'?bars.filter(b=>!_rafSentIds.has(b.id)):[];
+    const _topBtn=(invType==='730'&&_meltable.length>=1)
+        ?`<div style="display:flex;gap:.4rem;margin-bottom:.55rem">
+            <button id="meltSelBtn" onclick="openMeltSelected('730')" disabled style="flex:1;padding:.6rem;border:none;border-radius:12px;background:#9ca3af;color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.76rem;cursor:not-allowed;opacity:.7">🔥 تذويب المحدد (<span id="meltSelCount">0</span>)</button>
+            ${_meltable.length>=2?`<button onclick="openMeltAllBars('730')" style="flex:1;padding:.6rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;font-size:.76rem;cursor:pointer">🔥 تذويب الكل (${_meltable.length})</button>`:''}
+        </div>`
+        :'';
+    c.innerHTML=_topBtn+[...bars].reverse().map(b=>`
         <div class="bar-item">
+            ${invType==='730'&&!_rafSentIds.has(b.id)?`<input type="checkbox" class="melt-chk" value="${b.id}" onchange="_updMeltSel()" title="تحديد للتذويب" style="width:20px;height:20px;accent-color:#ea580c;margin-left:.45rem;flex-shrink:0;cursor:pointer">`:''}
             <div class="bar-info">
                 <strong>${fmt(b.w,2)} غ</strong>
                 <span style="font-size:.66rem;color:var(--g600);font-weight:700"> — عيار ${fmt(b.k||0,1)}</span>
@@ -41,6 +50,7 @@ function renderInvModal(){
             <div class="bar-actions">
                 <button class="bsm sell" onclick="startSell('${invType}','${b.id}')">بيع</button>
                 <button class="bsm loan" onclick="startLoan('${invType}','${b.id}')">سلف</button>
+                ${invType==='730'&&!_rafSentIds.has(b.id)?`<button class="bsm" onclick="openMeltBar('730','${b.id}')" style="border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.1)" title="تذويب السبيكة وإدخال وزنها وعيارها الفعلي">🔥 تذويب</button>`:''}
                 ${invType==='730'?(_rafSentIds.has(b.id)?`<button class="bsm" disabled style="border-color:#6b7280;color:#6b7280;background:rgba(107,114,128,.08);opacity:.5;cursor:not-allowed" title="أُضيفت للرافيناج">✅ أُضيفت</button>`:`<button class="bsm" onclick="sendBarToRaf('730','${b.id}')" style="border-color:#ea580c;color:#ea580c;background:rgba(234,88,12,.08)" title="تحويل للرافيناج">🔥 رافيناج</button>`):''}
             </div>
         </div>`).join('');
