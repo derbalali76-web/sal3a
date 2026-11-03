@@ -835,7 +835,11 @@ window.VA = (() => {
             const avgBuy = buyEq > 0 ? buyVal / buyEq : 0;   /* سعر الشراء لكل غرام 705 */
             const avgSell = sellEq > 0 ? sellVal / sellEq : 0; /* سعر البيع لكل غرام 705 */
             const matchedEq = Math.min(buyEq, sellEq);
-            const profit = (avgSell - avgBuy) * matchedEq;
+            const grossProfit = (avgSell - avgBuy) * matchedEq; /* الفائدة الإجمالية قبل السحب */
+            /* 💸 اطرح ما سُحب سابقاً من فائدة السبائك (عمليات مصروف بهذا الوصف) */
+            let withdrawn = 0;
+            try{ _gl('ops').forEach(o=>{ if(o && o.t==='مصاريف' && (o.note==='سحب فائدة السبائك' || o.c==='سحب فائدة السبائك')) withdrawn += Number(o.a)||0; }); }catch(e){}
+            const profit = grossProfit - withdrawn;   /* الفائدة المتبقية بعد السحب */
             const remEq = buyEq - sellEq;
             const f0 = n => Math.round(n || 0).toLocaleString('fr-FR');
             const pc = profit >= 0 ? '#16a34a' : '#dc2626';
@@ -859,8 +863,11 @@ window.VA = (() => {
                             <b style="color:#dc2626;font-size:1.05rem">${fmt(sellEq,2)} غ</b>
                             <span style="font-size:.72rem;color:#666">بمتوسط ${f0(avgSell)} دج/غ</span></div>
                     </div>
+                    ${withdrawn>0?`<div style="display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:#666;padding:0 .3rem">
+                        <span>الإجمالية: <b style="color:#0d9488">${f0(grossProfit)} دج</b></span>
+                        <span style="color:#dc2626">سُحب سابقاً: −${f0(withdrawn)} دج</span></div>`:''}
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:.8rem;background:${profit >= 0 ? 'rgba(22,163,74,.12)' : 'rgba(220,38,38,.12)'};border-radius:12px;border:2px solid ${pc}">
-                        <span style="font-size:.9rem;font-weight:900">الفائدة</span>
+                        <span style="font-size:.9rem;font-weight:900">${withdrawn>0?'الفائدة المتبقية':'الفائدة'}</span>
                         <b style="color:${pc};font-size:1.2rem">${profit >= 0 ? '+' : ''}${f0(profit)} دج</b></div>
                 </div>
                 <div style="display:flex;gap:.5rem;margin-top:.7rem;justify-content:center">
