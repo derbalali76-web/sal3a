@@ -1438,7 +1438,7 @@ window._trashList=()=>{
             const typeMap={INVOICE_BUY:'فاتورة شراء',INVOICE_SELL:'فاتورة بيع',RAF:'رافيناج',DUBAI:'بيع دبي',DOLLAR:'سلعة',GT:(dd.gtType==='give'?'تسليم':'استلام'),SHIP:'شحن',EXPENSE:'مصاريف',SETTLE:'تصفية',SETTLE_GSM:(dd.freeBuy?'شراء حر':'تصفية ذهب'),XFER:'تحويل',LOAN:'سلف',SELL:'بيع سبيكة',OPENING:'رصيد افتتاحي',DEBT_FIX:'ضبط رصيد',VOID:'حذف (استرجاع سابق)'};
             const who=(dsp.op&&dsp.op.c)||(inv&&(inv.c||inv.o))||dd.c||dd.o||'';
             const amt=(dsp.op&&dsp.op.a)!=null?(dsp.op.a):(inv&&(inv.tp!=null?inv.tp:inv.usd));
-            desc=(typeMap[t.type]||t.type)+(who?' — '+who:'')+(amt!=null?' — '+Number(amt).toLocaleString('fr-FR',{maximumFractionDigits:2}):'');
+            desc=(typeMap[t.type]||t.type)+(who?' — '+who:'')+(amt!=null?' — '+(typeof _truncNum==='function'?_truncNum(Number(amt),2):Number(amt)).toLocaleString('fr-FR',{maximumFractionDigits:2}):'');
         }
         return {vid:v.id,ts:v.ts||0,desc,targetType:t?t.type:'?',owner:_owner};
     })

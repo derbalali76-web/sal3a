@@ -147,11 +147,31 @@ function liveSet(id,val){
     const el=document.getElementById(id);if(!el)return;
     el.value=String(val);liveNum(el);
 }
+/* ✂️ بتر (قطع) نحو الصفر إلى d خانات بعد الفاصلة — بلا تقريب.
+   مثال: 4.197 → "4.19" (وليس 4.2) · آمن من أخطاء الفاصلة العائمة.
+   التطبيق كله لا يتجاوز رقمين بعد الفاصلة. يُعيد سلسلة بالنقطة بلا فواصل آلاف. */
+function _truncFix(n,d=2){
+    if(typeof n!=='number'||!isFinite(n))return '0';
+    if(d>2)d=2;
+    const neg=n<0, abs=Math.abs(n);
+    const s=abs.toFixed(d+4);                 /* دقة إضافية ثم نقطع — يتفادى 4.19→4.18 */
+    const dot=s.indexOf('.');
+    const cut=d>0?s.slice(0,dot+1+d):s.slice(0,dot);
+    return (neg?'-':'')+cut;
+}
+/* رقم مبتور (لمن يحتاج Number) */
+function _truncNum(n,d=2){ return parseFloat(_truncFix(n,d))||0; }
+/* تنسيق مبتور بنمط fr-FR (مسافة ضيقة للآلاف، يحذف الأصفار الزائدة) — بديل toLocaleString */
+function _locTrunc(n,d=2){
+    if(d>2)d=2;
+    return _truncNum(n,d).toLocaleString('fr-FR',{maximumFractionDigits:d});
+}
 function fmt(n,d=2){
     if(typeof n!=='number')return n;
+    if(d>2)d=2;
     const neg=n<0;
     const abs=Math.abs(n);
-    const fixed=abs.toFixed(d);
+    const fixed=_truncFix(abs,d);
     const [int,dec]=fixed.split('.');
     const intFmt=int.replace(/\B(?=(\d{3})+(?!\d))/g,'\u202F');
     return (neg?'−':'')+intFmt+(d>0?','+dec:'');
@@ -1781,7 +1801,7 @@ window.openGoodsFor=(name)=>{
     const g2=getCustBal(name,'ذهب 24');
     const nOps=ops.filter(o=>(o.c||'').toLowerCase()===name.toLowerCase()&&o.t!=='شحن').length;
 
-    const _f=(v,d)=>Math.abs(v).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    const _f=(v,d)=>_truncNum(Math.abs(v),d).toLocaleString('fr-FR',{minimumFractionDigits:Math.min(d,2),maximumFractionDigits:Math.min(d,2)});
     const _bal=(v,unit,d,isDin)=>{
         if(Math.abs(v)<0.001)return'';
         const owed=v>0;
@@ -2500,7 +2520,7 @@ function printShipPDF({office,weight,received,price}){
     const dateStr=now.toLocaleDateString('ar-DZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     const timeStr=now.toLocaleTimeString('ar-DZ',{hour:'2-digit',minute:'2-digit'});
     const user=document.getElementById('currentUserDisplay').textContent||'—';
-    const totalUSD=price>0?(received*price).toFixed(2):null;
+    const totalUSD=price>0?_truncFix(received*price,2):null;
     const invoiceNum='SH-'+Date.now().toString().slice(-6);
 
     const html=`<!doctype html>
@@ -2544,8 +2564,8 @@ tr:last-child td{border-bottom:none}
     <thead><tr><th>البيان</th><th>القيمة</th></tr></thead>
     <tbody>
         <tr><td>المكتب / الجهة المستلِمة</td><td><strong>${office}</strong></td></tr>
-        <tr><td>الوزن المُرسَل</td><td><strong>${weight.toFixed(3)} غ</strong> (ذهب 24)</td></tr>
-        <tr><td>الوزن المستلَم (بعد خصم 0.1٪)</td><td><strong>${received.toFixed(3)} غ</strong></td></tr>
+        <tr><td>الوزن المُرسَل</td><td><strong>${fmt(weight,2)} غ</strong> (ذهب 24)</td></tr>
+        <tr><td>الوزن المستلَم (بعد خصم 0.1٪)</td><td><strong>${fmt(received,2)} غ</strong></td></tr>
         ${price>0?`<tr><td>سعر الغرام</td><td>${price} $/غ</td></tr>`:''}
         ${totalUSD?`<tr class="total-row"><td>القيمة الإجمالية</td><td>${totalUSD} $</td></tr>`:''}
     </tbody>
@@ -3541,7 +3561,7 @@ window.saveDubai=()=>{
 
 /* ═══ تفاصيل العملية (helper مشترك بين السجل والفاتورة) ═══ */
 function opDetailLines(o,custView){
-    const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
+    const f=(n,d=2)=>_locTrunc(n,d);
     const lines=[];
     const t=o.t||'';
     if(t==='شراء سلعة'||t==='بيع سلعة'){
@@ -3790,7 +3810,7 @@ window.sendCustomerLog=()=>{
             <td style="font-size:.78rem">${o.dt||''}</td>
             <td><span style="background:${clr};color:#fff;padding:.1rem .45rem;border-radius:4px;font-size:.72rem;white-space:nowrap">${_realOpName(o)}</span></td>
             <td style="font-size:.78rem">${_tDisp(o.m||'')}</td>
-            <td style="font-weight:700;color:${clr};white-space:nowrap">${out?'−':'+'}${(o.a||0).toLocaleString('fr-FR',{maximumFractionDigits:2})} ${unit}</td>
+            <td style="font-weight:700;color:${clr};white-space:nowrap">${out?'−':'+'}${_locTrunc(o.a||0,2)} ${unit}</td>
             ${detailCell}
         </tr>`;
     }).join('');
@@ -3811,7 +3831,7 @@ ${_custDebts.map(({m,v})=>{
     const border=owed?'#86efac':'#fca5a5';
     return`<div style="flex:1;min-width:140px;background:${bg};border:2px solid ${border};border-radius:8px;padding:.6rem .8rem;text-align:center">
         <div style="font-size:.72rem;color:#666;margin-bottom:.2rem">${_tDisp(m)}</div>
-        <div style="font-size:1.25rem;font-weight:900;color:${clr}">${Math.abs(v).toLocaleString('fr-FR',{maximumFractionDigits:2})} ${unit}</div>
+        <div style="font-size:1.25rem;font-weight:900;color:${clr}">${_locTrunc(Math.abs(v),2)} ${unit}</div>
         <div style="font-size:.7rem;font-weight:700;color:${clr};margin-top:.15rem">${lbl}</div>
     </div>`;
 }).join('')}
@@ -3902,7 +3922,7 @@ window.printLogView=()=>{
 /* ══ بناء HTML سجل الزبون — يُستخدَم مع html2pdf مثل الفاتورة تماماً ══ */
 function buildCustomerLogHtml(c,custOps,custView){
     /* custView=true → السجل بمنظور الزبون (معكوس) · false/غياب → منظور المحل (الأدمين) */
-    const f=(n,d=2)=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:d});
+    const f=(n,d=2)=>_locTrunc(n,d);
     const now=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
     const user=document.getElementById('currentUserDisplay')?.textContent||'';
     const outTypes=new Set(['أعطيت','بيع','بيع دولار','شحن','مصاريف','سلف','دولار صادر','دفع دينار','دفع ذهب 24']);

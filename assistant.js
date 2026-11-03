@@ -72,7 +72,7 @@ window.VA = (() => {
                 const gld = _gl('debts').filter(d => d.c === s.c && d.type === 'دولار').reduce((x, d) => x + (d.a || 0), 0);
                 const parts = [];
                 if (Math.abs(din) > 0.001) parts.push(`${Math.round(Math.abs(din) / 1000) * 1000 / 1} دج`);
-                if (Math.abs(gld) > 0.001) parts.push(`${gld.toFixed(2)} غ`);
+                if (Math.abs(gld) > 0.001) parts.push(`${fmt(gld,2)} غ`);
                 const dLabel = s.days >= 999 ? 'لا تعامل سابق' : `منذ ${s.days} يوم`;
                 return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;border-bottom:1px solid rgba(0,0,0,.06);gap:.5rem">
                     <div style="flex:1;min-width:0">
@@ -757,7 +757,7 @@ window.VA = (() => {
             const rows = list.map(n => `
                 <button onclick="window._vaGoodsProfit('${n.replace(/'/g, "\\'")}')"
                     style="width:100%;text-align:right;padding:.7rem .8rem;margin-bottom:.35rem;border:1.5px solid rgba(212,175,55,.4);border-radius:10px;background:rgba(212,175,55,.06);color:inherit;font-family:Tajawal,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-                    <span>🛍️ ${n}</span><span style="font-size:.66rem;color:#999">اشتريت ${bought[n].toFixed(2)}غ</span></button>`).join('');
+                    <span>🛍️ ${n}</span><span style="font-size:.66rem;color:#999">اشتريت ${fmt(bought[n],2)}غ</span></button>`).join('');
             showCard(`
                 <div class="va-card-title" style="color:#d4af37">💰 فائدة السلعة</div>
                 <div class="va-card-sub">اختر سلعة لعرض فائدتها (بيع − شراء)</div>
@@ -800,11 +800,11 @@ window.VA = (() => {
                     <div style="display:flex;justify-content:space-between;padding:.5rem .6rem;background:rgba(220,38,38,.06);border-radius:8px">
                         <span style="font-size:.72rem;color:#666">أجرة البيع (متوسط)</span><b style="color:#dc2626">${f0(avgSellFee)} دج/غ</b></div>
                     <div style="display:flex;justify-content:space-between;padding:.5rem .6rem;background:rgba(120,120,120,.06);border-radius:8px">
-                        <span style="font-size:.72rem;color:#666">الوزن المباع المطابق</span><b>${matchedW.toFixed(2)} غ</b></div>
+                        <span style="font-size:.72rem;color:#666">الوزن المباع المطابق</span><b>${fmt(matchedW,2)} غ</b></div>
                     <div style="display:flex;justify-content:space-between;padding:.7rem;background:${profit >= 0 ? 'rgba(22,163,74,.12)' : 'rgba(220,38,38,.12)'};border-radius:10px;border:1.5px solid ${pc}">
                         <span style="font-size:.82rem;font-weight:900">الفائدة</span><b style="color:${pc};font-size:1.1rem">${profit >= 0 ? '+' : ''}${f0(profit)} دج</b></div>
                     ${Math.abs(remW) > 0.001 ? `<div style="display:flex;justify-content:space-between;padding:.5rem .6rem;background:rgba(212,175,55,.1);border-radius:8px">
-                        <span style="font-size:.72rem;color:#666">${remW > 0 ? '🏦 متبقٍ لم يُبع' : '⚠️ بيع أكثر من الشراء'}</span><b style="color:#b45309">${Math.abs(remW).toFixed(2)} غ</b></div>` : ''}
+                        <span style="font-size:.72rem;color:#666">${remW > 0 ? '🏦 متبقٍ لم يُبع' : '⚠️ بيع أكثر من الشراء'}</span><b style="color:#b45309">${fmt(Math.abs(remW),2)} غ</b></div>` : ''}
                 </div>
                 <div style="text-align:center;margin-top:.6rem;display:flex;gap:.4rem">
                     <button class="va-card-btn" onclick="_goodsProfitReopen()" style="flex:1;background:#6b7280">← القائمة</button>
@@ -850,13 +850,13 @@ window.VA = (() => {
                     <div style="padding:.6rem .7rem;background:rgba(59,130,246,.08);border-radius:10px">
                         <div style="font-size:.7rem;color:#666;margin-bottom:.2rem">🛒 اشتريت</div>
                         <div style="display:flex;justify-content:space-between;align-items:baseline">
-                            <b style="color:#2563eb;font-size:1.05rem">${buyEq.toFixed(2)} غ</b>
+                            <b style="color:#2563eb;font-size:1.05rem">${fmt(buyEq,2)} غ</b>
                             <span style="font-size:.72rem;color:#666">بمتوسط ${f0(avgBuy)} دج/غ</span></div>
                     </div>
                     <div style="padding:.6rem .7rem;background:rgba(220,38,38,.06);border-radius:10px">
                         <div style="font-size:.7rem;color:#666;margin-bottom:.2rem">🏷️ بعت</div>
                         <div style="display:flex;justify-content:space-between;align-items:baseline">
-                            <b style="color:#dc2626;font-size:1.05rem">${sellEq.toFixed(2)} غ</b>
+                            <b style="color:#dc2626;font-size:1.05rem">${fmt(sellEq,2)} غ</b>
                             <span style="font-size:.72rem;color:#666">بمتوسط ${f0(avgSell)} دج/غ</span></div>
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:.8rem;background:${profit >= 0 ? 'rgba(22,163,74,.12)' : 'rgba(220,38,38,.12)'};border-radius:12px;border:2px solid ${pc}">
@@ -909,7 +909,7 @@ window.VA = (() => {
         const _s  = (v, d=0, u='') => {
             if (Math.abs(v) < 0.001) return `<span style="color:var(--t3)">—</span>`;
             const col = v > 0 ? '#16a34a' : '#ef4444';
-            return `<span style="color:${col};font-weight:800">${v > 0 ? '+' : ''}${d ? v.toFixed(d) : Math.round(v).toLocaleString('fr-DZ')} ${u}</span>`;
+            return `<span style="color:${col};font-weight:800">${v > 0 ? '+' : ''}${d ? fmt(v,d) : Math.round(v).toLocaleString('fr-DZ')} ${u}</span>`;
         };
         showCard(`
         <div class="va-card-title">${name}</div>
@@ -934,12 +934,12 @@ window.VA = (() => {
         <div class="va-card-title">رصيدك الحالي</div>
         <div class="va-bal-grid">
             <div class="va-bal-cell"><span class="va-bal-lbl">💵 السيولة</span><span style="color:var(--bl);font-weight:800">${((B['دينار']||0)).toLocaleString('fr-DZ')} DZD</span></div>
-            <div class="va-bal-cell"><span class="va-bal-lbl">💲 دولار</span><span style="color:var(--gr);font-weight:800">${(B['دولار']||0).toFixed(2)} $</span></div>
-            <div class="va-bal-cell"><span class="va-bal-lbl">👑 ذهب 730</span><span style="color:var(--g400);font-weight:800">${(B['ذهب 730']||0).toFixed(2)} غ</span></div>
-            <div class="va-bal-cell"><span class="va-bal-lbl">💎 ذهب 24</span><span style="color:var(--pu);font-weight:800">${(B['ذهب 24']||0).toFixed(2)} غ</span></div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">💲 دولار</span><span style="color:var(--gr);font-weight:800">${fmt(B['دولار']||0,2)} $</span></div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">👑 ذهب 730</span><span style="color:var(--g400);font-weight:800">${fmt(B['ذهب 730']||0,2)} غ</span></div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">💎 ذهب 24</span><span style="color:var(--pu);font-weight:800">${fmt(B['ذهب 24']||0,2)} غ</span></div>
         </div>
         <div style="text-align:center;margin-top:.8rem"><button class="va-card-btn va-card-btn-red" onclick="closeCard()">إغلاق</button></div>`);
-        respond(`عندك ${((B['دينار']||0)).toLocaleString('fr-DZ')} دج و ${(B['ذهب 730']||0).toFixed(1)} غرام ذهب 730`);
+        respond(`عندك ${((B['دينار']||0)).toLocaleString('fr-DZ')} دج و ${fmt(B['ذهب 730']||0,2)} غرام ذهب 730`);
     }
 
     function _dubaiCalc(ship, expenses, dollar, disc) {
@@ -965,11 +965,11 @@ window.VA = (() => {
         showCard(`
         <div class="va-card-title">المخزون الحالي</div>
         <div class="va-bal-grid">
-            <div class="va-bal-cell"><span class="va-bal-lbl">👑 ذهب 730</span><span style="color:var(--g400);font-weight:800">${b730.length} سبيكة<br><small style="font-weight:500;color:var(--t2)">${w730.toFixed(1)} غ</small></span></div>
-            <div class="va-bal-cell"><span class="va-bal-lbl">💎 ذهب 24</span><span style="color:var(--pu);font-weight:800">${b24.length} سبيكة<br><small style="font-weight:500;color:var(--t2)">${w24.toFixed(1)} غ</small></span></div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">👑 ذهب 730</span><span style="color:var(--g400);font-weight:800">${b730.length} سبيكة<br><small style="font-weight:500;color:var(--t2)">${fmt(w730,2)} غ</small></span></div>
+            <div class="va-bal-cell"><span class="va-bal-lbl">💎 ذهب 24</span><span style="color:var(--pu);font-weight:800">${b24.length} سبيكة<br><small style="font-weight:500;color:var(--t2)">${fmt(w24,2)} غ</small></span></div>
         </div>
         <div style="text-align:center;margin-top:.8rem"><button class="va-card-btn va-card-btn-red" onclick="closeCard()">إغلاق</button></div>`);
-        respond(`عندك ${b730.length} سبيكة 730 بـ ${w730.toFixed(1)} غرام`);
+        respond(`عندك ${b730.length} سبيكة 730 بـ ${fmt(w730,2)} غرام`);
     }
 
     /* ════════════ ANALYTICS — تحليل الإيرادات ════════════ */
@@ -1177,7 +1177,7 @@ window.VA = (() => {
             if (d.type === 'ذهب 24')  totalG24  += d.a;
         });
         const fmt2 = (v, u) => `<span style="color:${v>0?'#ef4444':v<0?'#16a34a':'var(--t3)'};font-weight:800">`
-            + (v>0?'+':'')+( Math.abs(v)<0.01 ? '—' : (u==='DZD'?Math.round(v).toLocaleString('fr-DZ'):v.toFixed(2)))+' '+u+'</span>';
+            + (v>0?'+':'')+( Math.abs(v)<0.01 ? '—' : (u==='DZD'?Math.round(v).toLocaleString('fr-DZ'):fmt(v,2)))+' '+u+'</span>';
         showCard(`
         <div class="va-card-title">📋 ملخص الديون</div>
         <div class="va-card-sub">موجب = يسالك | سالب = أنت تسال</div>
