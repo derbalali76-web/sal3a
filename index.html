@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=237">
+    <link rel="stylesheet" href="./style.css?v=238">
 </head>
 <body>
 <script>
@@ -1001,6 +1001,11 @@
         🖥️ وضع الكشك: متوقّف
     </button>
     <div id="adminOnlySettings">
+    <!-- 🧮 تدقيق السيولة: سجلّ حركة صوارد الكوفر مع الرصيد بعد كل عملية -->
+    <button onclick="closeModal('settingsModal');openCashAudit()"
+        style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #0ea5e9;background:rgba(14,165,233,.1);color:#0ea5e9;font-weight:900;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;margin-bottom:.8rem">
+        🧮 تدقيق السيولة
+    </button>
     <div class="setting-row">
         <label><i class="fas fa-crown" style="color:var(--g400)"></i> سعر الذهب (دج/غ)</label>
         <input type="number" id="settingGoldPrice" step="any" min="1">
@@ -1088,13 +1093,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=237"></script>
-<script src="./app.js?v=237"></script>
-<script src="./assistant.js?v=237"></script>
-<script src="./inventory.js?v=237"></script>
-<script src="./invoice.js?v=237"></script>
-<script src="./raffinage.js?v=237"></script>
-<script src="./auth.js?v=237"></script>
+<script src="./firebase.js?v=238"></script>
+<script src="./app.js?v=238"></script>
+<script src="./assistant.js?v=238"></script>
+<script src="./inventory.js?v=238"></script>
+<script src="./invoice.js?v=238"></script>
+<script src="./raffinage.js?v=238"></script>
+<script src="./auth.js?v=238"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

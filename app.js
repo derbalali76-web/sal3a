@@ -2530,6 +2530,75 @@ window.saveMeltAllBars=()=>{
     setTimeout(()=>{ if(typeof renderInvModal==='function')renderInvModal(); toast('🔥 تم تذويب كل السبائك في سبيكة واحدة','success'); },250);
 };
 
+/* ═══════════ 🧮 تدقيق السيولة — سجلّ حركة صوارد الكوفر (الدينار) مع الرصيد التراكمي ═══════════
+   يعيد تشغيل الأحداث على حالة منفصلة ويلتقط رصيد الدينار قبل/بعد كل عملية → الفرق (Δ) والرصيد بعده. */
+window.openCashAudit=()=>{
+    if(typeof _applyEvt!=='function'||typeof _allEvents==='undefined')return toast('تعذّر التدقيق','error');
+    const voided=window._voidedTargetIds||new Set();
+    const live=(_allEvents||[])
+        .filter(e=>e.type!=='VOID'&&!voided.has(e.id))
+        .sort((a,b)=>((a.ts||0)-(b.ts||0))||String(a.id).localeCompare(String(b.id)));
+    /* حالة جديدة مطابقة تماماً لبنية _reproject (كي يُعطي المخفّض نفس النتائج) */
+    const st={
+        B:{دينار:0,دولار:0,'ذهب 730':0,'ذهب 24':0,vg730:0,vg24:0},
+        g730:[],g24:[],debts:[],loans:[],goodsStock:[],
+        custKind:{},capGold705:0,capDin:0,capTs:0,capPrice:0,
+        cashiBuyW:0,cashiBuyDin:0,cashiSoldW:0,cashiSoldDin:0,
+        liveKassi:[],empCoffer:{},
+        ops:[],invoices:[],dollInvoices:[],rafInvoices:[],dubaiInvoices:[]
+    };
+    const rows=[]; const SYS=['النظام','المخزون','شحن',''];
+    live.forEach(evt=>{
+        const before=Number(st.B.دينار)||0;
+        try{ _applyEvt(st,evt); }catch(e){}
+        const after=Number(st.B.دينار)||0;
+        const delta=after-before;
+        if(Math.abs(delta)>0.001){
+            const op=(evt.display&&evt.display.op)||null;
+            let name=op?(typeof _realOpName==='function'?_realOpName(op):(op.t||evt.type)):evt.type;
+            const cust=(op&&op.c&&!SYS.includes(op.c))?op.c:'';
+            if(cust)name=name+' – '+cust;
+            rows.push({dt:(op&&op.dt)||'',name,delta,bal:after});
+        }
+    });
+    const closing=Number(st.B.دينار)||0;
+    rows.reverse(); /* الأحدث أولاً (كما في حانوت يسين) */
+    const _n=v=>Math.round(v).toLocaleString('fr-FR');
+    const _d=v=>(v>0?'+':'')+_n(v);
+    let m=document.getElementById('cashAuditModal');
+    if(!m){ m=document.createElement('div'); m.id='cashAuditModal'; m.className='modal-overlay'; document.body.appendChild(m);
+        m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('active');}); }
+    const body=rows.length?rows.map(r=>`
+        <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .4rem;font-size:.64rem;color:var(--t3);white-space:nowrap">${r.dt||'—'}</td>
+            <td style="padding:.5rem .4rem;font-size:.75rem;font-weight:800;color:var(--t)">${r.name}</td>
+            <td style="padding:.5rem .4rem;font-size:.78rem;font-weight:900;white-space:nowrap;color:${r.delta>0?'#16a34a':'#dc2626'}">${_d(r.delta)}</td>
+            <td style="padding:.5rem .4rem;font-size:.72rem;font-weight:700;color:var(--t2);white-space:nowrap">${_n(r.bal)}</td>
+        </tr>`).join(''):`<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--t3)">لا توجد حركات سيولة</td></tr>`;
+    m.innerHTML=`<div class="modal modal-wide" style="max-width:560px">
+        <div class="modal-handle"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+            <h3 style="margin:0;font-size:.95rem;color:#0ea5e9">🧮 تدقيق السيولة — ${rows.length} عملية</h3>
+            <button class="close-btn" onclick="document.getElementById('cashAuditModal').classList.remove('active')" style="background:rgba(239,68,68,.12);color:#dc2626;border:none;border-radius:8px;width:30px;height:30px;font-size:1rem;cursor:pointer">✕</button>
+        </div>
+        <div style="max-height:62vh;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+            <table style="width:100%;border-collapse:collapse;direction:rtl">
+                <thead><tr style="position:sticky;top:0;background:var(--card2);z-index:1">
+                    <th style="padding:.55rem .4rem;text-align:right;font-size:.68rem;color:var(--t2)">التاريخ</th>
+                    <th style="padding:.55rem .4rem;text-align:right;font-size:.68rem;color:var(--t2)">العملية</th>
+                    <th style="padding:.55rem .4rem;text-align:right;font-size:.68rem;color:var(--t2)">Δ السيولة</th>
+                    <th style="padding:.55rem .4rem;text-align:right;font-size:.68rem;color:var(--t2)">الرصيد بعده</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+            </table>
+        </div>
+        <div style="text-align:center;margin-top:.7rem;padding:.6rem;border-radius:10px;background:rgba(14,165,233,.08);border:1.5px solid #0ea5e9;font-weight:900;color:var(--t)">
+            الرصيد الختامي: <span style="color:#0ea5e9">${_n(closing)} دج</span>
+        </div>
+    </div>`;
+    m.classList.add('active');
+};
+
 /* ═══════════ تعديل الفواتير (دولار/دبي/رافيناج) — إبطال ثم فتح معبّأ، مع استرجاع عند الإلغاء ═══════════ */
 window._editRestore=null;
 window._flushPendingEdit=()=>{
