@@ -3113,6 +3113,7 @@ window.openPayTake=(dir)=>{
             </label>
         </div>
         <input type="text" id="ptCust" placeholder="👤 اسم الزبون" autocomplete="off"
+            oninput="window._acShow&&_acShow(this)" onfocus="setTimeout(()=>window._acShow&&_acShow(this),30)" onblur="setTimeout(()=>window._acHide&&_acHide(),220)"
             style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid ${col};background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:700;text-align:right;margin-bottom:.5rem;box-sizing:border-box">
         <input type="text" inputmode="decimal" id="ptAmount" placeholder="💰 المبلغ (دج)" dir="ltr"
             style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box"
@@ -3127,7 +3128,7 @@ window.openPayTake=(dir)=>{
         </div>
     </div>`;
     ov.classList.add('active');
-    setTimeout(()=>{const e=document.getElementById('ptCust');if(e){e.focus();if(window._acAttach)_acAttach('ptCust');}},300);
+    setTimeout(()=>{const e=document.getElementById('ptCust');if(e)e.focus();},300);
 };
 /* تبديل العملة بين الدينار وذهب 24 — يُحدّث نصّ حقل المبلغ */
 window._ptCurChg=()=>{
@@ -4088,6 +4089,7 @@ ${netBalHtml}
 /* 📋 عرض سجل زبون مباشرة (من بطاقة الزبون) — منظور الأدمين، بلا نافذة إرسال */
 window.viewCustomerLogDirect=(c)=>{
     if(!c)return;
+    window._logViewCust=c;
     const custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
     if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','info');
     let html='';
@@ -4102,6 +4104,7 @@ window.viewCustomerLogDirect=(c)=>{
 window.viewCustomerLog=()=>{
     const c=document.getElementById('sendLogCustomer').value.trim();
     if(!c)return toast('اختر زبوناً أولاً','error');
+    window._logViewCust=c;
     let custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
     /* احترام فلتر الفترة */
     const days=document.getElementById('sendLogPeriod')?.value||'all';
@@ -4125,6 +4128,19 @@ window.closeLogView=()=>{
     if(ov)ov.style.display='none';
     const fr=document.getElementById('logViewFrame');
     if(fr)fr.srcdoc='';
+};
+/* 📲 إرسال السجل المعروض مباشرةً عبر واتساب (منظور الزبون) */
+window.sendLogViewWA=async()=>{
+    const c=window._logViewCust||'';
+    if(!c)return toast('لا يوجد زبون','error');
+    const custOps=ops.filter(o=>(o.c||'').toLowerCase()===c.toLowerCase()&&o.t!=='شحن');
+    if(!custOps.length)return toast('لا توجد معاملات لهذا الزبون','error');
+    if(typeof html2pdf==='undefined')return toast('مكتبة PDF غير محمّلة — أعد فتح التطبيق','error');
+    toast('⏳ جاري تحضير السجل للواتساب...','info');
+    const fname=`سجل_${c.replace(/\s+/g,'_')}.pdf`;
+    html2pdf().set(_logPdfOpts(c)).from(buildCustomerLogHtml(c,custOps,true)).outputPdf('blob') /* true = منظور الزبون */
+        .then(blob=>_showShareCard(blob,fname,`سجل معاملات ${c}`))
+        .catch(e=>toast('❌ خطأ في توليد PDF: '+(e&&e.message||e),'error'));
 };
 window.printLogView=()=>{
     const fr=document.getElementById('logViewFrame');
@@ -4166,11 +4182,20 @@ function buildCustomerLogHtml(c,custOps,custView){
         ?balances.map(({m,v0})=>{
             const v=custView?-getCustBal(c,m):getCustBal(c,m); /* الزبون يرى العكس */
             const owed=v>0;
-            const bg=owed?'#fef2f2':'#f0fdf4';
-            const border=owed?'#fca5a5':'#86efac';
-            const col=owed?'#b91c1c':'#15803d';
-            /* منظور المحل: يدين لنا/ندين له · منظور الزبون: لك عند المحل/عليك للمحل */
-            const lbl=custView?(owed?'لك عند المحل':'عليك للمحل'):(owed?'يدين لنا':'ندين له');
+            let bg,border,col,lbl;
+            if(custView){
+                /* منظور الزبون */
+                bg=owed?'#fef2f2':'#f0fdf4';
+                border=owed?'#fca5a5':'#86efac';
+                col=owed?'#b91c1c':'#15803d';
+                lbl=owed?'لك عند المحل':'عليك للمحل';
+            }else{
+                /* منظور المحل — مطابق لدفتر الديون: موجب = نسالو (أخضر) · سالب = يسالي (أحمر) */
+                bg=owed?'#f0fdf4':'#fef2f2';
+                border=owed?'#86efac':'#fca5a5';
+                col=owed?'#15803d':'#b91c1c';
+                lbl=owed?'نسالو':'يسالي';
+            }
             return`<td style="width:${100/balances.length}%;padding:8px;background:${bg};
                 border:2px solid ${border};border-radius:6px;text-align:center;vertical-align:middle">
                 <div style="font-size:18px;font-weight:900;color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f(Math.abs(v),2)} ${_units[m]}</div>
@@ -5913,6 +5938,9 @@ async function fetchSpotPrice(){
     }
     function init(){ ['invCustomer','rafCustomer','loanCustomer','sellCustomer','gtCustomer','goodsCustomer','expCustomer','sendLogCustomer','shipOffice','dubaiOffice'].forEach(_attach); }
     window._acAttach=_attach;
+    /* كشف مباشر للعرض/الإخفاء — للحقول المُنشأة ديناميكياً (أخذت/دفعت…) حيث قد لا يثبت الإرفاق المؤجّل */
+    window._acShow=(x)=>{ const inp=(typeof x==='string')?document.getElementById(x):x; if(inp)_show(inp); };
+    window._acHide=_hide;
     if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
     setTimeout(init,800);
     /* 📱 آيفون: عند فتح لوحة المفاتيح يُمرِّر النظام الحقل تلقائياً → نُعيد وضع الصندوق بدل إخفائه */
