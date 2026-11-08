@@ -1,4 +1,16 @@
 /* ═══════════ STATE ═══════════ */
+/* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
+window.APP_VERSION='v246';
+/* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
+if(!window._gsCardBound){
+    window._gsCardBound=true;
+    document.addEventListener('click',(e)=>{
+        const t=e.target;
+        if(t&&t.closest&&t.closest('#goldSaleCard')){
+            if(window.openGoldSaleSettle)openGoldSaleSettle();
+        }
+    },true);
+}
 /* 👆 إغلاق أي نافذة منبثقة بلمس الخلفية خارجها */
 if(!window._modalOutsideBound){
     window._modalOutsideBound=true;
@@ -698,6 +710,7 @@ function openSettings(){
     if(isAdmin)renderUsersList();
     if(!_isEmp){ renderGoodsNamesList(); if(typeof renderGoodsCodesList==='function')renderGoodsCodesList(); renderPortalCustList(); }
     document.getElementById('settingsModal').classList.add('active');
+    const _vb=document.getElementById('appVerBadge'); if(_vb)_vb.textContent='النسخة: '+(window.APP_VERSION||'؟');
     if(!_isEmp)setTimeout(()=>{const e=document.getElementById('settingGoldPrice');if(e)e.focus();},320);
 }
 function saveSettings(){
