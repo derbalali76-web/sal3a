@@ -2541,15 +2541,26 @@ window.saveMeltAllBars=()=>{
    بدون أي تأثير على المخزون (الحدث GT مع m='ذهب 730' يستثني st.B من التعديل).
    النتيجة: ذهب البيع ← 0 · حانوت يسالي ينقص بنفس الكمية · عملية «استلمت» في السجل. */
 window.openGoldSaleSettle=()=>{
-    const cur=Number(window._gsCurrentTotal||0);
-    if(Math.abs(cur)<0.001)return toast('لا يوجد فارق لتسويته — ذهب البيع = 0','info');
+    /* حساب القيمة ذاتياً (لا نعتمد على متغيّر قد لا يكون محدّثاً) */
+    let cur=Number(window._gsCurrentTotal);
+    if(!isFinite(cur)){
+        try{
+            const bk=_netBuckets(); let tb=0;
+            (window._tarbahList||[]).forEach(x=>{ const w=parseFloat(String(x.weight||'').replace(/\s/g,'').replace(',','.'))||0;
+                if(w>0){ if(x.type==='buy')tb+=w; else if(x.type==='sell')tb-=w; } });
+            cur=Math.round(((bk.gold705Total||0)+tb+(_liveKassiTotal()||0))*1000)/1000;
+        }catch(e){ cur=0; }
+    }
     let ov=document.getElementById('gsSettleOverlay');
     if(!ov){ ov=document.createElement('div'); ov.id='gsSettleOverlay'; ov.className='modal-overlay'; document.body.appendChild(ov);
         ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');}); }
     const _isPos=cur>0;
-    const _desc=_isPos
+    const _isZero=Math.abs(cur)<0.001;
+    const _desc=_isZero
+        ?'ℹ️ ذهب البيع = 0 حالياً — لا يوجد فارق لتسويته.<br>يمكنك إدخال قيمة يدوياً إن أردت.'
+        :(_isPos
         ?'✅ <strong>الزيادة</strong> في ذهب البيع تُضاف لدين الزبون<br>(يسالي <strong>أكثر</strong> بنفس القيمة — رأس المال يتراكم)'
-        :'⚠️ <strong>النقص</strong> في ذهب البيع يُخصم من دين الزبون<br>(يسالي <strong>أقل</strong> بنفس القيمة)';
+        :'⚠️ <strong>النقص</strong> في ذهب البيع يُخصم من دين الزبون<br>(يسالي <strong>أقل</strong> بنفس القيمة)');
     ov.innerHTML=`<div class="modal" style="max-width:400px">
         <div class="modal-handle"></div>
         <h3 style="text-align:center;color:#d97706;margin-bottom:.3rem">⚖️ تسوية ذهب البيع</h3>
