@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v246';
+window.APP_VERSION='v247';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -2582,7 +2582,7 @@ window.openGoldSaleSettle=()=>{
             <div style="font-size:.7rem;color:var(--t2);font-weight:800">القيمة الحالية</div>
             <div style="font-size:1.4rem;font-weight:900;color:${_isPos?'#16a34a':'#dc2626'}" dir="ltr">${_isPos?'+':''}${fmt(cur,2)} غ (705)</div>
         </div>
-        <label style="display:block;font-size:.72rem;color:var(--t2);font-weight:800;margin-bottom:.25rem;text-align:right">👤 الزبون (${_lbl})</label>
+        <label style="display:block;font-size:.72rem;color:var(--t2);font-weight:800;margin-bottom:.25rem;text-align:right">👤 الزبون (تسوية معه)</label>
         <input type="text" id="gsSetCust" placeholder="اسم الزبون" autocomplete="off" value="حانوت"
             oninput="window._acShow&&_acShow(this)" onfocus="setTimeout(()=>window._acShow&&_acShow(this),30)" onblur="setTimeout(()=>window._acHide&&_acHide(),220)"
             style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #d97706;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box">
