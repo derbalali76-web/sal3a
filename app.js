@@ -1015,9 +1015,13 @@ function upd(){
         const _total705=Math.round(((_bk.gold705Total||0)+_tbNet+_lkW)*1000)/1000;
         const _val=Math.round(_total705*goldPrice);
         const col=_total705<0?'#f87171':'#34d399';
+        window._gsCurrentTotal=_total705;        /* تُستعمل في نافذة «تسوية إلى حانوت» */
         _gsc.innerHTML=`<div class="gs-val" style="font-size:1.4rem;color:${col};line-height:1.05;word-break:break-word" dir="ltr">${fmt(_total705,2)}<small style="font-size:.72rem"> غ</small></div>
-            <div class="gs-val" style="font-size:.7rem;color:#d97706;margin-top:.25rem;font-weight:800;word-break:break-word" dir="ltr">${fmtDin(_val)} دج</div>
-            <div class="gs-lbl" style="margin-top:.2rem">مكافئ 705</div>`;
+            <div class="gs-lbl" style="margin-top:.2rem">مكافئ 705</div>
+            <div style="margin-top:.35rem;font-size:.58rem;color:#f59e0b;font-weight:800;opacity:.9">👆 اضغط للتسوية</div>`;
+        /* اجعل البطاقة قابلة للضغط لفتح نافذة التسوية */
+        const _card=document.getElementById('goldSaleCard');
+        if(_card){ _card.style.cursor='pointer'; _card.onclick=()=>openGoldSaleSettle(); }
     }
     const _nv=net();
     const _nwEl=document.getElementById('netWorth');
@@ -2532,6 +2536,70 @@ window.saveMeltAllBars=()=>{
 
 /* ═══════════ 🧮 تدقيق السيولة — سجلّ حركة صوارد الكوفر (الدينار) مع الرصيد التراكمي ═══════════
    يعيد تشغيل الأحداث على حالة منفصلة ويلتقط رصيد الدينار قبل/بعد كل عملية → الفرق (Δ) والرصيد بعده. */
+/* ═══════════ ⚖️ تسوية ذهب البيع إلى حانوت ═══════════
+   تحوّل القيمة الحالية لذهب البيع إلى دين ذهب 705 عند زبون (حانوت افتراضياً)
+   بدون أي تأثير على المخزون (الحدث GT مع m='ذهب 730' يستثني st.B من التعديل).
+   النتيجة: ذهب البيع ← 0 · حانوت يسالي ينقص بنفس الكمية · عملية «استلمت» في السجل. */
+window.openGoldSaleSettle=()=>{
+    const cur=Number(window._gsCurrentTotal||0);
+    if(Math.abs(cur)<0.001)return toast('لا يوجد فارق لتسويته — ذهب البيع = 0','info');
+    let ov=document.getElementById('gsSettleOverlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='gsSettleOverlay'; ov.className='modal-overlay'; document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('active');}); }
+    const _isPos=cur>0;
+    const _desc=_isPos
+        ?'✅ <strong>الزيادة</strong> في ذهب البيع تُضاف لدين الزبون<br>(يسالي <strong>أكثر</strong> بنفس القيمة — رأس المال يتراكم)'
+        :'⚠️ <strong>النقص</strong> في ذهب البيع يُخصم من دين الزبون<br>(يسالي <strong>أقل</strong> بنفس القيمة)';
+    ov.innerHTML=`<div class="modal" style="max-width:400px">
+        <div class="modal-handle"></div>
+        <h3 style="text-align:center;color:#d97706;margin-bottom:.3rem">⚖️ تسوية ذهب البيع</h3>
+        <div style="font-size:.7rem;color:var(--t3);text-align:center;margin-bottom:.6rem;line-height:1.65">${_desc}</div>
+        <div style="background:rgba(217,119,6,.08);border:1.5px solid #d97706;border-radius:12px;padding:.6rem;margin-bottom:.7rem;text-align:center">
+            <div style="font-size:.7rem;color:var(--t2);font-weight:800">القيمة الحالية</div>
+            <div style="font-size:1.4rem;font-weight:900;color:${_isPos?'#16a34a':'#dc2626'}" dir="ltr">${_isPos?'+':''}${fmt(cur,2)} غ (705)</div>
+        </div>
+        <label style="display:block;font-size:.72rem;color:var(--t2);font-weight:800;margin-bottom:.25rem;text-align:right">👤 الزبون (${_lbl})</label>
+        <input type="text" id="gsSetCust" placeholder="اسم الزبون" autocomplete="off" value="حانوت"
+            oninput="window._acShow&&_acShow(this)" onfocus="setTimeout(()=>window._acShow&&_acShow(this),30)" onblur="setTimeout(()=>window._acHide&&_acHide(),220)"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #d97706;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box">
+        <label style="display:block;font-size:.72rem;color:var(--t2);font-weight:800;margin-bottom:.25rem;text-align:right">⚖️ الكمية (غ · 705)</label>
+        <input type="text" inputmode="decimal" id="gsSetAmt" dir="ltr" value="${fmt(Math.abs(cur),2)}"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box"
+            oninput="liveNum(this)">
+        <input type="text" id="gsSetNote" placeholder="📝 ملاحظة (اختياري)" value="تسوية فارق وزن — ذهب البيع"
+            style="width:100%;padding:.6rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;text-align:right;margin-bottom:.7rem;box-sizing:border-box">
+        <div style="display:flex;gap:.5rem">
+            <button onclick="document.getElementById('gsSettleOverlay').classList.remove('active')"
+                style="flex:1;padding:.7rem;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--t2);font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer">إلغاء</button>
+            <button onclick="saveGoldSaleSettle(${_isPos?1:0})"
+                style="flex:2;padding:.7rem;border:none;border-radius:12px;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;font-family:Tajawal,sans-serif;font-weight:900;cursor:pointer">💾 تسجيل التسوية</button>
+        </div>
+    </div>`;
+    ov.classList.add('active');
+};
+window.saveGoldSaleSettle=(isPos)=>{
+    const c=(document.getElementById('gsSetCust').value||'').trim();
+    const a=readNum('gsSetAmt');
+    const noteIn=(document.getElementById('gsSetNote').value||'').trim();
+    if(!c)return toast('أدخل اسم الزبون','error');
+    if(!a||a<=0)return toast('أدخل كمية صحيحة','error');
+    /* 🧭 المنطق:
+       • الزيادة (ذهب البيع موجب) → تُضاف لدين الزبون → حانوت يسالي أكثر (رأس المال يتراكم)
+         gtType='take' → stUpdDebt += -finalAmount → d.a يصير أسلب (يسالي↑) ✓
+       • النقص → gtType='give' → d.a يقترب من الصفر (يسالي↓) ✓
+       • القيمة تُسجَّل كما هي (بوحدة 705) بلا تحويل.
+       • barsAdd/Remove فارغ + m='ذهب 730' ⇒ المخزون لا يتغيّر. */
+    const gtType=isPos?'take':'give';
+    const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const note=noteIn||'تسوية فارق وزن — ذهب البيع';
+    emitEvent('GT',
+        {gtType,c,m:'ذهب 730',finalAmount:a,note,barsAdd:[],barsRemove:[],barUpdates:[]},
+        {op:{c,t:'تسوية ذهب البيع',m:'ذهب 730',a,_ts:Date.now(),dt:nowStr,note}}
+    );
+    document.getElementById('gsSettleOverlay').classList.remove('active');
+    setTimeout(()=>{ toast('⚖️ تم تسجيل التسوية — ذهب البيع تصفّى','success'); },200);
+};
+
 window.openCashAudit=()=>{
     if(typeof _applyEvt!=='function'||typeof _allEvents==='undefined')return toast('تعذّر التدقيق','error');
     const voided=window._voidedTargetIds||new Set();
