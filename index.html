@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=243">
+    <link rel="stylesheet" href="./style.css?v=244">
 </head>
 <body>
 <script>
@@ -159,9 +159,9 @@
                     <div class="nw-val" id="netWorth">0 DZD</div>
                     <div class="nw-sub" id="netWorthDetails">جاري الحساب...</div>
                 </div>
-                <div class="gold-sale-card" id="goldSaleCard">
-                    <div class="gs-title"><i class="fas fa-coins"></i> ذهب البيع</div>
-                    <div id="goldSaleContent" style="display:flex;flex-direction:column;align-items:center;gap:.15rem;width:100%"></div>
+                <div class="gold-sale-card" id="goldSaleCard" onclick="window.openGoldSaleSettle&&openGoldSaleSettle()" style="cursor:pointer">
+                    <div class="gs-title" style="pointer-events:none"><i class="fas fa-coins"></i> ذهب البيع</div>
+                    <div id="goldSaleContent" style="display:flex;flex-direction:column;align-items:center;gap:.15rem;width:100%;pointer-events:none"></div>
                 </div>
             </div>
             <div class="bgrid">
@@ -1094,13 +1094,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=243"></script>
-<script src="./app.js?v=243"></script>
-<script src="./assistant.js?v=243"></script>
-<script src="./inventory.js?v=243"></script>
-<script src="./invoice.js?v=243"></script>
-<script src="./raffinage.js?v=243"></script>
-<script src="./auth.js?v=243"></script>
+<script src="./firebase.js?v=244"></script>
+<script src="./app.js?v=244"></script>
+<script src="./assistant.js?v=244"></script>
+<script src="./inventory.js?v=244"></script>
+<script src="./invoice.js?v=244"></script>
+<script src="./raffinage.js?v=244"></script>
+<script src="./auth.js?v=244"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->
