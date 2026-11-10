@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v247';
+window.APP_VERSION='v248';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -62,11 +62,12 @@ window._realOpName=(o)=>{
         if(inv){
             const goodsEq=((Array.isArray(inv.items)?inv.items:[]).reduce((s,it)=>s+(((it.w||0)>0.001)?(Number(it.eq)||((Number(it.w)||0)*(Number(it.k)||705)/705)):0),0))-((inv.rot&&inv.rot.eq)||0);
             const hasGoods=goodsEq>0.001;
-            const hasCash=(inv.cash||0)>0.001||(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001);
+            const hasCash=(inv.cash||0)>0.001;   /* دينار صرف فقط — كاصي بالصوارد مكوّن مستقل */
             if(!hasGoods){
                 /* اعرض كل المكوّنات الذهبية المُدخَلة، ومعها «دينار» إن وُجد دينار صرف */
                 const comps=[];
                 if(inv.kass&&inv.kass.eq>0.001)comps.push('لاكاص');
+                if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)comps.push('كاصي بالصوارد');
                 if(inv.cashiFee&&inv.cashiFee.eq>0.001)comps.push('أجرة بالكاصي');
                 if(inv.liveKassi&&(inv.liveKassi.w||0)>0.001)comps.push('كاصي حي');
                 if(comps.length){
@@ -634,6 +635,80 @@ function _applyHomeVoice(rawTxt){
     },420);
 }
 /* ═══════════ EXPORT / IMPORT — مُعرَّف في firebase.js ═══════════ */
+/* ═══════════ 📲 النسخ الاحتياطي التلقائي إلى تلغرام ═══════════ */
+window._tgCfg=()=>({
+    token:(localStorage.getItem('gp_tg_token')||'').trim(),
+    chat:(localStorage.getItem('gp_tg_chat')||'').trim(),
+    auto:localStorage.getItem('gp_tg_auto')==='1'
+});
+/* تعبئة حقول الإعدادات من التخزين */
+window.tgLoadToSettings=()=>{
+    const c=_tgCfg();
+    const t=document.getElementById('tgToken'); if(t)t.value=c.token;
+    const ch=document.getElementById('tgChat'); if(ch)ch.value=c.chat;
+    const a=document.getElementById('tgAuto'); if(a)a.checked=c.auto;
+};
+/* حفظ إعدادات تلغرام من الحقول */
+window.tgSaveFromSettings=()=>{
+    try{
+        localStorage.setItem('gp_tg_token',(document.getElementById('tgToken')?.value||'').trim());
+        localStorage.setItem('gp_tg_chat',(document.getElementById('tgChat')?.value||'').trim());
+        localStorage.setItem('gp_tg_auto',document.getElementById('tgAuto')?.checked?'1':'0');
+        toast('✅ حُفظت إعدادات تلغرام','success');
+    }catch(e){ toast('⚠️ تعذّر الحفظ','error'); }
+};
+/* بناء النسخة المشفّرة كـ Blob */
+window._tgBuildBlob=()=>{
+    const out=(typeof _encryptBackup==='function')
+        ? _encryptBackup({events:_allEvents,_exported:Date.now(),_user:_currentUser})
+        : JSON.stringify({events:(typeof _allEvents!=='undefined'?_allEvents:[])});
+    return new Blob([out],{type:'application/json'});
+};
+/* إرسال النسخة إلى تلغرام عبر Bot API (من متصفّح المستخدم مباشرة) */
+window.sendBackupToTelegram=async(silent)=>{
+    const {token,chat}=_tgCfg();
+    if(!token||!chat){ if(!silent)toast('⚠️ أدخل توكن البوت و Chat ID واحفظ أولاً','error'); return false; }
+    try{
+        if(!silent)toast('⏳ جاري الإرسال إلى تلغرام...','info');
+        const blob=_tgBuildBlob();
+        const n=(typeof _allEvents!=='undefined'?_allEvents.length:0);
+        const fname=`GoldPro_${_currentUser}_${new Date().toISOString().slice(0,10)}.json`;
+        const fd=new FormData();
+        fd.append('chat_id',chat);
+        fd.append('caption',`🔒 نسخة GoldPro — ${_currentUser}\n📅 ${new Date().toLocaleString('fr-FR')}\n📊 ${n} عملية`);
+        fd.append('document',blob,fname);
+        const r=await fetch(`https://api.telegram.org/bot${token}/sendDocument`,{method:'POST',body:fd});
+        const j=await r.json();
+        if(j&&j.ok){ if(!silent)toast('✅ أُرسلت النسخة إلى تلغرام','success'); return true; }
+        if(!silent)toast('⚠️ فشل: '+((j&&j.description)||'تحقق من التوكن و Chat ID'),'error');
+        return false;
+    }catch(e){ if(!silent)toast('⚠️ خطأ في الاتصال بتلغرام','error'); return false; }
+};
+/* جلب Chat ID تلقائياً من آخر رسالة وصلت للبوت */
+window.tgFetchChatId=async()=>{
+    const token=(document.getElementById('tgToken')?.value||'').trim();
+    if(!token)return toast('أدخل التوكن أولاً','error');
+    toast('⏳ جاري البحث... (تأكد أنك أرسلت رسالة للبوت)','info');
+    try{
+        const r=await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+        const j=await r.json();
+        if(j&&j.ok&&j.result&&j.result.length){
+            for(let i=j.result.length-1;i>=0;i--){
+                const u=j.result[i];
+                const id=(u.message&&u.message.chat&&u.message.chat.id)||(u.channel_post&&u.channel_post.chat&&u.channel_post.chat.id);
+                if(id){ const e=document.getElementById('tgChat'); if(e)e.value=id; toast('✅ Chat ID: '+id+' — اضغط حفظ','success'); return; }
+            }
+        }
+        toast('⚠️ لم أجد رسالة — أرسل رسالة للبوت أولاً ثم أعد المحاولة','error');
+    }catch(e){ toast('⚠️ خطأ — تحقّق من التوكن','error'); }
+};
+/* إرسال تلقائي مُخفَّض (debounce) — يُستدعى من emitEvent بعد كل عملية */
+window._tgAutoSend=()=>{
+    const c=_tgCfg();
+    if(!c.auto||!c.token||!c.chat)return;
+    clearTimeout(window._tgTimer);
+    window._tgTimer=setTimeout(()=>{ sendBackupToTelegram(true); },25000);  /* 25ث بعد آخر تغيير */
+};
 /* exportData و importData مُعرَّفتان في firebase.js وتعملان على متجر الأحداث */
 /* ═══════════ DARK MODE ═══════════ */
 function applyDark(){
@@ -711,6 +786,7 @@ function openSettings(){
     if(!_isEmp){ renderGoodsNamesList(); if(typeof renderGoodsCodesList==='function')renderGoodsCodesList(); renderPortalCustList(); }
     document.getElementById('settingsModal').classList.add('active');
     const _vb=document.getElementById('appVerBadge'); if(_vb)_vb.textContent='النسخة: '+(window.APP_VERSION||'؟');
+    if(window.tgLoadToSettings)tgLoadToSettings();   /* تعبئة حقول تلغرام */
     if(!_isEmp)setTimeout(()=>{const e=document.getElementById('settingGoldPrice');if(e)e.focus();},320);
 }
 function saveSettings(){
@@ -2195,18 +2271,19 @@ window.saveDollar=()=>{
     /* gv:2 — دائماً غير خالص: الشراء يُسجّل ديناً بالأحمر (سلعة مكافئ 705 + الأجرة بالدينار)، والبيع بالعكس */
     const _di={id:did,c:cust,isBuy,a:equiv,fee,dt,items,gv:2,rot:rot||undefined,cash:cash||undefined,kass:kass.eq>0?kass:undefined,cashiCash:cashiCash||undefined,cashiFee:cashiFee.eq>0?cashiFee:undefined,liveKassi:liveKassi||undefined,empOwner:(window._userRole==='employee'?_currentUser:undefined),by:(window._currentUser||'')};
     /* 🏷️ اسم العملية ومبلغها يعكسان ما أُدخل فعلاً — لا «بيع سلعة 0» على عملية بلا سلع */
-    const _hasGoods=items.some(it=>(it.w||0)>0.001)||(kass.eq>0)||(cashiFee&&cashiFee.eq>0)||(liveKassi&&liveKassi.w>0);
-    const _cashAmt=(cash||0)+((cashiCash&&cashiCash.amt)||0);
-    const _hasCash=_cashAmt>0.001;
+    const _ccEq=(cashiCash&&cashiCash.eq>0?cashiCash.eq:0);   /* كاصي بالصوارد له مكافئ ذهبي */
+    const _hasGoods=items.some(it=>(it.w||0)>0.001)||(kass.eq>0)||(cashiFee&&cashiFee.eq>0)||(liveKassi&&liveKassi.w>0)||(_ccEq>0.001);
+    const _pureCash=(cash||0);   /* دينار صرف فقط — كاصي بالصوارد ليس ديناراً صرفاً */
+    const _hasCash=_pureCash>0.001;
     const _mainGoodsEq=Math.round((equiv-(rot?rot.eq:0))*1000)/1000;   /* صافي السلع (705) */
-    const _compEq=Math.round(((kass&&kass.eq>0?kass.eq:0)+(cashiFee&&cashiFee.eq>0?cashiFee.eq:0)+(liveKassi&&liveKassi.w>0?liveKassi.w:0))*1000)/1000;
+    const _compEq=Math.round(((kass&&kass.eq>0?kass.eq:0)+(cashiFee&&cashiFee.eq>0?cashiFee.eq:0)+(liveKassi&&liveKassi.w>0?liveKassi.w:0)+_ccEq)*1000)/1000;
     let _opName=isBuy?'شراء سلعة':'بيع سلعة';
     let _opM='دولار', _opA=_mainGoodsEq;
     if(!_hasGoods && _hasCash){
-        /* دينار صرف فقط (بلا أي ذهب: لا سلع/لاكاص/أجرة بالكاصي/كاصي حي) → قبض/دفع دينار */
+        /* دينار صرف فقط (بلا أي ذهب: لا سلع/لاكاص/أجرة بالكاصي/كاصي حي/كاصي بالصوارد) → قبض/دفع دينار */
         _opName=isBuy?'دفع دينار':'قبض دينار';
         _opM='دينار';
-        _opA=_cashAmt;
+        _opA=_pureCash;
     }else if(_mainGoodsEq<=0.001 && _compEq>0.001){
         /* بلا سلع فعلية لكن فيه مكوّن ذهبي (لاكاص/أجرة بالكاصي/كاصي حي ± دينار):
            تبقى «بيع/شراء سلعة» ويُظهر المكافئ الذهبي · الاسم والتفاصيل تُحسم عند العرض (كل المكوّنات) */
@@ -3888,7 +3965,7 @@ function opDetailLines(o,custView){
             if(inv.rot&&(inv.rot.w||0)>0.001)lines.push(`♻️ روتور (مرتجع): ${f(inv.rot.w,2)}غ عيار ${f(inv.rot.k,0)}${inv.rot.p?` × ${f(inv.rot.p,0)} دج/غ = ${f(inv.rot.fv||0,0)} دج`:''}`);
             if(inv.kass&&inv.kass.eq>0.001)lines.push(`⚱️ ${isBuy?'دفعت':'أخذت'} لاكاص: ${inv.kass.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)).join(' + ')} = ${f(inv.kass.eq,2)} غ (705)`);
             if(inv.cash>0.001)lines.push(`💵 ${isBuy?'دفعت':'أخذت'} دينار: ${f(inv.cash,0)} دج (${isBuy?'خرج من':'دخل إلى'} السيولة)`);
-            if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)lines.push(`💵 كاصي بالدينار: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705)`);
+            if(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)lines.push(`💵 كاصي بالصوارد: ${f(inv.cashiCash.amt,0)} دج ÷ ${f(inv.cashiCash.rate,0)} = ${f(inv.cashiCash.eq,2)} غ (705)`);
             if(inv.cashiFee&&inv.cashiFee.items&&(inv.cashiFee.din||0)>0.001)lines.push(`⚱️ أجرة بالكاصي: ${inv.cashiFee.items.map(it=>f(it.w,2)+'غ/'+f(it.k,0)+'×'+f(it.p,0)).join(' + ')} = ${f(inv.cashiFee.din,0)} دج`);
             /* 🔥 كاصي حي: وزن خام مؤقّت (705) · يُصحَّح عند التذويب */
             if(inv.liveKassi&&(inv.liveKassi.w||0)>0.001){
@@ -5369,7 +5446,7 @@ function renderArchive(){
                 ${d.rot?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">♻️ روتور (مرتجع): ⚖️ ${fmt(d.rot.w,2)} غ · 🏷️ ${fmt(d.rot.k,0)}${d.rot.p?' · 💰 '+fmt(d.rot.p,0)+' دج/غ = '+fmt(d.rot.fv||0,0)+' دج':''}</small>`:''}
                 ${d.cash?`<small style="color:#0369a1;display:block;font-size:.62rem;font-weight:800">💵 ${d.isBuy?'دفعت':'أخذت'} دينار: ${fmt(d.cash,0)} دج</small>`:''}
                 ${d.kass&&d.kass.eq?`<small style="color:#0d9488;display:block;font-size:.62rem;font-weight:800">⚱️ ${d.isBuy?'دفعت':'أخذت'} لاكاص: ${d.kass.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)).join(' + ')} = ${fmt(d.kass.eq,2)} غ (705)</small>`:''}
-                ${d.cashiCash&&(d.cashiCash.amt||0)>0.001?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالدينار: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
+                ${d.cashiCash&&(d.cashiCash.amt||0)>0.001?`<small style="color:#b45309;display:block;font-size:.62rem;font-weight:800">💵 كاصي بالصوارد: ${fmt(d.cashiCash.amt,0)} دج ÷ ${fmt(d.cashiCash.rate,0)} = ${fmt(d.cashiCash.eq,2)} غ (705)</small>`:''}
                 ${d.cashiFee&&d.cashiFee.items&&(d.cashiFee.din||0)>0.001?`<small style="color:#7c3aed;display:block;font-size:.62rem;font-weight:800">⚱️ أجرة بالكاصي: ${d.cashiFee.items.map(it=>fmt(it.w,2)+'غ/'+fmt(it.k,0)+'×'+fmt(it.p,0)).join(' + ')} = ${fmt(d.cashiFee.din,0)} دج · ${fmt(d.cashiFee.eq,2)} غ (705)</small>`:''}
                 ${d.liveKassi&&(d.liveKassi.w||0)>0.001?`<small style="color:#ea580c;display:block;font-size:.62rem;font-weight:800">🔥 كاصي حي: ${fmt(d.liveKassi.w,2)} غ خام (مؤقت 705)</small>`:''}
                 ${(d.rot||d.cash||(d.kass&&d.kass.eq)||(d.cashiCash&&d.cashiCash.amt)||(d.cashiFee&&d.cashiFee.din)||(d.liveKassi&&d.liveKassi.w))?`<small style="color:var(--g600);display:block;font-size:.62rem;font-weight:900">= الصافي: ${fmt((d.a||0)-(d.rot?d.rot.eq||0:0)-(d.kass?d.kass.eq||0:0)-(d.cashiCash?d.cashiCash.eq||0:0)-(d.liveKassi?d.liveKassi.w||0:0),2)} غ (705) · ${fmt((d.fee||0)-(d.rot?d.rot.fv||0:0)-(d.cash||0)-(d.cashiFee?d.cashiFee.din||0:0),0)} دج</small>`:''}

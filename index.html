@@ -43,7 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=247">
+    <link rel="stylesheet" href="./style.css?v=248">
 </head>
 <body>
 <script>
@@ -1051,6 +1051,29 @@
     </div>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
 
+    <!-- ═══ 📲 النسخ الاحتياطي التلقائي إلى تلغرام ═══ -->
+    <div style="border:1.5px solid #229ED9;border-radius:12px;padding:.7rem;margin-bottom:.7rem;background:rgba(34,158,217,.06)">
+        <div style="font-weight:900;color:#229ED9;font-size:.85rem;margin-bottom:.5rem;text-align:center">📲 نسخة تلغرام التلقائية</div>
+        <input type="text" id="tgToken" placeholder="🤖 توكن البوت (Bot Token)" autocomplete="off" dir="ltr"
+            style="width:100%;padding:.6rem;border-radius:8px;border:1.5px solid var(--brd);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;text-align:left;margin-bottom:.4rem;box-sizing:border-box">
+        <div style="display:flex;gap:.4rem;margin-bottom:.4rem">
+            <input type="text" id="tgChat" placeholder="💬 Chat ID" autocomplete="off" dir="ltr"
+                style="flex:1;padding:.6rem;border-radius:8px;border:1.5px solid var(--brd);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:.8rem;text-align:left;box-sizing:border-box">
+            <button onclick="tgFetchChatId()" style="padding:.6rem .7rem;border-radius:8px;border:none;background:#229ED9;color:#fff;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.72rem;white-space:nowrap">🔍 جلب ID</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;font-weight:800;color:var(--t2);margin-bottom:.5rem;cursor:pointer">
+            <input type="checkbox" id="tgAuto" style="width:20px;height:20px;accent-color:#229ED9;cursor:pointer">
+            إرسال تلقائي بعد كل عملية
+        </label>
+        <div style="display:flex;gap:.4rem">
+            <button onclick="tgSaveFromSettings()" style="flex:1;padding:.55rem;border-radius:8px;border:1.5px solid #229ED9;background:transparent;color:#229ED9;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.76rem">💾 حفظ</button>
+            <button onclick="sendBackupToTelegram(false)" style="flex:1;padding:.55rem;border-radius:8px;border:none;background:#229ED9;color:#fff;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.76rem">📤 إرسال الآن</button>
+        </div>
+        <div style="font-size:.62rem;color:var(--t3);margin-top:.45rem;line-height:1.6;text-align:center">
+            أنشئ بوتاً عبر <strong>@BotFather</strong>، انسخ التوكن، أرسل رسالة للبوت، ثم اضغط «جلب ID».
+        </div>
+    </div>
+
     <button onclick="resetAllData()" style="width:100%;padding:.6rem;border-radius:8px;border:1.5px solid var(--rd);background:transparent;color:var(--rd);font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.8rem">
         🗑️ مسح جميع البيانات (إعادة ضبط المصنع)
     </button>
@@ -1095,13 +1118,13 @@
 
 
 <!-- ═══ ملفات JS ═══ -->
-<script src="./firebase.js?v=247"></script>
-<script src="./app.js?v=247"></script>
-<script src="./assistant.js?v=247"></script>
-<script src="./inventory.js?v=247"></script>
-<script src="./invoice.js?v=247"></script>
-<script src="./raffinage.js?v=247"></script>
-<script src="./auth.js?v=247"></script>
+<script src="./firebase.js?v=248"></script>
+<script src="./app.js?v=248"></script>
+<script src="./assistant.js?v=248"></script>
+<script src="./inventory.js?v=248"></script>
+<script src="./invoice.js?v=248"></script>
+<script src="./raffinage.js?v=248"></script>
+<script src="./auth.js?v=248"></script>
 
 
 <!-- ═══ شاشة السيريل نامبر ═══ -->

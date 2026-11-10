@@ -1094,6 +1094,7 @@ function emitEvent(type,data,display){
     _lsSaveEvents();
     if(_baseRef&&_fbLoaded)_fbSetEvent(evt);
     _reproject();
+    if(window._tgAutoSend)try{window._tgAutoSend();}catch(e){}   /* 📲 نسخة تلغرام تلقائية (debounce) */
 }
 
 /* ═══════════ LOAD — تحميل من localStorage ثم إعادة الإسقاط ═══════════ */
