@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v249';
+window.APP_VERSION='v250';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -2704,18 +2704,16 @@ window.saveGoldSaleSettle=(isPos)=>{
     const noteIn=(document.getElementById('gsSetNote').value||'').trim();
     if(!c)return toast('أدخل اسم الزبون','error');
     if(!a||a<=0)return toast('أدخل كمية صحيحة','error');
-    /* 🧭 المنطق:
-       • الزيادة (ذهب البيع موجب) → تُضاف لدين الزبون → حانوت يسالي أكثر (رأس المال يتراكم)
-         gtType='take' → stUpdDebt += -finalAmount → d.a يصير أسلب (يسالي↑) ✓
-       • النقص → gtType='give' → d.a يقترب من الصفر (يسالي↓) ✓
-       • القيمة تُسجَّل كما هي (بوحدة 705) بلا تحويل.
-       • barsAdd/Remove فارغ + m='ذهب 730' ⇒ المخزون لا يتغيّر. */
-    const gtType=isPos?'take':'give';
+    /* 🧭 المنطق (بوحدة دولار/705 مباشرةً — بلا تحويل لـ730، بلا لمس المخزون):
+       • الزيادة (ذهب البيع موجب) → دين الزبون بـ«دولار» يصير أسلب → يسالي أكثر (رأس المال يتراكم)
+         ⇒ delta = -a  ⇒ gold705Total ينقص a ⇒ ذهب البيع يتصفّى ✓
+       • النقص → delta = +a → يسالي أقل ✓ */
+    const delta=isPos?-a:a;
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    const note=noteIn||'تسوية فارق وزن — ذهب البيع';
-    emitEvent('GT',
-        {gtType,c,m:'ذهب 730',finalAmount:a,note,barsAdd:[],barsRemove:[],barUpdates:[]},
-        {op:{c,t:'تسوية ذهب البيع',m:'ذهب 730',a,_ts:Date.now(),dt:nowStr,note}}
+    const note=(noteIn||'تسوية فارق وزن — ذهب البيع')+` · ${isPos?'+':'−'}${fmt(a,2)}غ (705)`;
+    emitEvent('GS_SETTLE',
+        {c,amount:delta,note},
+        {op:{c,t:'تسوية ذهب البيع',m:'دولار',a,_ts:Date.now(),dt:nowStr,note}}
     );
     document.getElementById('gsSettleOverlay').classList.remove('active');
     setTimeout(()=>{ toast('⚖️ تم تسجيل التسوية — ذهب البيع تصفّى','success'); },200);
