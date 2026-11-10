@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v248';
+window.APP_VERSION='v249';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -53,10 +53,24 @@ window._tName=(t)=>({
     'أخذ دينار':'أخذت دينار'
 }[t]||t||'');
 
+/* هل فاتورة هذه العملية فيها ذهب/مكوّن (سلع/لاكاص/كاصي بالصوارد/أجرة بالكاصي/كاصي حي)؟ */
+window._invIsGoods=(o)=>{
+    const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===(o&&o.did));
+    if(!inv)return false;
+    const goodsEq=((Array.isArray(inv.items)?inv.items:[]).reduce((s,it)=>s+(((it.w||0)>0.001)?(Number(it.eq)||((Number(it.w)||0)*(Number(it.k)||705)/705)):0),0))-((inv.rot&&inv.rot.eq)||0);
+    return goodsEq>0.001||(inv.kass&&inv.kass.eq>0.001)||(inv.cashiCash&&(inv.cashiCash.amt||0)>0.001)||(inv.cashiFee&&inv.cashiFee.eq>0.001)||(inv.liveKassi&&(inv.liveKassi.w||0)>0.001);
+};
+/* 🩹 تطبيع نوع العمليات القديمة المخزّنة «قبض/دفع دينار» لكنها فعلياً سلعة
+   (فاتورتها فيها كاصي بالصوارد أو ذهب) — سُجّلت قبل إصلاح التصنيف */
+window._normOpType=(o)=>{
+    const t=(o&&o.t)||'';
+    if((t==='قبض دينار'||t==='دفع دينار')&&_invIsGoods(o)) return (t==='دفع دينار')?'شراء سلعة':'بيع سلعة';
+    return t;
+};
 /* 🏷️ الاسم الحقيقي للعملية حسب محتواها — يصحّح العمليات القديمة «بيع/شراء سلعة»
    التي كانت فعلياً دينار صرف (بلا ذهب) فتُعرض «دفع/قبض دينار» */
 window._realOpName=(o)=>{
-    const t=(o&&o.t)||'';
+    const t=_normOpType(o);
     if(t==='شراء سلعة'||t==='بيع سلعة'){
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
         if(inv){
@@ -86,15 +100,21 @@ window._realOpName=(o)=>{
 window._opDispAmt=(o)=>{
     let a=Number(o&&o.a)||0;
     let unit=(o&&o.m==='دينار')?'DZD':'g';
-    const t=(o&&o.t)||'';
-    if((t==='بيع سلعة'||t==='شراء سلعة')&&Math.abs(a)<0.001){
+    const origT=(o&&o.t)||'';
+    const t=_normOpType(o);
+    if(t==='بيع سلعة'||t==='شراء سلعة'){
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
         if(inv){
-            const lk =(inv.liveKassi&&(inv.liveKassi.w||0)>0.001)?Number(inv.liveKassi.w):0;
-            const kEq=(inv.kass&&inv.kass.eq>0.001)?Number(inv.kass.eq):0;
-            const cfEq=(inv.cashiFee&&inv.cashiFee.eq>0.001)?Number(inv.cashiFee.eq):0;
-            const comp=Math.round((lk+kEq+cfEq)*1000)/1000;
-            if(comp>0.001){ a=comp; unit='g'; }
+            /* عملية قديمة «قبض/دفع دينار» مطبّعة، أو مبلغ مخزّن صفر → احسب المكافئ الذهبي من الفاتورة */
+            if(origT==='قبض دينار'||origT==='دفع دينار'||Math.abs(a)<0.001){
+                const goodsEq=((Array.isArray(inv.items)?inv.items:[]).reduce((s,it)=>s+(((it.w||0)>0.001)?(Number(it.eq)||((Number(it.w)||0)*(Number(it.k)||705)/705)):0),0))-((inv.rot&&inv.rot.eq)||0);
+                const lk =(inv.liveKassi&&(inv.liveKassi.w||0)>0.001)?Number(inv.liveKassi.w):0;
+                const kEq=(inv.kass&&inv.kass.eq>0.001)?Number(inv.kass.eq):0;
+                const cfEq=(inv.cashiFee&&inv.cashiFee.eq>0.001)?Number(inv.cashiFee.eq):0;
+                const ccEq=(inv.cashiCash&&(inv.cashiCash.eq||0)>0.001)?Number(inv.cashiCash.eq):0;
+                const comp=Math.round((goodsEq+lk+kEq+cfEq+ccEq)*1000)/1000;
+                if(Math.abs(comp)>0.001){ a=comp; unit='g'; }
+            }
         }
     }
     return {a,unit};
@@ -3946,7 +3966,7 @@ window.saveDubai=()=>{
 function opDetailLines(o,custView){
     const f=(n,d=2)=>_locTrunc(n,d);
     const lines=[];
-    const t=o.t||'';
+    const t=(typeof _normOpType==='function')?_normOpType(o):(o.t||'');   /* يطبّع العمليات القديمة «قبض/دفع دينار» ذات الفاتورة الذهبية */
     if(t==='شراء سلعة'||t==='بيع سلعة'){
         const isBuy=t==='شراء سلعة';
         const inv=(typeof dollInvoices!=='undefined'?dollInvoices:[]).find(x=>x.id===o.did);
