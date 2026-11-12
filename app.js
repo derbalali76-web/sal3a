@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v250';
+window.APP_VERSION='v252';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -1403,12 +1403,34 @@ window.renderPortalCustList=()=>{
         const nm=e&&e.n?e.n:String(e||'');
         const pin=e&&e.pin?e.pin:'—';
         return `
-        <div style="display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.3rem .5rem;font-size:.72rem;font-weight:800">
-            <span style="flex:1">👤 ${nm}</span>
+        <div style="display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.3rem .5rem;font-size:.72rem;font-weight:800;flex-wrap:wrap">
+            <span style="flex:1;min-width:80px">👤 ${nm}</span>
             <span dir="ltr" style="color:var(--t2)">${ph}</span>
             <span dir="ltr" style="color:var(--g500)">🔑 ${pin}</span>
+            <b onclick="sharePortalLink('${ph}')" style="cursor:pointer;color:#25D366;font-size:.95rem" title="إرسال الرابط عبر واتساب">📲</b>
+            <b onclick="copyPortalLink('${ph}')" style="cursor:pointer;color:var(--g500);font-size:.9rem" title="نسخ الرابط">📋</b>
             <b onclick="delPortalCust('${ph}')" style="cursor:pointer;color:var(--rd)">✕</b>
         </div>`;}).join(''):'<small style="color:var(--t3)">لا يوجد زبائن مرتبطون بعد</small>';
+};
+/* رابط بوابة الزبون (portal.html بجانب التطبيق) + معطيات الدخول */
+window._portalLink=(ph)=>{
+    const e=window._portalCust[ph]; if(!e)return '';
+    let base; try{ base=new URL('portal.html',location.href).href; }catch(_){ base='portal.html'; }
+    return base+'?c='+encodeURIComponent(ph)+'&p='+encodeURIComponent(e.pin||'');
+};
+window.sharePortalLink=(ph)=>{
+    const e=window._portalCust[ph]; if(!e)return toast('زبون غير موجود','error');
+    const link=_portalLink(ph);
+    const shop=window._snName||_currentUser||'المحل';
+    const msg=`مرحباً ${e.n||''} 👋\nتابع حسابك في ${shop} من هنا:\n${link}\n\n📱 رقمك: ${ph}\n🔑 كلمة السر: ${e.pin||''}`;
+    const intl=ph.replace(/^0/,'213');   /* الجزائر */
+    window.open('https://wa.me/'+intl+'?text='+encodeURIComponent(msg),'_blank');
+};
+window.copyPortalLink=(ph)=>{
+    const link=_portalLink(ph); if(!link)return;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(link).then(()=>toast('📋 نُسخ رابط البوابة','success')).catch(()=>toast(link,'info'));
+    }else toast(link,'info');
 };
 /* ── الناشر: يدفع كشف كل زبون مرتبط إلى عقدة goldpro/portal/{هاتف} ── */
 window._publishPortal=()=>{
