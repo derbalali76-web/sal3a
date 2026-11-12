@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v252';
+window.APP_VERSION='v254';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -807,6 +807,8 @@ function openSettings(){
     document.getElementById('settingsModal').classList.add('active');
     const _vb=document.getElementById('appVerBadge'); if(_vb)_vb.textContent='النسخة: '+(window.APP_VERSION||'؟');
     if(window.tgLoadToSettings)tgLoadToSettings();   /* تعبئة حقول تلغرام */
+    /* حمّل كاش زبائن بوابة هذا المحل إن لم يصل من السحابة بعد (بلا دوس على الأحدث) */
+    if(window._loadPortalLocal && !Object.keys(window._portalCust||{}).length)_loadPortalLocal();
     if(!_isEmp)setTimeout(()=>{const e=document.getElementById('settingGoldPrice');if(e)e.focus();},320);
 }
 function saveSettings(){
@@ -1341,10 +1343,13 @@ window.saveGT=()=>{
 
 /* ═══════════ سلعة (كانت DOLLAR — نحافظ على نوع الحدث للتوافق) ═══════════ */
 /* ═══════════ 📱 بوابة الزبائن — كشف الحساب برقم الهاتف ═══════════ */
-window._portalCust=window._portalCust||{}; /* {phone: customerName} */
-(function(){ try{ const v=JSON.parse(localStorage.getItem('gp12_portalCust')||'{}'); if(v&&typeof v==='object')window._portalCust=v; }catch(e){} })();
+window._portalCust=window._portalCust||{}; /* {phone:{n,pin}} — خاص بكل محل */
+/* 🔑 مفتاح تخزين محلي خاص بكل سيريال/محل — يمنع تسرّب زبائن محل إلى آخر على نفس الجهاز */
+window._portalLSKey=()=>'gp12_portalCust_'+(window._shopId?_shopId():String(window._currentUser||'x').toLowerCase());
+/* تحميل كاش زبائن المحل الحالي (إن عُرف المحل) — المصدر الموثوق هو Firebase لكل محل */
+window._loadPortalLocal=()=>{ try{ const v=JSON.parse(localStorage.getItem(_portalLSKey())||'{}'); window._portalCust=(v&&typeof v==='object')?v:{}; if(typeof renderPortalCustList==='function')renderPortalCustList(); }catch(e){ window._portalCust={}; } };
 function _persistPortalCust(){
-    try{localStorage.setItem('gp12_portalCust',JSON.stringify(window._portalCust));}catch(e){}
+    try{localStorage.setItem(_portalLSKey(),JSON.stringify(window._portalCust));}catch(e){}
     if(window._savePortalCustFb)try{window._savePortalCustFb(window._portalCust);}catch(e){}
     renderPortalCustList();
     if(window._publishPortalDebounced)window._publishPortalDebounced();
@@ -1367,8 +1372,8 @@ window.addPortalCust=()=>{
     /* تأكّد أن الخريطة كائن */
     if(!window._portalCust||typeof window._portalCust!=='object')window._portalCust={};
     window._portalCust[ph]={n,pin};
-    /* احفظ فوراً: محلياً + Firebase */
-    try{localStorage.setItem('gp12_portalCust',JSON.stringify(window._portalCust));}catch(e){}
+    /* احفظ فوراً: محلياً (بمفتاح هذا المحل) + Firebase */
+    try{localStorage.setItem(_portalLSKey(),JSON.stringify(window._portalCust));}catch(e){}
     if(window._cfgRef){
         window._cfgRef.child('custPhones').set(window._portalCust)
             .then(()=>{ toast(`✅ حُفظ ${n} — يدخل بالرقم ${ph} وكلمة السر ${pin}`,'success'); })

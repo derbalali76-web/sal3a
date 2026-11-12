@@ -67,19 +67,23 @@ window._attachUserCfg=()=>{
         });
         window._cfgRef.child('custPhones').on('value',sn=>{
             const v=sn.val();
+            /* 🔑 مفتاح محلي خاص بهذا السيريال/المحل (يمنع تسرّب الزبائن بين المحلات على نفس الجهاز) */
+            const _lsKey=(window._portalLSKey?window._portalLSKey():'gp12_portalCust_'+String(window._currentUser||'x').toLowerCase());
             if(v&&typeof v==='object'&&Object.keys(v).length){
                 window._portalCust=v;
-                try{localStorage.setItem('gp12_portalCust',JSON.stringify(v));}catch(e){}
+                try{localStorage.setItem(_lsKey,JSON.stringify(v));}catch(e){}
                 if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
             }else{
-                /* السحابة فارغة: لا تمسح المحلي — بل ادفعه للسحابة (استرجاع) */
+                /* السحابة فارغة: استرجع فقط من كاش هذا المحل (ليس من مفتاح مشترك) */
                 try{
-                    const _local=JSON.parse(localStorage.getItem('gp12_portalCust')||'{}');
-                    if(_local&&Object.keys(_local).length){
+                    const _local=JSON.parse(localStorage.getItem(_lsKey)||'{}');
+                    if(_local&&typeof _local==='object'&&Object.keys(_local).length){
                         window._portalCust=_local;
                         if(window._cfgRef)window._cfgRef.child('custPhones').set(_local).catch(()=>{});
-                        if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
+                    }else{
+                        window._portalCust={};   /* محل جديد بلا زبائن — لا تُبقِ زبائن محل آخر */
                     }
+                    if(typeof renderPortalCustList==='function')try{renderPortalCustList();}catch(e){}
                 }catch(e){}
             }
         });
