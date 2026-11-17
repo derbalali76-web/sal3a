@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v255';
+window.APP_VERSION='v256';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -4844,9 +4844,13 @@ window.openDinToGold=()=>{
             <div style="font-size:.7rem;color:var(--t2);font-weight:800">رصيد الدينار الحالي (${dir})</div>
             <div style="font-size:1.3rem;font-weight:900;color:${dinBal>0?'#16a34a':'#dc2626'}" dir="ltr">${fmt(Math.abs(dinBal),0)} دج</div>
         </div>
+        <label style="display:block;font-size:.72rem;color:var(--t2);font-weight:800;margin-bottom:.25rem;text-align:right">💵 المبلغ المراد تحويله (دج)</label>
+        <input type="text" inputmode="decimal" id="dtgAmt" placeholder="كل الرصيد" value="${fmt(Math.abs(dinBal),0)}" dir="ltr"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #d97706;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box"
+            oninput="liveNum(this);_dtgPreview()">
         <label style="display:block;font-size:.72rem;color:var(--t2);font-weight:800;margin-bottom:.25rem;text-align:right">🏷️ سعر الذهب (دج لكل غ · 705)</label>
         <input type="text" inputmode="decimal" id="dtgPrice" placeholder="مثال: 200000" dir="ltr"
-            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid #d97706;background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box"
+            style="width:100%;padding:.7rem;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--t);font-family:Tajawal,sans-serif;font-size:1rem;font-weight:800;text-align:right;margin-bottom:.5rem;box-sizing:border-box"
             oninput="liveNum(this);_dtgPreview()">
         <div id="dtgPreview" style="font-size:.78rem;text-align:center;color:var(--g600);font-weight:800;margin-bottom:.6rem"></div>
         <div style="display:flex;gap:.5rem">
@@ -4862,9 +4866,13 @@ window.openDinToGold=()=>{
 window._dtgPreview=()=>{
     const el=document.getElementById('dtgPreview'); if(!el)return;
     const dinBal=_dtgBal(), price=readNum('dtgPrice');
+    let amt=readNum('dtgAmt'); const maxAmt=Math.abs(dinBal);
+    if(!amt||amt<=0)amt=maxAmt;                 /* فارغ = كل الرصيد */
+    if(amt>maxAmt)amt=maxAmt;                   /* لا يتجاوز الرصيد */
     if(price>0){
-        const g=dinBal/price;
-        el.innerHTML=`الناتج: <span style="color:var(--t)">${fmt(Math.abs(g),2)} غ (705)</span> · الدينار يصبح 0`;
+        const g=amt/price, rem=maxAmt-amt;
+        el.innerHTML=`الناتج: <span style="color:var(--t)">${fmt(g,2)} غ (705)</span>`
+            +` · المتبقي بالدينار: <span style="color:var(--t)">${fmt(rem,0)} دج</span>`;
     }else el.textContent='';
 };
 window.saveDinToGold=()=>{
@@ -4873,17 +4881,23 @@ window.saveDinToGold=()=>{
     if(Math.abs(dinBal)<0.001)return toast('لا يوجد رصيد دينار','error');
     const price=readNum('dtgPrice');
     if(!price||price<=0)return toast('أدخل سعر الذهب','error');
-    const g=Math.round((dinBal/price)*1000)/1000;
+    const maxAmt=Math.abs(dinBal);
+    let amt=readNum('dtgAmt'); if(!amt||amt<=0)amt=maxAmt;   /* فارغ = كل الرصيد */
+    if(amt>maxAmt+0.5)return toast('المبلغ أكبر من رصيد الدينار','error');
+    if(amt>maxAmt)amt=maxAmt;
+    const sign=dinBal>0?1:-1;                    /* نفس اتجاه الرصيد (تسالو/يسالك) */
+    const dinMove=sign*amt;                      /* الدينار المُحوّل بإشارته */
+    const g=Math.round((dinMove/price)*1000)/1000;
     const _dd=debts.find(d=>d.c===c&&d.type==='دينار');
     const emp=(_dd&&_dd.empOwner)||null;
     const nowStr=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    const note=`${fmt(Math.abs(dinBal),0)} دج ÷ ${fmt(price,0)} = ${fmt(Math.abs(g),2)}غ (705)`;
+    const note=`${fmt(amt,0)} دج ÷ ${fmt(price,0)} = ${fmt(Math.abs(g),2)}غ (705)`;
     emitEvent('CUR_CONVERT',
-        {c,from:'دينار',fromAmt:dinBal,to:'دولار',toAmt:g,price,empOwner:emp,note},
+        {c,from:'دينار',fromAmt:dinMove,to:'دولار',toAmt:g,price,empOwner:emp,note},
         {op:{c,t:'تحويل دينار لذهب',m:'دولار',a:Math.abs(g),_ts:Date.now(),dt:nowStr,note,empOwner:emp||undefined}}
     );
     document.getElementById('dinToGoldOverlay').classList.remove('active');
-    setTimeout(()=>{ if(typeof _renderSettleRows==='function')_renderSettleRows(); toast('🔄 تم تحويل الدينار إلى ذهب — الرصيد صفّر','success'); },200);
+    setTimeout(()=>{ if(typeof _renderSettleRows==='function')_renderSettleRows(); toast('🔄 تم تحويل الدينار إلى ذهب','success'); },200);
 };
 
 /* ═══════════ تحويل رصيد ذهب لحساب زبون آخر (لا يمسّ المخزون) ═══════════ */
