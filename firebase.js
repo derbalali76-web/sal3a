@@ -450,6 +450,15 @@ function _applyEvt(st,evt){
             break;
         }
 
+        case 'CUR_CONVERT':{
+            /* 🔄 تحويل عملة دَين الزبون (مثلاً دينار → ذهب 705) — دَين فقط، بلا مخزون/كوفر.
+               يصفّر العملة المصدر (from) ويضيف المكافئ للعملة الهدف (to) بنفس اتجاه الإشارة. */
+            const c=d.c, emp=d.empOwner||null;
+            if(Math.abs(d.fromAmt||0)>0.0001)stUpdDebt(c,d.from,-(Number(d.fromAmt)||0),emp);
+            if(Math.abs(d.toAmt||0)>0.0001)stUpdDebt(c,d.to,(Number(d.toAmt)||0),emp);
+            break;
+        }
+
         case 'GS_SETTLE':{
             /* ⚖️ تسوية ذهب البيع: تعدّل دين الزبون بوحدة «دولار» (705) مباشرةً وكما هو —
                بلا تحويل لـ730 وبلا أي تأثير على المخزون (st.B.دولار لا يُلمَس). */
