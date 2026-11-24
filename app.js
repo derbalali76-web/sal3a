@@ -1,6 +1,6 @@
 /* ═══════════ STATE ═══════════ */
 /* 🏷️ رقم النسخة — يظهر في الإعدادات لمعرفة أي إصدار محمّل فعلاً */
-window.APP_VERSION='v256';
+window.APP_VERSION='v257';
 /* 👆 تفويض النقر على بطاقة ذهب البيع (يعمل مهما أُعيد تصيير محتواها) */
 if(!window._gsCardBound){
     window._gsCardBound=true;
@@ -4868,11 +4868,13 @@ window._dtgPreview=()=>{
     const dinBal=_dtgBal(), price=readNum('dtgPrice');
     let amt=readNum('dtgAmt'); const maxAmt=Math.abs(dinBal);
     if(!amt||amt<=0)amt=maxAmt;                 /* فارغ = كل الرصيد */
-    if(amt>maxAmt)amt=maxAmt;                   /* لا يتجاوز الرصيد */
     if(price>0){
-        const g=amt/price, rem=maxAmt-amt;
-        el.innerHTML=`الناتج: <span style="color:var(--t)">${fmt(g,2)} غ (705)</span>`
-            +` · المتبقي بالدينار: <span style="color:var(--t)">${fmt(rem,0)} دج</span>`;
+        const g=amt/price, rem=maxAmt-amt;      /* rem سالب = تحويل أكبر من الدين → ينقلب */
+        let remTxt;
+        if(Math.abs(rem)<0.5) remTxt='الدينار يصبح 0';
+        else if(rem>0) remTxt=`المتبقي بالدينار: <span style="color:var(--t)">${fmt(rem,0)} دج</span>`;
+        else remTxt=`سينقلب الدينار: <span style="color:#dc2626">${fmt(Math.abs(rem),0)} دج ${dinBal>0?'يسالك':'تسالو'}</span>`;
+        el.innerHTML=`الناتج: <span style="color:var(--t)">${fmt(g,2)} غ (705)</span> · ${remTxt}`;
     }else el.textContent='';
 };
 window.saveDinToGold=()=>{
@@ -4883,9 +4885,8 @@ window.saveDinToGold=()=>{
     if(!price||price<=0)return toast('أدخل سعر الذهب','error');
     const maxAmt=Math.abs(dinBal);
     let amt=readNum('dtgAmt'); if(!amt||amt<=0)amt=maxAmt;   /* فارغ = كل الرصيد */
-    if(amt>maxAmt+0.5)return toast('المبلغ أكبر من رصيد الدينار','error');
-    if(amt>maxAmt)amt=maxAmt;
-    const sign=dinBal>0?1:-1;                    /* نفس اتجاه الرصيد (تسالو/يسالك) */
+    /* يُسمح بمبلغ أكبر من الرصيد → ينقلب الدينار للاتجاه المعاكس */
+    const sign=dinBal>0?1:-1;                    /* اتجاه الرصيد الأصلي (تسالو/يسالك) */
     const dinMove=sign*amt;                      /* الدينار المُحوّل بإشارته */
     const g=Math.round((dinMove/price)*1000)/1000;
     const _dd=debts.find(d=>d.c===c&&d.type==='دينار');
